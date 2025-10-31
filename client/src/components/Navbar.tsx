@@ -30,8 +30,12 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" data-testid="button-signin">Sign In</Button>
-            <Button data-testid="button-signup">Get Started</Button>
+            <Link href="/login">
+              <Button variant="ghost" data-testid="button-signin">Sign In</Button>
+            </Link>
+            <Link href="/register">
+              <Button data-testid="button-signup">Get Started</Button>
+            </Link>
           </div>
 
           <button
@@ -56,8 +60,12 @@ export default function Navbar() {
                 About
               </Link>
               <div className="flex flex-col gap-2 pt-4 border-t">
-                <Button variant="ghost" className="w-full" data-testid="button-mobile-signin">Sign In</Button>
-                <Button className="w-full" data-testid="button-mobile-signup">Get Started</Button>
+                <Link href="/login" className="w-full">
+                  <Button variant="ghost" className="w-full" data-testid="button-mobile-signin">Sign In</Button>
+                </Link>
+                <Link href="/register" className="w-full">
+                  <Button className="w-full" data-testid="button-mobile-signup">Get Started</Button>
+                </Link>
               </div>
             </div>
           </div>
