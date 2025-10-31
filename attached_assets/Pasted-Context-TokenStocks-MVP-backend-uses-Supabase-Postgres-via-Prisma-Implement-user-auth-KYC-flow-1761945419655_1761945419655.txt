@@ -1,0 +1,47 @@
+Context: TokenStocks MVP backend uses Supabase Postgres (via Prisma). Implement user auth & KYC flows.
+
+Goal: implement user registration, login, JWT auth, KYC upload endpoints, Prisma models for users + wallets creation logic. Use bcrypt for password hashing and AES-256 encryption for Stellar secret keys (use ENCRYPTION_KEY env). Store KYC files using Supabase Storage (server-side using SUPABASE_SERVICE_ROLE_KEY).
+
+Deliverables (server):
+1. Prisma models (update prisma/schema.prisma):
+   - User model matching the spec (id UUID, email unique, phone unique, password_hash, first_name, last_name, role enum, kyc_status enum, kyc_documents JSON, stellar_public_key, stellar_secret_key_encrypted, createdAt, updatedAt).
+   - Wallet model (id UUID, userId relation, currency enum, balance decimal, unique on user+currency).
+   - Transaction model (id, user relation, type enum, amount, currency enum, status enum, payment_method enum, reference unique, notes, timestamps).
+   - depositRequest and withdrawalRequest models minimally (link to transaction).
+2. Implement auth endpoints:
+   - POST /api/auth/register
+     - validate input: email, phone, password, first_name, last_name
+     - create user record with role=investor, kyc_status=pending
+     - generate Stellar keypair (use Stellar SDK)
+     - encrypt secret key with AES-256 using ENCRYPTION_KEY and store as stellar_secret_key_encrypted
+     - create three wallet records for NGN, USDC, XLM with balance 0
+     - return a JWT token and basic user info (never return secret key)
+   - POST /api/auth/login
+     - verify password (bcrypt)
+     - return JWT
+   - GET /api/auth/me (protected) returns user profile (no secret key)
+3. Implement KYC endpoints:
+   - POST /api/users/kyc - multipart/form-data to upload id_card, selfie, address_proof
+     - server uploads files to Supabase Storage (bucket: kyc) using SUPABASE_SERVICE_ROLE_KEY
+     - store returned URLs in user.kyc_documents JSON
+     - create a deposit request? (not needed) — just store documents
+   - GET /api/users/kyc-status - return kyc_status
+4. Implement middleware:
+   - auth middleware to validate JWT and set req.user
+5. Security:
+   - Hash password with bcrypt (saltRounds >= 10)
+   - Use strong JWT secret from env and token expiry (24h)
+   - Do not expose stellar_secret_key_encrypted in APIs
+6. Provide unit-tests skeleton for registration & login (Jest or Mocha)
+
+Also include:
+- Example code for AES encryption/decryption helper using crypto with ENCRYPTION_KEY
+- Example Supabase Storage upload code (server-side) showing how to use service role key to put files in bucket and get public URL
+
+Return: confirm prisma migration commands to create these tables and example curl commands to test register/login/kyc upload.
+
+Acceptance criteria:
+- Register and login endpoints working, create DB records and wallets.
+- KYC upload uploads to Supabase Storage and updates DB with file URLs.
+- JWT middleware protecting `GET /api/auth/me`.
+Next step: implement Wallet & Deposits flows (Phase 3).
