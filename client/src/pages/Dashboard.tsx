@@ -5,6 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Wallet, 
   TrendingUp, 
@@ -19,9 +30,86 @@ import {
   LogOut
 } from "lucide-react";
 
+const withdrawalSchema = z.object({
+  currency: z.enum(["NGN", "USDC", "XLM"]),
+  amount: z.string().min(1, "Amount is required"),
+  destinationType: z.enum(["bank_account", "crypto_wallet"]),
+  accountName: z.string().optional(),
+  accountNumber: z.string().optional(),
+  bankName: z.string().optional(),
+  cryptoAddress: z.string().optional(),
+}).refine((data) => {
+  if (data.destinationType === "bank_account") {
+    return !!data.accountName && !!data.accountNumber && !!data.bankName;
+  }
+  if (data.destinationType === "crypto_wallet") {
+    return !!data.cryptoAddress;
+  }
+  return false;
+}, {
+  message: "Please provide all required bank details or crypto address",
+  path: ["destinationType"],
+});
+
+type WithdrawalForm = z.infer<typeof withdrawalSchema>;
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<any>(null);
+  const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("NGN");
+  const { toast } = useToast();
+
+  const form = useForm<WithdrawalForm>({
+    resolver: zodResolver(withdrawalSchema),
+    defaultValues: {
+      currency: "NGN",
+      amount: "",
+      destinationType: "bank_account",
+      accountName: "",
+      accountNumber: "",
+      bankName: "",
+      cryptoAddress: "",
+    },
+  });
+
+  const withdrawalMutation = useMutation({
+    mutationFn: async (data: WithdrawalForm) => {
+      const payload = {
+        amount: data.amount,
+        currency: data.currency,
+        destinationType: data.destinationType,
+        ...(data.destinationType === "bank_account" 
+          ? { 
+              bankDetails: {
+                accountName: data.accountName,
+                accountNumber: data.accountNumber,
+                bankName: data.bankName,
+              }
+            }
+          : { cryptoAddress: data.cryptoAddress }
+        ),
+      };
+      
+      const res = await apiRequest("POST", "/api/wallets/withdraw", payload);
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Withdrawal Requested",
+        description: `Your withdrawal request for ${data.withdrawalRequest.amount} ${data.withdrawalRequest.currency} has been submitted successfully. It will be processed by an admin.`,
+      });
+      setWithdrawalDialogOpen(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Withdrawal Failed",
+        description: error.message || "Failed to process withdrawal request",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -39,6 +127,16 @@ export default function Dashboard() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setLocation("/");
+  };
+
+  const handleWithdrawClick = (currency: string) => {
+    setSelectedCurrency(currency);
+    form.setValue("currency", currency as any);
+    setWithdrawalDialogOpen(true);
+  };
+
+  const onWithdrawalSubmit = (data: WithdrawalForm) => {
+    withdrawalMutation.mutate(data);
   };
 
   if (!user) {
@@ -96,7 +194,13 @@ export default function Dashboard() {
                     <ArrowDownLeft className="w-4 h-4 mr-1" />
                     Deposit
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1" disabled data-testid={`button-withdraw-${wallet.currency}`}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => handleWithdrawClick(wallet.currency)}
+                    data-testid={`button-withdraw-${wallet.currency}`}
+                  >
                     <ArrowUpRight className="w-4 h-4 mr-1" />
                     Withdraw
                   </Button>
@@ -181,6 +285,169 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={withdrawalDialogOpen} onOpenChange={setWithdrawalDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Withdraw {selectedCurrency}</DialogTitle>
+            <DialogDescription>
+              Request a withdrawal from your {selectedCurrency} wallet
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onWithdrawalSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="Enter amount" 
+                        {...field}
+                        data-testid="input-withdrawal-amount"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="destinationType"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Withdrawal Destination</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-1"
+                      >
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="bank_account" data-testid="radio-bank-account" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Bank Account (NGN only)
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="crypto_wallet" data-testid="radio-crypto-wallet" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Crypto Wallet (USDC/XLM)
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("destinationType") === "bank_account" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="accountName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter account name" {...field} data-testid="input-account-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="accountNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter account number" {...field} data-testid="input-account-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bank Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter bank name" {...field} data-testid="input-bank-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {form.watch("destinationType") === "crypto_wallet" && (
+                <FormField
+                  control={form.control}
+                  name="cryptoAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Crypto Wallet Address</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter Stellar address" 
+                          {...field} 
+                          data-testid="input-crypto-address"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <div className="bg-muted p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> Withdrawal requests are manually processed by our team. 
+                  You will receive a notification once your request is approved.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setWithdrawalDialogOpen(false)}
+                  data-testid="button-cancel-withdrawal"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="flex-1"
+                  disabled={withdrawalMutation.isPending}
+                  data-testid="button-submit-withdrawal"
+                >
+                  {withdrawalMutation.isPending ? "Processing..." : "Request Withdrawal"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

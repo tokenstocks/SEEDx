@@ -5,10 +5,12 @@ import {
   depositRequests, 
   transactions, 
   wallets,
+  withdrawalRequests,
   initiateDepositSchema,
   confirmDepositSchema,
+  initiateWithdrawalSchema,
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { uploadFile } from "../lib/supabase";
 import { generateBankReference, generateStellarMemo } from "../lib/referenceGenerator";
 import { authenticate } from "../middleware/auth";
@@ -235,5 +237,141 @@ router.post(
     }
   }
 );
+
+/**
+ * POST /api/wallets/withdraw
+ * Initiates a withdrawal request
+ */
+router.post("/withdraw", authenticate, async (req, res) => {
+  try {
+    const body = initiateWithdrawalSchema.parse(req.body);
+    // @ts-ignore - userId is added by auth middleware
+    const userId = req.userId as string;
+
+    // Use database transaction for atomic operations with row-level locking
+    const result = await db.transaction(async (tx) => {
+      // 1. Get user wallet with row-level lock to prevent concurrent withdrawals
+      // SELECT ... FOR UPDATE ensures no other transaction can modify this wallet until we commit
+      const [wallet] = await tx
+        .select()
+        .from(wallets)
+        .where(
+          and(
+            eq(wallets.userId, userId),
+            eq(wallets.currency, body.currency)
+          )
+        )
+        .for("update")
+        .limit(1);
+
+      if (!wallet) {
+        throw new Error("Wallet not found");
+      }
+
+      // 2. Check sufficient balance (protected by row lock above)
+      const requestedAmount = parseFloat(body.amount);
+      const currentBalance = parseFloat(wallet.balance);
+      
+      if (currentBalance < requestedAmount) {
+        throw new Error("Insufficient balance");
+      }
+
+      // 3. Generate unique reference
+      const reference = body.destinationType === "bank_account" 
+        ? generateBankReference() 
+        : generateStellarMemo();
+
+      // 4. Create transaction record
+      const [transaction] = await tx
+        .insert(transactions)
+        .values({
+          userId,
+          type: "withdrawal",
+          amount: body.amount,
+          currency: body.currency,
+          status: "pending",
+          paymentMethod: body.destinationType === "bank_account" ? "bank_transfer" : "stellar",
+          reference,
+          notes: `Withdrawal request - ${body.destinationType}`,
+        })
+        .returning();
+
+      // 5. Deduct amount from wallet balance atomically (uses SQL arithmetic to prevent race conditions)
+      // This also serves as a final safety check - if balance goes negative, DB will reject
+      const [updatedWallet] = await tx
+        .update(wallets)
+        .set({
+          balance: sql`${wallets.balance} - ${requestedAmount}`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(wallets.id, wallet.id),
+            sql`${wallets.balance} >= ${requestedAmount}` // Additional safety check
+          )
+        )
+        .returning();
+
+      // Verify the update succeeded (updatedWallet will be undefined if condition failed)
+      if (!updatedWallet) {
+        throw new Error("Insufficient balance or concurrent modification detected");
+      }
+
+      // 6. Create withdrawal request
+      const [withdrawalRequest] = await tx
+        .insert(withdrawalRequests)
+        .values({
+          transactionId: transaction.id,
+          userId,
+          amount: body.amount,
+          currency: body.currency,
+          destinationType: body.destinationType,
+          bankDetails: body.bankDetails || null,
+          cryptoAddress: body.cryptoAddress || null,
+          status: "pending",
+        })
+        .returning();
+
+      return { transaction, withdrawalRequest, newBalance: updatedWallet.balance };
+    });
+
+    console.log(`Withdrawal request created: ${result.withdrawalRequest.id} for user ${userId}`);
+
+    res.json({
+      message: "Withdrawal request submitted successfully",
+      withdrawalRequest: {
+        id: result.withdrawalRequest.id,
+        transactionId: result.withdrawalRequest.transactionId,
+        amount: result.withdrawalRequest.amount,
+        currency: result.withdrawalRequest.currency,
+        destinationType: result.withdrawalRequest.destinationType,
+        status: result.withdrawalRequest.status,
+        createdAt: result.withdrawalRequest.createdAt,
+      },
+      transaction: {
+        id: result.transaction.id,
+        reference: result.transaction.reference,
+        status: result.transaction.status,
+      },
+      newBalance: result.newBalance,
+    });
+  } catch (error: any) {
+    console.error("Withdrawal request error:", error);
+    
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    
+    if (error.message === "Wallet not found") {
+      return res.status(404).json({ error: "Wallet not found for the specified currency" });
+    }
+    
+    if (error.message === "Insufficient balance") {
+      return res.status(400).json({ error: "Insufficient balance for withdrawal" });
+    }
+    
+    res.status(500).json({ error: "Failed to process withdrawal request" });
+  }
+});
 
 export default router;

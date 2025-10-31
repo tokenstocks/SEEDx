@@ -12,6 +12,8 @@ export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withd
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "card", "stellar", "wallet"]);
 export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved", "rejected"]);
+export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
+export const destinationTypeEnum = pgEnum("destination_type", ["bank_account", "crypto_wallet"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -82,11 +84,17 @@ export const withdrawalRequests = pgTable("withdrawal_requests", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 18, scale: 2 }).notNull(),
   currency: currencyEnum("currency").notNull(),
+  destinationType: destinationTypeEnum("destination_type").notNull(),
   bankDetails: json("bank_details").$type<{
     accountName?: string;
     accountNumber?: string;
     bankName?: string;
   }>(),
+  cryptoAddress: text("crypto_address"),
+  status: withdrawalStatusEnum("status").notNull().default("pending"),
+  adminNotes: text("admin_notes"),
+  processedBy: uuid("processed_by").references(() => users.id),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -176,6 +184,42 @@ export const approveDepositSchema = z.object({
   adminNotes: z.string().optional(),
 });
 
+export const insertWithdrawalRequestSchema = createInsertSchema(withdrawalRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  processedAt: true,
+  status: true,
+});
+
+export const initiateWithdrawalSchema = z.object({
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  currency: z.enum(["NGN", "USDC", "XLM"]),
+  destinationType: z.enum(["bank_account", "crypto_wallet"]),
+  bankDetails: z.object({
+    accountName: z.string().min(1),
+    accountNumber: z.string().min(1),
+    bankName: z.string().min(1),
+  }).optional(),
+  cryptoAddress: z.string().optional(),
+}).refine((data) => {
+  if (data.destinationType === "bank_account") {
+    return !!data.bankDetails;
+  }
+  if (data.destinationType === "crypto_wallet") {
+    return !!data.cryptoAddress;
+  }
+  return false;
+}, {
+  message: "Bank details required for bank withdrawals, crypto address required for crypto withdrawals"
+});
+
+export const approveWithdrawalSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  processedAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal").optional(),
+  adminNotes: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -188,6 +232,9 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type DepositRequest = typeof depositRequests.$inferSelect;
 export type InsertDepositRequest = z.infer<typeof insertDepositRequestSchema>;
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type InsertWithdrawalRequest = z.infer<typeof insertWithdrawalRequestSchema>;
 export type InitiateDeposit = z.infer<typeof initiateDepositSchema>;
 export type ConfirmDeposit = z.infer<typeof confirmDepositSchema>;
 export type ApproveDeposit = z.infer<typeof approveDepositSchema>;
+export type InitiateWithdrawal = z.infer<typeof initiateWithdrawalSchema>;
+export type ApproveWithdrawal = z.infer<typeof approveWithdrawalSchema>;
