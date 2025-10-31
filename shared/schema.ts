@@ -11,6 +11,7 @@ export const currencyEnum = pgEnum("currency", ["NGN", "USDC", "XLM"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "investment", "return", "fee"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "card", "stellar", "wallet"]);
+export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved", "rejected"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -66,6 +67,10 @@ export const depositRequests = pgTable("deposit_requests", {
   amount: decimal("amount", { precision: 18, scale: 2 }).notNull(),
   currency: currencyEnum("currency").notNull(),
   paymentProof: text("payment_proof"),
+  status: depositStatusEnum("status").notNull().default("pending"),
+  adminNotes: text("admin_notes"),
+  processedBy: uuid("processed_by").references(() => users.id),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -148,6 +153,29 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
   updatedAt: true,
 });
 
+export const insertDepositRequestSchema = createInsertSchema(depositRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  processedAt: true,
+});
+
+export const initiateDepositSchema = z.object({
+  currency: z.enum(["NGN", "USDC", "XLM"]),
+});
+
+export const confirmDepositSchema = z.object({
+  transactionReference: z.string(),
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  currency: z.enum(["NGN", "USDC", "XLM"]),
+});
+
+export const approveDepositSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  approvedAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal").optional(),
+  adminNotes: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -158,4 +186,8 @@ export type InsertWallet = z.infer<typeof insertWalletSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type DepositRequest = typeof depositRequests.$inferSelect;
+export type InsertDepositRequest = z.infer<typeof insertDepositRequestSchema>;
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type InitiateDeposit = z.infer<typeof initiateDepositSchema>;
+export type ConfirmDeposit = z.infer<typeof confirmDepositSchema>;
+export type ApproveDeposit = z.infer<typeof approveDepositSchema>;

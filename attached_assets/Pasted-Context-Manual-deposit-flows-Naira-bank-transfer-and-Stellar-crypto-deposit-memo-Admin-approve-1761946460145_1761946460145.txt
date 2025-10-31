@@ -1,0 +1,41 @@
+Context: Manual deposit flows — Naira bank transfer and Stellar crypto deposit (memo). Admin approves and credits wallets.
+
+Goal: implement wallet deposit flows, deposit_request and transaction records, admin approval endpoints, and update wallet balances accordingly.
+
+Deliverables (server):
+1. Prisma models for:
+   - DepositRequest (id UUID, userId, transactionId, amount, currency enum, payment_proof_url, status enum pending/approved/rejected, admin_notes, processed_by, processed_at, timestamps)
+   - (If not already) Transactions model to log every wallet change
+2. Endpoints:
+   - POST /api/wallets/deposit/initiate
+     - Input: {currency: NGN|USDC|XLM}
+     - If NGN: return TOKENSTOCKS_BANK_ACCOUNT and a generated unique reference code (string) tied to a transaction (create transaction: deposit pending)
+     - If USDC/XLM: return TOKENSTOCKS_STELLAR_ADDRESS and a generated memo (unique), create pending transaction record
+   - POST /api/wallets/deposit/confirm
+     - Input: {transaction_reference, amount, optional payment_proof (file), currency}
+     - Create deposit_request record with status pending and upload payment_proof to Supabase Storage if provided
+   - GET /api/admin/deposits (admin-only)
+     - Returns list of pending deposit_request with user info and proof URLs
+   - PUT /api/admin/deposits/:id (admin-only)
+     - Body: {action: approve|reject, approvedAmount (for approve), admin_notes}
+     - If approve:
+       - Mark deposit_request.status = approved
+       - Update underlying transaction.status = completed
+       - Update user wallet balance (add approvedAmount) — careful to handle decimal operations
+       - Record processed_by and processed_at
+       - Notify user (email placeholder)
+     - If reject: mark deposit_request.status = rejected and transaction.status = failed
+3. Concurrency/atomicity:
+   - Use DB transaction for approve flow to avoid race conditions (Prisma transaction)
+4. Admin UI API requirements:
+   - Endpoint security: only admin role can access admin endpoints (use auth middleware + role check)
+5. Example curl or Postman steps and tests for admin approve flow
+
+Also:
+- Provide server code snippets to create unique reference codes and memos
+- Use decimal strings for money to avoid float precision issues
+
+Acceptance criteria:
+- User can initiate deposit and confirm deposit (creates pending DB records)
+- Admin can view pending deposits and approve them which updates wallet balances atomically
+Next step: implement Projects, Token Issuance, and Investment flow (Phase 4).

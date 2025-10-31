@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, JWTPayload } from "../lib/jwt";
 
-// Extend Express Request type to include user
+// Extend Express Request type to include user and userId
 declare global {
   namespace Express {
     interface Request {
       user?: JWTPayload;
+      userId?: string;
     }
   }
 }
@@ -36,8 +37,12 @@ export function authMiddleware(
     }
 
     req.user = payload;
+    req.userId = payload.userId;
     next();
   } catch (error) {
     res.status(401).json({ error: "Authentication failed" });
   }
 }
+
+// Export alias for consistency
+export const authenticate = authMiddleware;
