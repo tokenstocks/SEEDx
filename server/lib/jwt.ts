@@ -1,7 +1,15 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRY = "24h";
+
+// Validate JWT_SECRET at module load time
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error(
+    "JWT_SECRET environment variable is required and must be at least 32 characters. " +
+    "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  );
+}
 
 export interface JWTPayload {
   userId: string;

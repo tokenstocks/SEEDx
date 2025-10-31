@@ -1,10 +1,14 @@
 import crypto from "crypto";
 
 const ALGORITHM = "aes-256-cbc";
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "";
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
+// Validate ENCRYPTION_KEY at module load time
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 32) {
-  console.warn("WARNING: ENCRYPTION_KEY must be exactly 32 characters for AES-256");
+  throw new Error(
+    "ENCRYPTION_KEY environment variable is required and must be exactly 32 characters. " +
+    "Generate one with: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\""
+  );
 }
 
 /**
