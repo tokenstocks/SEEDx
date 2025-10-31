@@ -36,7 +36,7 @@ A blockchain-based platform for tokenized agricultural investments built on the 
 2. Go to Project Settings → Database
 3. Copy your database connection string (it looks like: `postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres`)
 4. Go to Project Settings → API
-5. Copy your `SUPABASE_URL`, `anon` key, and `service_role` key
+5. Copy your `SUPABASE_URL` and `service_role` key
 
 ### 2. Create Supabase Storage Bucket
 
@@ -49,37 +49,36 @@ A blockchain-based platform for tokenized agricultural investments built on the 
 
 1. Copy `.env.example` to `.env` in the project root:
    ```bash
-   cp server/.env.example .env
+   cp .env.example .env
    ```
 
-2. Fill in your environment variables:
+2. Generate secure keys:
+   ```bash
+   # Generate JWT_SECRET (32+ characters)
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   
+   # Generate ENCRYPTION_KEY (exactly 32 characters)
+   node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
+   ```
+
+3. Fill in your environment variables:
    ```env
    DATABASE_URL=postgresql://postgres.[ref]:[password]@[host]:5432/postgres
+   JWT_SECRET=<your-generated-jwt-secret>
+   ENCRYPTION_KEY=<your-generated-encryption-key>
    SUPABASE_URL=https://[project-ref].supabase.co
-   SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   JWT_SECRET=your-secure-random-string-at-least-32-chars
-   ENCRYPTION_KEY=your-exactly-32-character-key-12
-   STELLAR_NETWORK=testnet
-   STELLAR_ISSUER_SECRET=S...
-   STELLAR_ISSUER_PUBLIC=G...
-   TOKENSTOCKS_STELLAR_ADDRESS=G...
-   TOKENSTOCKS_BANK_ACCOUNT="Bank Name: Account Number"
-   NODE_ENV=development
+   SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+   SESSION_SECRET=<any-random-string>
    ```
 
-   **Important:**
-   - `JWT_SECRET`: Use a strong random string (minimum 32 characters)
-   - `ENCRYPTION_KEY`: Must be exactly 32 characters for AES-256 encryption
-   - Generate a random encryption key: `node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"`
+   **Security Requirements:**
+   - `JWT_SECRET`: **Must be at least 32 characters** - Server will refuse to start otherwise
+   - `ENCRYPTION_KEY`: **Must be exactly 32 characters** - Required for Stellar secret key encryption
+   - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: **Required** - Server will not start without these
 
-### 4. Install Dependencies
+   The application validates all environment variables at startup and will fail with clear error messages if any are missing or invalid. This prevents deployment with insecure defaults.
 
-```bash
-npm install
-```
-
-### 5. Run Database Migrations
+### 4. Run Database Migrations
 
 ```bash
 npm run db:push
@@ -89,7 +88,7 @@ This command will:
 - Create all required database tables (users, wallets, transactions, etc.)
 - Set up enums for user roles, KYC status, currencies, etc.
 
-### 6. Start Development Server
+### 5. Start Development Server
 
 ```bash
 npm run dev
