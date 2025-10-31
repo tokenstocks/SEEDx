@@ -1,0 +1,48 @@
+You are building TokenStocks MVP — a Stellar-based tokenized agro-investment platform. This is the base project setup step. Use Node.js + Express for backend, Next.js for frontend, Prisma ORM connected to Supabase Postgres, and @supabase/supabase-js for file storage. Use Stellar SDK for blockchain interactions. Use JWT + bcrypt for auth. Use Tailwind for styling.
+
+Goal: generate a complete repo skeleton with backend and frontend folders, environment variable template, README, and package.json files for both server and client. Install basic dependencies.
+
+What I need you to create now:
+- top-level files: README.md, .env.example, .gitignore
+- backend: folder `server/` with:
+  - package.json (scripts: dev, start, prisma:migrate, prisma:generate)
+  - src/app.js (Express app skeleton)
+  - src/server.js (start server)
+  - src/config/index.js (reads env vars)
+  - src/db/prisma.js (Prisma client using DATABASE_URL env)
+  - src/routes/index.js (router mount)
+  - src/controllers/health.js (GET /api/health)
+  - prisma/schema.prisma with empty models to be filled later and configuration for PostgreSQL
+  - README with instructions how to run migrations
+- frontend: folder `web/` (Next.js) with:
+  - package.json (dev, build, start)
+  - pages/index.js (basic landing)
+  - tailwind.config.js + globals
+  - README with how to run dev
+- .env.example should contain:
+  DATABASE_URL=postgresql://<user>:<pass>@<host>:5432/<db>?schema=public
+  SUPABASE_URL=https://your-project.supabase.co
+  SUPABASE_ANON_KEY=anon-key
+  SUPABASE_SERVICE_ROLE_KEY=service-role-key
+  JWT_SECRET=change_this
+  ENCRYPTION_KEY=32_byte_key_for_AES256
+  STELLAR_NETWORK=testnet
+  STELLAR_ISSUER_SECRET=secret_here
+  STELLAR_ISSUER_PUBLIC=public_here
+  TOKENSTOCKS_BANK_ACCOUNT="Bank details here"
+  TOKENSTOCKS_STELLAR_ADDRESS=G...
+  EMAIL_SERVICE_API_KEY=...
+  FRONTEND_URL=http://localhost:3000
+  NODE_ENV=development
+    
+Important: Use Prisma for migrations and a sample initial migration file. Provide commands to install dependencies:
+- server: express, prisma, @prisma/client, bcrypt, jsonwebtoken, dotenv, stellar-sdk, @supabase/supabase-js, pg
+- web: next, react, react-dom, tailwindcss, @supabase/supabase-js, react-query, recharts
+
+Return: a README with exact commands to set up Supabase (create project, copy DATABASE_URL and keys), how to set envs on Replit (Secrets), and how to run dev server and frontend.
+
+Acceptance criteria:
+- Repo skeleton created with working `npm run dev` instructions for server and web (they can be simple placeholders).
+- Prisma schema present and configured for PostgreSQL.
+- .env.example includes the Supabase-specific variables.
+- Clear next-step instruction: implement User auth & KYC (Phase 2).
