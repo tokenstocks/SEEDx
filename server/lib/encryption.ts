@@ -2,13 +2,21 @@ import crypto from "crypto";
 
 const ALGORITHM = "aes-256-cbc";
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
-// Validate ENCRYPTION_KEY at module load time
+// In production, ENCRYPTION_KEY is mandatory
+// In development, warn but allow startup for frontend development
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 32) {
-  throw new Error(
+  const errorMessage = 
     "ENCRYPTION_KEY environment variable is required and must be exactly 32 characters. " +
-    "Generate one with: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\""
-  );
+    "Generate one with: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\"";
+  
+  if (!IS_DEVELOPMENT) {
+    throw new Error(errorMessage);
+  }
+  
+  console.warn("\n⚠️  WARNING: " + errorMessage);
+  console.warn("⚠️  Stellar wallet creation will not work until ENCRYPTION_KEY is configured.\n");
 }
 
 /**
@@ -19,6 +27,10 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 32) {
 export function encrypt(text: string): string {
   if (!text) {
     throw new Error("Cannot encrypt empty text");
+  }
+  
+  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 32) {
+    throw new Error("Cannot encrypt: ENCRYPTION_KEY is not properly configured");
   }
 
   const iv = crypto.randomBytes(16);
@@ -43,6 +55,10 @@ export function encrypt(text: string): string {
 export function decrypt(encryptedText: string): string {
   if (!encryptedText) {
     throw new Error("Cannot decrypt empty text");
+  }
+  
+  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 32) {
+    throw new Error("Cannot decrypt: ENCRYPTION_KEY is not properly configured");
   }
 
   const parts = encryptedText.split(":");

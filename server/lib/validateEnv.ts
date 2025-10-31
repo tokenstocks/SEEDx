@@ -1,6 +1,9 @@
 /**
  * Validates that all required environment variables are set
  * This should be called at application startup before any routes are registered
+ * 
+ * In development mode, this will warn about missing variables but allow the server to start
+ * In production mode, this will throw an error and prevent the server from starting
  */
 export function validateEnvironment(): void {
   const requiredVars = [
@@ -11,6 +14,7 @@ export function validateEnvironment(): void {
     "SUPABASE_SERVICE_ROLE_KEY",
   ];
 
+  const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
   const missing: string[] = [];
   const invalid: string[] = [];
 
@@ -31,33 +35,42 @@ export function validateEnvironment(): void {
   }
 
   if (missing.length > 0 || invalid.length > 0) {
-    let errorMessage = "Environment validation failed:\n\n";
+    let message = "Environment validation:\n\n";
 
     if (missing.length > 0) {
-      errorMessage += "Missing required environment variables:\n";
+      message += "Missing required environment variables:\n";
       missing.forEach((v) => {
-        errorMessage += `  - ${v}\n`;
+        message += `  - ${v}\n`;
       });
-      errorMessage += "\n";
+      message += "\n";
     }
 
     if (invalid.length > 0) {
-      errorMessage += "Invalid environment variables:\n";
+      message += "Invalid environment variables:\n";
       invalid.forEach((v) => {
-        errorMessage += `  - ${v}\n`;
+        message += `  - ${v}\n`;
       });
-      errorMessage += "\n";
+      message += "\n";
     }
 
-    errorMessage += "Setup instructions:\n";
-    errorMessage += "1. Copy server/.env.example to .env\n";
-    errorMessage += "2. Fill in all required values\n";
-    errorMessage += "3. Generate secure keys with:\n";
-    errorMessage += "   JWT_SECRET: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"\n";
-    errorMessage += "   ENCRYPTION_KEY: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\"\n";
+    message += "Setup instructions:\n";
+    message += "1. Add these secrets in the Replit Secrets panel (Tools → Secrets)\n";
+    message += "2. Generate secure keys with:\n";
+    message += "   JWT_SECRET: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"\n";
+    message += "   ENCRYPTION_KEY: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\"\n";
+    message += "3. Get Supabase credentials from: https://supabase.com → Project Settings → API\n";
 
-    throw new Error(errorMessage);
+    if (!IS_DEVELOPMENT) {
+      throw new Error(message);
+    }
+    
+    // In development, log warnings but allow the server to start
+    console.warn("\n" + "=".repeat(80));
+    console.warn("⚠️  " + message);
+    console.warn("⚠️  The app will start but some features may not work.");
+    console.warn("=".repeat(80) + "\n");
+    return;
   }
 
-  console.log("Environment validation passed");
+  console.log("Environment validation passed - all required variables configured");
 }

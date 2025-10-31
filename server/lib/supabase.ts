@@ -2,22 +2,34 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
-// Validate Supabase credentials at module load time
+// In production, Supabase credentials are mandatory
+// In development, warn but allow startup for frontend development
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error(
+  const errorMessage = 
     "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required. " +
-    "Get these from your Supabase project settings: Project Settings → API"
-  );
+    "Get these from your Supabase project settings: Project Settings → API";
+  
+  if (!IS_DEVELOPMENT) {
+    throw new Error(errorMessage);
+  }
+  
+  console.warn("\n⚠️  WARNING: " + errorMessage);
+  console.warn("⚠️  KYC document upload will not work until Supabase is configured.\n");
 }
 
-// Server-side Supabase client with service role key for admin operations
-export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+// Create a placeholder client in development if credentials are missing
+const supabaseAdmin = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) 
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : null;
+
+export { supabaseAdmin };
 
 /**
  * Uploads a file to Supabase Storage
@@ -33,6 +45,10 @@ export async function uploadFile(
   file: Buffer,
   contentType: string
 ): Promise<string> {
+  if (!supabaseAdmin) {
+    throw new Error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  }
+  
   const { data, error } = await supabaseAdmin.storage
     .from(bucket)
     .upload(path, file, {
@@ -58,6 +74,10 @@ export async function uploadFile(
  * @param path - The file path in the bucket
  */
 export async function deleteFile(bucket: string, path: string): Promise<void> {
+  if (!supabaseAdmin) {
+    throw new Error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  }
+  
   const { error } = await supabaseAdmin.storage.from(bucket).remove([path]);
 
   if (error) {
