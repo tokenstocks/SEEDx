@@ -81,11 +81,11 @@ export default function Projects() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
-                  data-testid="input-search"
+                  data-testid="input-search-projects"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status">
+                <SelectTrigger data-testid="select-status-filter">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>

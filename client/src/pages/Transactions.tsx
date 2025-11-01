@@ -106,7 +106,7 @@ export default function Transactions() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger data-testid="select-type">
+                  <SelectTrigger data-testid="select-type-filter">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -120,7 +120,7 @@ export default function Transactions() {
               </div>
               <div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger data-testid="select-status">
+                  <SelectTrigger data-testid="select-status-filter">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>

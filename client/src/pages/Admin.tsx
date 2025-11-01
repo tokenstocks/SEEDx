@@ -276,9 +276,9 @@ export default function Admin() {
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
           <TabsList className="grid w-full md:w-auto grid-cols-3">
-            <TabsTrigger value="deposits">Deposits</TabsTrigger>
-            <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-            <TabsTrigger value="kyc">KYC Requests</TabsTrigger>
+            <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
+            <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
+            <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
           </TabsList>
 
           {/* Deposits Tab */}

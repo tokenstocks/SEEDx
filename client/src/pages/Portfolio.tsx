@@ -221,8 +221,8 @@ export default function Portfolio() {
                 <p className="text-muted-foreground mb-4">
                   Start investing in agricultural projects to build your portfolio
                 </p>
-                <Link href="/projects">
-                  <Button data-testid="button-browse-projects">Browse Projects</Button>
+                <Link href="/projects" data-testid="link-browse-projects">
+                  <Button>Browse Projects</Button>
                 </Link>
               </div>
             )}
