@@ -193,11 +193,13 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
       return;
     }
 
-    // Get user's wallets
-    const userWallets = await db
+    // Get user's hybrid wallet
+    const [userWallet] = await db
       .select()
       .from(wallets)
       .where(eq(wallets.userId, user.id));
+
+    const network = process.env.STELLAR_NETWORK || "testnet";
 
     // Return user info (excluding sensitive data)
     res.json({
@@ -214,11 +216,15 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
-      wallets: userWallets.map((wallet: typeof wallets.$inferSelect) => ({
-        id: wallet.id,
-        currency: wallet.currency,
-        balance: wallet.balance,
-      })),
+      wallet: userWallet ? {
+        id: userWallet.id,
+        fiatBalance: userWallet.fiatBalance,
+        cryptoBalances: userWallet.cryptoBalances || {},
+        cryptoWalletPublicKey: userWallet.cryptoWalletPublicKey,
+        network,
+        createdAt: userWallet.createdAt,
+        updatedAt: userWallet.updatedAt,
+      } : null,
     });
   } catch (error) {
     console.error("Get user error:", error);

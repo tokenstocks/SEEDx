@@ -36,28 +36,46 @@ const upload = multer({
 
 /**
  * GET /api/wallets
- * Get all wallets for the authenticated user
+ * Get hybrid wallet for the authenticated user (excluding encrypted secrets)
  */
 router.get("/", authenticate, async (req, res) => {
   try {
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId as string;
 
-    const userWallets = await db
+    const [userWallet] = await db
       .select()
       .from(wallets)
       .where(eq(wallets.userId, userId));
 
-    res.json(userWallets);
+    if (!userWallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    // Add network information and exclude encrypted secrets
+    const network = process.env.STELLAR_NETWORK || "testnet";
+    
+    res.json({
+      id: userWallet.id,
+      userId: userWallet.userId,
+      fiatBalance: userWallet.fiatBalance,
+      cryptoBalances: userWallet.cryptoBalances || {},
+      cryptoWalletPublicKey: userWallet.cryptoWalletPublicKey,
+      // cryptoWalletSecretEncrypted is intentionally excluded for security
+      network,
+      createdAt: userWallet.createdAt,
+      updatedAt: userWallet.updatedAt,
+    });
   } catch (error: any) {
-    console.error("Get wallets error:", error);
-    res.status(500).json({ error: "Failed to fetch wallets" });
+    console.error("Get wallet error:", error);
+    res.status(500).json({ error: "Failed to fetch wallet" });
   }
 });
 
 /**
  * PATCH /api/wallets
  * Update wallet balance (for testing/admin purposes)
+ * Handles both fiat (NGN) and crypto (USDC, XLM) balances
  */
 router.patch("/", authenticate, async (req, res) => {
   try {
@@ -69,26 +87,57 @@ router.patch("/", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Currency and amount are required" });
     }
 
-    // Update wallet balance
-    const [updatedWallet] = await db
-      .update(wallets)
-      .set({
-        balance: amount,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(wallets.userId, userId),
-          eq(wallets.currency, currency)
-        )
-      )
-      .returning();
+    // Get current wallet
+    const [currentWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId));
 
-    if (!updatedWallet) {
+    if (!currentWallet) {
       return res.status(404).json({ error: "Wallet not found" });
     }
 
-    res.json(updatedWallet);
+    let updatedWallet;
+
+    const network = process.env.STELLAR_NETWORK || "testnet";
+
+    if (currency === "NGN") {
+      // Update fiat balance
+      [updatedWallet] = await db
+        .update(wallets)
+        .set({
+          fiatBalance: amount,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.userId, userId))
+        .returning();
+    } else {
+      // Update crypto balance (USDC or XLM)
+      const cryptoBalances = currentWallet.cryptoBalances || {};
+      cryptoBalances[currency] = amount;
+
+      [updatedWallet] = await db
+        .update(wallets)
+        .set({
+          cryptoBalances,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.userId, userId))
+        .returning();
+    }
+
+    // Return sanitized wallet (exclude encrypted secrets)
+    res.json({
+      id: updatedWallet.id,
+      userId: updatedWallet.userId,
+      fiatBalance: updatedWallet.fiatBalance,
+      cryptoBalances: updatedWallet.cryptoBalances || {},
+      cryptoWalletPublicKey: updatedWallet.cryptoWalletPublicKey,
+      // cryptoWalletSecretEncrypted is intentionally excluded for security
+      network,
+      createdAt: updatedWallet.createdAt,
+      updatedAt: updatedWallet.updatedAt,
+    });
   } catch (error: any) {
     console.error("Update wallet error:", error);
     res.status(500).json({ error: "Failed to update wallet" });
@@ -311,17 +360,12 @@ router.post("/withdraw", authenticate, async (req, res) => {
 
     // Use database transaction for atomic operations with row-level locking
     const result = await db.transaction(async (tx) => {
-      // 1. Get user wallet with row-level lock to prevent concurrent withdrawals
+      // 1. Get user's hybrid wallet with row-level lock to prevent concurrent withdrawals
       // SELECT ... FOR UPDATE ensures no other transaction can modify this wallet until we commit
       const [wallet] = await tx
         .select()
         .from(wallets)
-        .where(
-          and(
-            eq(wallets.userId, userId),
-            eq(wallets.currency, body.currency)
-          )
-        )
+        .where(eq(wallets.userId, userId))
         .for("update")
         .limit(1);
 
@@ -329,12 +373,21 @@ router.post("/withdraw", authenticate, async (req, res) => {
         throw new Error("Wallet not found");
       }
 
-      // 2. Check sufficient balance (protected by row lock above)
+      // 2. Check sufficient balance based on currency type
       const requestedAmount = parseFloat(body.amount);
-      const currentBalance = parseFloat(wallet.balance);
+      let currentBalance: number;
+      
+      if (body.currency === "NGN") {
+        // Fiat balance
+        currentBalance = parseFloat(wallet.fiatBalance);
+      } else {
+        // Crypto balance (USDC or XLM)
+        const cryptoBalances = wallet.cryptoBalances || {};
+        currentBalance = parseFloat(cryptoBalances[body.currency] || "0");
+      }
       
       if (currentBalance < requestedAmount) {
-        throw new Error("Insufficient balance");
+        throw new Error(`Insufficient ${body.currency} balance. Available: ${currentBalance}, Requested: ${requestedAmount}`);
       }
 
       // 3. Generate unique reference
@@ -357,23 +410,44 @@ router.post("/withdraw", authenticate, async (req, res) => {
         })
         .returning();
 
-      // 5. Deduct amount from wallet balance atomically (uses SQL arithmetic to prevent race conditions)
-      // This also serves as a final safety check - if balance goes negative, DB will reject
-      const [updatedWallet] = await tx
-        .update(wallets)
-        .set({
-          balance: sql`${wallets.balance} - ${requestedAmount}`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(wallets.id, wallet.id),
-            sql`${wallets.balance} >= ${requestedAmount}` // Additional safety check
+      // 5. Deduct amount from appropriate balance atomically
+      let updatedWallet;
+      let newBalance: string;
+      
+      if (body.currency === "NGN") {
+        // Deduct from fiat balance
+        [updatedWallet] = await tx
+          .update(wallets)
+          .set({
+            fiatBalance: sql`${wallets.fiatBalance} - ${requestedAmount}`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(wallets.id, wallet.id),
+              sql`${wallets.fiatBalance} >= ${requestedAmount}` // Safety check
+            )
           )
-        )
-        .returning();
+          .returning();
+        newBalance = updatedWallet?.fiatBalance || "0.00";
+      } else {
+        // Deduct from crypto balance
+        const cryptoBalances = wallet.cryptoBalances || {};
+        const newCryptoBalance = currentBalance - requestedAmount;
+        cryptoBalances[body.currency] = newCryptoBalance.toFixed(2);
+        
+        [updatedWallet] = await tx
+          .update(wallets)
+          .set({
+            cryptoBalances,
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.id, wallet.id))
+          .returning();
+        newBalance = newCryptoBalance.toFixed(2);
+      }
 
-      // Verify the update succeeded (updatedWallet will be undefined if condition failed)
+      // Verify the update succeeded
       if (!updatedWallet) {
         throw new Error("Insufficient balance or concurrent modification detected");
       }
@@ -393,7 +467,7 @@ router.post("/withdraw", authenticate, async (req, res) => {
         })
         .returning();
 
-      return { transaction, withdrawalRequest, newBalance: updatedWallet.balance };
+      return { transaction, withdrawalRequest, newBalance };
     });
 
     console.log(`Withdrawal request created: ${result.withdrawalRequest.id} for user ${userId}`);

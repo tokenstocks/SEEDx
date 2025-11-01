@@ -1,0 +1,103 @@
+Refactor the TokenStocks backend to implement and verify the Hybrid Wallet Model as described below.
+
+1. Wallet Model Specification
+
+Each user (investor/admin/LP) must have exactly one wallet record in the wallets table.
+
+Replace the old multi-wallet setup (NGN, USDC, XLM per user) with a single unified wallet per user.
+
+Schema:
+
+id (UUID, PK)
+
+userId (FK → users.id)
+
+fiat_balance (numeric, for NGN; DB-only, not blockchain)
+
+crypto_wallet_public_key (string, Stellar public key)
+
+crypto_wallet_secret_encrypted (string, AES-256 encrypted secret key)
+
+network (string: “testnet” or “mainnet”, from STELLAR_NETWORK env)
+
+createdAt, updatedAt (timestamps)
+
+2. Migration & Data Handling
+
+If old wallet entries exist (NGN, USDC, XLM), merge them:
+
+Sum any fiat NGN balances → fiat_balance
+
+Keep first valid Stellar keypair or generate a new one if missing
+
+Delete redundant wallet rows
+
+Use AES-256-CBC encryption for secret keys with ENCRYPTION_KEY env var.
+
+Make sure admin and LP wallets exist in the same table with same structure.
+
+If missing, create platform wallets:
+
+Admin wallet (platform operator)
+
+LP wallet (secondary market fund)
+
+Each with its own Stellar keypair and 0 fiat balance.
+
+3. Endpoint Updates
+
+/api/auth/register → Create one hybrid wallet for new users.
+
+/api/wallets → Return wallet details for current user.
+
+/api/me → Include wallet summary (fiat_balance + Stellar public key).
+
+/api/admin/wallets → List all admin/LP wallets (for internal management).
+
+4. Network Configuration
+
+All wallets must use STELLAR_NETWORK env variable (testnet/mainnet).
+
+Include the network in all wallet responses for clarity.
+
+5. Verification Output
+
+After migration, print a JSON summary for three sample wallet records:
+
+{
+  "wallets": [
+    {
+      "role": "user",
+      "userId": "UUID",
+      "fiat_balance": 5000,
+      "crypto_wallet_public_key": "GXXXX...",
+      "network": "testnet"
+    },
+    {
+      "role": "lp",
+      "userId": "UUID",
+      "fiat_balance": 0,
+      "crypto_wallet_public_key": "GYYYY...",
+      "network": "testnet"
+    },
+    {
+      "role": "admin",
+      "userId": "UUID",
+      "fiat_balance": 0,
+      "crypto_wallet_public_key": "GZZZZ...",
+      "network": "testnet"
+    }
+  ]
+}
+
+6. Documentation
+
+Explain (in Replit’s response) how this hybrid model affects:
+
+Token minting and distribution in Stellar (Phase 2)
+
+Investment flow (users holding project tokens)
+
+LP buybacks and liquidity provisioning
+
+Future multi-currency support (USDC/XLM balance tracking)
