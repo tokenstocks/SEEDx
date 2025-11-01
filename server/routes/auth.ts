@@ -63,24 +63,18 @@ router.post("/register", async (req: Request, res: Response) => {
       })
       .returning();
 
-    // Create three wallets (NGN, USDC, XLM) with zero balance
-    await db.insert(wallets).values([
-      {
-        userId: newUser.id,
-        currency: "NGN",
-        balance: "0.00",
-      },
-      {
-        userId: newUser.id,
-        currency: "USDC",
-        balance: "0.00",
-      },
-      {
-        userId: newUser.id,
-        currency: "XLM",
-        balance: "0.00",
-      },
-    ]);
+    // Create hybrid wallet with Stellar keypair for crypto operations
+    const walletKeypair = Keypair.random();
+    const cryptoWalletPublicKey = walletKeypair.publicKey();
+    const cryptoWalletSecretEncrypted = encrypt(walletKeypair.secret());
+
+    await db.insert(wallets).values({
+      userId: newUser.id,
+      fiatBalance: "0.00",
+      cryptoBalances: {},
+      cryptoWalletPublicKey,
+      cryptoWalletSecretEncrypted,
+    });
 
     // Generate JWT token
     const token = generateToken({

@@ -39,12 +39,21 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Wallets table
+// Wallets table - Hybrid model (one wallet per user)
 export const wallets = pgTable("wallets", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  currency: currencyEnum("currency").notNull(),
-  balance: decimal("balance", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  userId: uuid("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  // Fiat balance (NGN) - database-only tracking
+  fiatBalance: decimal("fiat_balance", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  // Crypto balances - tracked on Stellar blockchain
+  cryptoBalances: json("crypto_balances").$type<{
+    USDC?: string;
+    XLM?: string;
+    [tokenSymbol: string]: string | undefined; // Project tokens dynamically
+  }>().default(sql`'{}'::json`),
+  // Stellar wallet for all crypto assets
+  cryptoWalletPublicKey: text("crypto_wallet_public_key"),
+  cryptoWalletSecretEncrypted: text("crypto_wallet_secret_encrypted"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
