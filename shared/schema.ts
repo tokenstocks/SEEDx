@@ -15,7 +15,7 @@ export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved"
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
 export const destinationTypeEnum = pgEnum("destination_type", ["bank_account", "crypto_wallet"]);
 export const projectStatusEnum = pgEnum("project_status", ["draft", "active", "funded", "completed", "cancelled"]);
-export const tokenLedgerActionEnum = pgEnum("token_ledger_action", ["mint", "transfer", "burn", "redemption"]);
+export const tokenLedgerActionEnum = pgEnum("token_ledger_action", ["create", "mint", "transfer", "burn", "redemption"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -128,6 +128,11 @@ export const projects = pgTable("projects", {
   stellarIssuerSecretKeyEncrypted: text("stellar_issuer_secret_key_encrypted"),
   stellarDistributionPublicKey: text("stellar_distribution_public_key"),
   stellarDistributionSecretKeyEncrypted: text("stellar_distribution_secret_key_encrypted"),
+  stellarIssuerTx: text("stellar_issuer_tx"), // TX hash for issuer account creation
+  stellarDistributionTx: text("stellar_distribution_tx"), // TX hash for distribution account creation  
+  stellarMintTx: text("stellar_mint_tx"), // TX hash for token minting
+  stellarTrustlineTx: text("stellar_trustline_tx"), // TX hash for trustline establishment
+  onChainSynced: boolean("on_chain_synced").notNull().default(false), // Whether on-chain ops completed
   status: projectStatusEnum("status").notNull().default("draft"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
