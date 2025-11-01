@@ -27,8 +27,12 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  LogOut
+  LogOut,
+  Briefcase,
+  Receipt,
+  FileCheck
 } from "lucide-react";
+import { Link } from "wouter";
 
 const withdrawalSchema = z.object({
   currency: z.enum(["NGN", "USDC", "XLM"]),
@@ -152,27 +156,56 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="bg-background border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">TS</span>
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-sm">TS</span>
+              </div>
+              <h1 className="text-xl font-bold" data-testid="text-title">TokenStocks Dashboard</h1>
             </div>
-            <h1 className="text-xl font-bold" data-testid="text-title">TokenStocks Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Avatar>
-              <AvatarFallback data-testid="avatar-user">
-                {user.firstName?.[0]}{user.lastName?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden md:block">
-              <p className="text-sm font-medium" data-testid="text-username">{user.firstName} {user.lastName}</p>
-              <p className="text-xs text-muted-foreground" data-testid="text-email">{user.email}</p>
+            <div className="flex items-center gap-4">
+              <Avatar>
+                <AvatarFallback data-testid="avatar-user">
+                  {user.firstName?.[0]}{user.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden md:block">
+                <p className="text-sm font-medium" data-testid="text-username">{user.firstName} {user.lastName}</p>
+                <p className="text-xs text-muted-foreground" data-testid="text-email">{user.email}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleLogout} data-testid="button-logout">
+                <LogOut className="w-5 h-5" />
+              </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} data-testid="button-logout">
-              <LogOut className="w-5 h-5" />
-            </Button>
           </div>
+          
+          <nav className="flex gap-2 overflow-x-auto">
+            <Link href="/projects">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="link-projects">
+                <Briefcase className="w-4 h-4" />
+                Projects
+              </Button>
+            </Link>
+            <Link href="/portfolio">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="link-portfolio">
+                <TrendingUp className="w-4 h-4" />
+                Portfolio
+              </Button>
+            </Link>
+            <Link href="/transactions">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="link-transactions">
+                <Receipt className="w-4 h-4" />
+                Transactions
+              </Button>
+            </Link>
+            <Link href="/kyc">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="link-kyc">
+                <FileCheck className="w-4 h-4" />
+                KYC
+              </Button>
+            </Link>
+          </nav>
         </div>
       </header>
 
@@ -228,10 +261,12 @@ export default function Dashboard() {
               To comply with regulations and secure your account, we need to verify your identity.
               Upload your ID card, selfie, and proof of address.
             </p>
-            <Button data-testid="button-complete-kyc">
-              <Upload className="w-4 h-4 mr-2" />
-              Complete KYC Verification
-            </Button>
+            <Link href="/kyc">
+              <Button data-testid="button-complete-kyc">
+                <Upload className="w-4 h-4 mr-2" />
+                Complete KYC Verification
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
@@ -259,9 +294,11 @@ export default function Dashboard() {
                   <p className="text-muted-foreground mb-4" data-testid="text-no-investments">
                     You haven't made any investments yet
                   </p>
-                  <Button onClick={() => setLocation("/browse")} data-testid="button-browse-investments">
-                    Browse Investment Opportunities
-                  </Button>
+                  <Link href="/projects">
+                    <Button data-testid="button-browse-investments">
+                      Browse Investment Opportunities
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
