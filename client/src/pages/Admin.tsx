@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { Link } from "wouter";
+import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -338,8 +339,18 @@ export default function Admin() {
             <ArrowLeft className="w-4 h-4" />
             Back to dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage platform operations</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+              <p className="text-muted-foreground">Manage platform operations</p>
+            </div>
+            <Link href="/admin/onchain-verification">
+              <Button variant="outline" data-testid="button-onchain-verification">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                On-Chain Verification
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Metrics */}
@@ -380,6 +391,11 @@ export default function Admin() {
               <div className="text-2xl font-bold text-purple-600">{metrics?.metrics.pendingWithdrawalsCount || 0}</div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Blockchain Activity Feed */}
+        <div className="mb-8">
+          <BlockchainActivityFeed limit={5} />
         </div>
 
         {/* Tabs for Different Actions */}

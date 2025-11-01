@@ -33,6 +33,8 @@ import {
   FileCheck
 } from "lucide-react";
 import { Link } from "wouter";
+import { WalletActivationStatus } from "@/components/WalletActivationStatus";
+import { useQuery } from "@tanstack/react-query";
 
 const withdrawalSchema = z.object({
   currency: z.enum(["NGN", "USDC", "XLM"]),
@@ -274,14 +276,23 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch actual wallet data (before early return to avoid hook ordering issues)
+  const { data: walletData } = useQuery({
+    queryKey: ["/api/wallets"],
+    enabled: !!user,
+  });
+
   if (!user) {
     return null;
   }
 
+  const wallet = walletData?.wallet;
+  const cryptoBalances = wallet ? JSON.parse(wallet.cryptoBalances || "{}") : {};
+  
   const wallets = [
-    { currency: "NGN", balance: "0.00", symbol: "₦" },
-    { currency: "USDC", balance: "0.00", symbol: "$" },
-    { currency: "XLM", balance: "0.00", symbol: "XLM" },
+    { currency: "NGN", balance: wallet?.fiatBalance || "0.00", symbol: "₦" },
+    { currency: "USDC", balance: cryptoBalances.USDC || "0.00", symbol: "$" },
+    { currency: "XLM", balance: cryptoBalances.XLM || "0.00", symbol: "XLM" },
   ];
 
   return (
@@ -353,6 +364,14 @@ export default function Dashboard() {
                   {wallet.symbol}{wallet.balance}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Available balance</p>
+                
+                {/* Show wallet activation status */}
+                {walletData?.wallet?.stellarPublicKey && (
+                  <div className="mt-2">
+                    <WalletActivationStatus stellarPublicKey={walletData.wallet.stellarPublicKey} />
+                  </div>
+                )}
+                
                 <div className="flex gap-2 mt-4">
                   <Button 
                     size="sm" 

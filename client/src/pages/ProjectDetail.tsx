@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 
 interface Project {
@@ -29,6 +29,14 @@ interface Project {
   endDate: string | null;
   images: string[] | null;
   documents: string[] | null;
+  stellarIssuerPublicKey: string | null;
+  stellarDistributionPublicKey: string | null;
+  stellarAssetCode: string | null;
+  stellarIssuerTx: string | null;
+  stellarDistributionTx: string | null;
+  stellarTrustlineTx: string | null;
+  stellarMintTx: string | null;
+  onChainSynced: boolean;
 }
 
 export default function ProjectDetail() {
@@ -392,6 +400,124 @@ export default function ProjectDetail() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Blockchain Information Card */}
+            {(project.stellarIssuerPublicKey || project.stellarMintTx) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="w-4 h-4" />
+                    Blockchain Info
+                  </CardTitle>
+                  <CardDescription>Stellar network details</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {project.onChainSynced && (
+                    <Badge variant="default" className="w-full justify-center">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      On-Chain Synced
+                    </Badge>
+                  )}
+                  
+                  {project.stellarAssetCode && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Asset Code</p>
+                      <p className="text-sm font-mono">{project.stellarAssetCode}</p>
+                    </div>
+                  )}
+                  
+                  {project.stellarIssuerPublicKey && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Issuer Account</p>
+                      <a 
+                        href={`https://stellar.expert/explorer/testnet/account/${project.stellarIssuerPublicKey}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono break-all hover:underline text-primary"
+                      >
+                        {project.stellarIssuerPublicKey.substring(0, 12)}...{project.stellarIssuerPublicKey.substring(project.stellarIssuerPublicKey.length - 8)}
+                      </a>
+                    </div>
+                  )}
+                  
+                  {project.stellarDistributionPublicKey && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Distribution Account</p>
+                      <a 
+                        href={`https://stellar.expert/explorer/testnet/account/${project.stellarDistributionPublicKey}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono break-all hover:underline text-primary"
+                      >
+                        {project.stellarDistributionPublicKey.substring(0, 12)}...{project.stellarDistributionPublicKey.substring(project.stellarDistributionPublicKey.length - 8)}
+                      </a>
+                    </div>
+                  )}
+
+                  {(project.stellarIssuerTx || project.stellarMintTx) && (
+                    <div className="pt-4 border-t space-y-2">
+                      <p className="text-xs font-medium">Transaction Hashes</p>
+                      {project.stellarIssuerTx && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Issuer Creation</p>
+                          <a 
+                            href={`https://stellar.expert/explorer/testnet/tx/${project.stellarIssuerTx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono break-all hover:underline text-primary flex items-center gap-1"
+                          >
+                            {project.stellarIssuerTx.substring(0, 16)}...
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                        </div>
+                      )}
+                      {project.stellarDistributionTx && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Distribution Creation</p>
+                          <a 
+                            href={`https://stellar.expert/explorer/testnet/tx/${project.stellarDistributionTx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono break-all hover:underline text-primary flex items-center gap-1"
+                          >
+                            {project.stellarDistributionTx.substring(0, 16)}...
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                        </div>
+                      )}
+                      {project.stellarTrustlineTx && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Trustline</p>
+                          <a 
+                            href={`https://stellar.expert/explorer/testnet/tx/${project.stellarTrustlineTx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono break-all hover:underline text-primary flex items-center gap-1"
+                          >
+                            {project.stellarTrustlineTx.substring(0, 16)}...
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                        </div>
+                      )}
+                      {project.stellarMintTx && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Token Minting</p>
+                          <a 
+                            href={`https://stellar.expert/explorer/testnet/tx/${project.stellarMintTx}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono break-all hover:underline text-primary flex items-center gap-1"
+                          >
+                            {project.stellarMintTx.substring(0, 16)}...
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 
