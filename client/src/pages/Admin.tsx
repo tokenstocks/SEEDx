@@ -62,6 +62,20 @@ interface User {
   createdAt: string;
 }
 
+interface Wallet {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userFirstName: string;
+  userLastName: string;
+  userRole: string;
+  fiatBalance: string;
+  cryptoBalances: string;
+  stellarPublicKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<any>(null);
@@ -121,6 +135,11 @@ export default function Admin() {
 
   const { data: withdrawals } = useQuery<{ withdrawals: WithdrawalRequest[] }>({
     queryKey: ["/api/admin/withdrawals?status=pending"],
+    enabled: !!user,
+  });
+
+  const { data: walletsData } = useQuery<{ wallets: Wallet[] }>({
+    queryKey: ["/api/admin/wallets"],
     enabled: !!user,
   });
 
@@ -365,12 +384,13 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-5">
+          <TabsList className="grid w-full md:w-auto grid-cols-6">
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
+            <TabsTrigger value="wallets" data-testid="tab-wallets">Wallets</TabsTrigger>
           </TabsList>
 
           {/* Deposits Tab */}
@@ -547,6 +567,82 @@ export default function Admin() {
                     <p className="text-center py-8 text-muted-foreground">No users found</p>
                   ) : null}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Wallets Tab */}
+          <TabsContent value="wallets">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Wallets</CardTitle>
+                <CardDescription>View all user wallets and balances</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {walletsData && walletsData.wallets.length > 0 ? (
+                  <div className="space-y-4">
+                    {walletsData.wallets.map((wallet) => {
+                      const cryptoBalances = JSON.parse(wallet.cryptoBalances || "{}");
+                      return (
+                        <div key={wallet.id} className="p-4 border rounded-lg" data-testid={`wallet-${wallet.id}`}>
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h4 className="font-semibold">
+                                {wallet.userFirstName} {wallet.userLastName}
+                              </h4>
+                              <p className="text-sm text-muted-foreground">{wallet.userEmail}</p>
+                              <Badge variant="outline" className="mt-1">{wallet.userRole}</Badge>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Wallet ID</p>
+                              <p className="text-xs font-mono">{wallet.id.substring(0, 8)}...</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Fiat Balance</p>
+                              <p className="text-lg font-bold" data-testid={`fiat-balance-${wallet.id}`}>
+                                ₦{parseFloat(wallet.fiatBalance || "0").toLocaleString()}
+                              </p>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">Crypto Balances</p>
+                              <div className="space-y-1">
+                                <p className="text-sm" data-testid={`xlm-balance-${wallet.id}`}>
+                                  <span className="font-semibold">XLM:</span> {cryptoBalances.XLM || "0"}
+                                </p>
+                                <p className="text-sm" data-testid={`usdc-balance-${wallet.id}`}>
+                                  <span className="font-semibold">USDC:</span> {cryptoBalances.USDC || "0"}
+                                </p>
+                                {Object.keys(cryptoBalances).filter(key => key !== 'XLM' && key !== 'USDC').map(token => (
+                                  <p key={token} className="text-sm">
+                                    <span className="font-semibold">{token}:</span> {cryptoBalances[token]}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-xs text-muted-foreground mb-1">Stellar Public Key</p>
+                            <p className="text-xs font-mono break-all" data-testid={`stellar-key-${wallet.id}`}>
+                              {wallet.stellarPublicKey}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                            <span>Created: {new Date(wallet.createdAt).toLocaleDateString()}</span>
+                            <span>Updated: {new Date(wallet.updatedAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">No wallets found</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

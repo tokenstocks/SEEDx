@@ -251,6 +251,58 @@ router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/wallets
+ * Lists all user wallets with balances (admin only)
+ */
+router.get("/wallets", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { page = "1", limit = "50" } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Get total count
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(wallets);
+
+    // Get wallets with user info
+    const walletsList = await db
+      .select({
+        id: wallets.id,
+        userId: wallets.userId,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userRole: users.role,
+        fiatBalance: wallets.fiatBalance,
+        cryptoBalances: wallets.cryptoBalances,
+        stellarPublicKey: wallets.stellarPublicKey,
+        createdAt: wallets.createdAt,
+        updatedAt: wallets.updatedAt,
+      })
+      .from(wallets)
+      .leftJoin(users, eq(wallets.userId, users.id))
+      .orderBy(desc(wallets.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    res.json({
+      wallets: walletsList,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: parseInt(total.toString()),
+        totalPages: Math.ceil(parseInt(total.toString()) / limitNum),
+      },
+    });
+  } catch (error: any) {
+    console.error("List wallets error:", error);
+    res.status(500).json({ error: "Failed to fetch wallets" });
+  }
+});
+
+/**
  * GET /api/admin/transactions
  * Lists all transactions with filters (admin only)
  */
