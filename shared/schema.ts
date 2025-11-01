@@ -117,6 +117,7 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   location: text("location").notNull(),
+  currency: currencyEnum("currency").notNull().default("NGN"),
   targetAmount: decimal("target_amount", { precision: 18, scale: 2 }).notNull(),
   raisedAmount: decimal("raised_amount", { precision: 18, scale: 2 }).notNull().default("0.00"),
   tokenSymbol: text("token_symbol").notNull().unique(),

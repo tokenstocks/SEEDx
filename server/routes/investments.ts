@@ -92,11 +92,24 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       return;
     }
 
-    // Check NGN balance
-    const fiatBalance = parseFloat(userWallet.fiatBalance);
-    if (fiatBalance < investmentAmount) {
+    // Check balance based on project currency
+    const projectCurrency = project.currency;
+    let userBalance: number;
+    let currencySymbol: string;
+
+    if (projectCurrency === "NGN") {
+      userBalance = parseFloat(userWallet.fiatBalance);
+      currencySymbol = "₦";
+    } else {
+      // USDC or XLM - check cryptoBalances
+      const cryptoBalances = userWallet.cryptoBalances as { USDC?: string; XLM?: string; [key: string]: string | undefined } || {};
+      userBalance = parseFloat(cryptoBalances[projectCurrency] || "0");
+      currencySymbol = projectCurrency === "USDC" ? "$" : "XLM";
+    }
+
+    if (userBalance < investmentAmount) {
       res.status(400).json({ 
-        error: `Insufficient NGN balance. Available: ₦${fiatBalance.toFixed(2)}` 
+        error: `Insufficient ${projectCurrency} balance. Available: ${currencySymbol}${userBalance.toFixed(2)}` 
       });
       return;
     }
@@ -166,13 +179,40 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
     // Step 3: Update database in a transaction
     try {
       await db.transaction(async (tx) => {
-        // Deduct NGN from user wallet
-        const newFiatBalance = (fiatBalance - investmentAmount).toFixed(2);
+        // Clone crypto balances to avoid reference issues
+        const updatedCryptoBalances = JSON.parse(JSON.stringify(
+          userWallet.cryptoBalances || {}
+        )) as { USDC?: string; XLM?: string; [key: string]: string | undefined };
+        
+        // Deduct from user wallet based on project currency
+        if (projectCurrency === "NGN") {
+          // Deduct from fiat balance only
+          const newFiatBalance = (userBalance - investmentAmount).toFixed(2);
+          await tx
+            .update(wallets)
+            .set({ 
+              fiatBalance: newFiatBalance,
+              updatedAt: new Date() 
+            })
+            .where(eq(wallets.userId, userId));
+        } else {
+          // Deduct from crypto balance (USDC or XLM)
+          const newCryptoBalance = (userBalance - investmentAmount).toFixed(7);
+          updatedCryptoBalances[projectCurrency] = newCryptoBalance;
+        }
+
+        // Add project tokens to crypto balances (for all currencies)
+        const tokenKey = project.tokenSymbol;
+        const currentTokenBalance = parseFloat(updatedCryptoBalances[tokenKey] || "0");
+        const newTokenBalance = (currentTokenBalance + tokensToReceive).toFixed(7);
+        updatedCryptoBalances[tokenKey] = newTokenBalance;
+
+        // Always update crypto balances with new token holdings
         await tx
           .update(wallets)
-          .set({ 
-            fiatBalance: newFiatBalance,
-            updatedAt: new Date() 
+          .set({
+            cryptoBalances: updatedCryptoBalances,
+            updatedAt: new Date()
           })
           .where(eq(wallets.userId, userId));
 
@@ -197,7 +237,7 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
             projectId,
             amount: investmentAmount.toFixed(2),
             tokensReceived: tokensToReceive.toFixed(7),
-            currency: "NGN",
+            currency: projectCurrency,
           })
           .returning();
 
@@ -239,7 +279,7 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
           action: "transfer",
           tokenAmount: tokensToReceive.toFixed(7),
           stellarTransactionHash: transferTxHash,
-          notes: `Investment of ₦${investmentAmount.toFixed(2)} in ${project.name}`,
+          notes: `Investment of ${currencySymbol}${investmentAmount.toFixed(2)} in ${project.name}`,
         });
 
         // Store investment ID for response (accessible after transaction commits)
@@ -257,7 +297,7 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
           trustlineTxHash,
           transferTxHash,
         },
-        message: `Successfully invested ₦${investmentAmount.toFixed(2)} and received ${tokensToReceive.toFixed(2)} ${project.tokenSymbol} tokens`,
+        message: `Successfully invested ${currencySymbol}${investmentAmount.toFixed(2)} and received ${tokensToReceive.toFixed(2)} ${project.tokenSymbol} tokens`,
       });
     } catch (error: any) {
       console.error("❌ Database transaction failed after successful Stellar transfer:", error);
