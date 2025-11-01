@@ -73,6 +73,17 @@ export default function Admin() {
   const [action, setAction] = useState<'approve' | 'reject'>('approve');
   const [approvedAmount, setApprovedAmount] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [createProjectDialog, setCreateProjectDialog] = useState(false);
+  const [projectForm, setProjectForm] = useState({
+    name: "",
+    description: "",
+    location: "",
+    targetAmount: "",
+    tokenSymbol: "",
+    tokensIssued: "",
+    pricePerToken: "",
+  });
+  const [allUsersData, setAllUsersData] = useState<{ users: User[] } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -179,6 +190,67 @@ export default function Admin() {
     },
   });
 
+  const createProjectMutation = useMutation({
+    mutationFn: async (project: any) => {
+      const res = await apiRequest("POST", "/api/admin/projects", project);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create project");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Project created successfully" });
+      setCreateProjectDialog(false);
+      setProjectForm({
+        name: "",
+        description: "",
+        location: "",
+        targetAmount: "",
+        tokenSymbol: "",
+        tokensIssued: "",
+        pricePerToken: "",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const suspendUserMutation = useMutation({
+    mutationFn: async ({ id, isSuspended }: { id: string; isSuspended: boolean }) => {
+      const res = await apiRequest("PUT", `/api/admin/users/${id}/suspend`, { isSuspended });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to suspend user");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User status updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      if (allUsersData) {
+        fetchAllUsers();
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const fetchAllUsers = async () => {
+    try {
+      const res = await apiRequest("GET", "/api/admin/users");
+      if (!res.ok) {
+        throw new Error("Failed to fetch users");
+      }
+      const data = await res.json();
+      setAllUsersData(data);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const resetForm = () => {
     setAction('approve');
     setApprovedAmount("");
@@ -275,11 +347,12 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-4">
+          <TabsList className="grid w-full md:w-auto grid-cols-5">
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
+            <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
           </TabsList>
 
           {/* Deposits Tab */}
@@ -398,18 +471,63 @@ export default function Admin() {
             <Card>
               <CardHeader>
                 <CardTitle>Project Management</CardTitle>
-                <CardDescription>Manage investment projects and upload teaser documents</CardDescription>
+                <CardDescription>Create and manage investment projects</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  <Button onClick={() => setCreateProjectDialog(true)} data-testid="button-create-project">
+                    Create New Project
+                  </Button>
                   <Link href="/projects">
-                    <Button data-testid="button-view-all-projects">
+                    <Button variant="outline" data-testid="button-view-all-projects">
                       View All Projects
                     </Button>
                   </Link>
-                  <p className="text-sm text-muted-foreground">
-                    Click on any project from the Projects page to view details and upload teaser documents.
-                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>View and manage all platform users</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Button onClick={fetchAllUsers} data-testid="button-load-users">
+                    {allUsersData ? "Refresh Users" : "Load All Users"}
+                  </Button>
+                  {allUsersData && allUsersData.users.length > 0 ? (
+                    <div className="space-y-4">
+                      {allUsersData.users.map((u) => (
+                        <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{u.firstName} {u.lastName}</h4>
+                            <p className="text-sm text-muted-foreground">{u.email}</p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="outline">{u.role}</Badge>
+                              <Badge variant={u.kycStatus === 'approved' ? 'default' : 'secondary'}>{u.kycStatus}</Badge>
+                            </div>
+                          </div>
+                          {u.role !== 'admin' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => suspendUserMutation.mutate({ id: u.id, isSuspended: true })}
+                              data-testid={`button-suspend-user-${u.id}`}
+                            >
+                              Suspend
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : allUsersData ? (
+                    <p className="text-center py-8 text-muted-foreground">No users found</p>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -486,6 +604,106 @@ export default function Admin() {
                 {processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending
                   ? "Processing..."
                   : `Confirm ${action === 'approve' ? 'Approval' : 'Rejection'}`}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create Project Dialog */}
+        <Dialog open={createProjectDialog} onOpenChange={setCreateProjectDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Investment Project</DialogTitle>
+              <DialogDescription>
+                Create a new agricultural investment project with Stellar token configuration
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Project Name</Label>
+                <Input
+                  id="name"
+                  value={projectForm.name}
+                  onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
+                  placeholder="e.g. Corn Farming Project 2025"
+                  data-testid="input-project-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={projectForm.description}
+                  onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+                  placeholder="Detailed project description..."
+                  data-testid="input-project-description"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={projectForm.location}
+                  onChange={(e) => setProjectForm({ ...projectForm, location: e.target.value })}
+                  placeholder="e.g. Kaduna State, Nigeria"
+                  data-testid="input-project-location"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="targetAmount">Target Amount (₦)</Label>
+                  <Input
+                    id="targetAmount"
+                    type="number"
+                    value={projectForm.targetAmount}
+                    onChange={(e) => setProjectForm({ ...projectForm, targetAmount: e.target.value })}
+                    placeholder="1000000"
+                    data-testid="input-target-amount"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tokenSymbol">Token Symbol</Label>
+                  <Input
+                    id="tokenSymbol"
+                    value={projectForm.tokenSymbol}
+                    onChange={(e) => setProjectForm({ ...projectForm, tokenSymbol: e.target.value.toUpperCase() })}
+                    placeholder="CORN2025"
+                    maxLength={12}
+                    data-testid="input-token-symbol"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tokensIssued">Total Tokens to Issue</Label>
+                  <Input
+                    id="tokensIssued"
+                    type="number"
+                    value={projectForm.tokensIssued}
+                    onChange={(e) => setProjectForm({ ...projectForm, tokensIssued: e.target.value })}
+                    placeholder="100000"
+                    data-testid="input-tokens-issued"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pricePerToken">Price Per Token (₦)</Label>
+                  <Input
+                    id="pricePerToken"
+                    type="number"
+                    value={projectForm.pricePerToken}
+                    onChange={(e) => setProjectForm({ ...projectForm, pricePerToken: e.target.value })}
+                    placeholder="10"
+                    data-testid="input-price-per-token"
+                  />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => createProjectMutation.mutate(projectForm)}
+                disabled={createProjectMutation.isPending || !projectForm.name || !projectForm.tokenSymbol}
+                data-testid="button-submit-project"
+              >
+                {createProjectMutation.isPending ? "Creating..." : "Create Project"}
               </Button>
             </div>
           </DialogContent>
