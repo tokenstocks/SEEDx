@@ -3,32 +3,44 @@ import { Keypair } from "stellar-sdk";
 import { db } from "../db";
 import { users, wallets } from "../../shared/schema";
 import { encrypt } from "../lib/encryption";
+import { eq } from "drizzle-orm";
 
 async function createAdminUser() {
-  const email = "admin@tokenstocks.local";
+  const email = "admin";
   const password = "1234567890";
   const firstName = "Admin";
   const lastName = "User";
-  const phone = "+1234567890";
+  const phone = "+9999999999";
 
   console.log("Creating admin user...");
 
   // Check if admin user already exists
-  const existingUser = await db.query.users.findFirst({
-    where: (users, { eq }) => eq(users.email, email),
-  });
+  const existingUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
 
-  if (existingUser) {
-    console.log("Admin user already exists with ID:", existingUser.id);
-    console.log("Email:", existingUser.email);
-    console.log("Role:", existingUser.role);
+  if (existingUser.length > 0) {
+    console.log("Admin user already exists with ID:", existingUser[0].id);
+    console.log("Email:", existingUser[0].email);
+    console.log("Role:", existingUser[0].role);
+    
+    // Update to admin role if not already
+    if (existingUser[0].role !== "admin") {
+      await db
+        .update(users)
+        .set({ role: "admin" })
+        .where(eq(users.id, existingUser[0].id));
+      console.log("✓ Updated existing user to admin role");
+    }
     return;
   }
 
   // Hash password
   const passwordHash = await bcrypt.hash(password, 12);
 
-  // Generate Stellar keypair
+  // Generate Stellar keypair for wallet
   const stellarKeypair = Keypair.random();
   const stellarPublicKey = stellarKeypair.publicKey();
   const stellarSecretKey = stellarKeypair.secret();
@@ -45,10 +57,10 @@ async function createAdminUser() {
       firstName,
       lastName,
       phone,
+      dateOfBirth: new Date("1990-01-01"),
+      address: "Admin Address",
       role: "admin",
       kycStatus: "approved",
-      stellarPublicKey,
-      stellarSecretKey: encryptedSecretKey,
     })
     .returning();
 
@@ -58,21 +70,29 @@ async function createAdminUser() {
   console.log("  Role:", newUser.role);
   console.log("  KYC Status:", newUser.kycStatus);
 
-  // Create wallets
-  const currencies = ["NGN", "USDC", "XLM"] as const;
-  for (const currency of currencies) {
-    await db.insert(wallets).values({
+  // Create hybrid wallet
+  const [wallet] = await db
+    .insert(wallets)
+    .values({
       userId: newUser.id,
-      currency,
-      balance: "0.00",
-    });
-  }
+      fiatBalance: "0",
+      cryptoBalances: JSON.stringify({
+        XLM: "0",
+        USDC: "0",
+      }),
+      stellarPublicKey,
+      stellarSecretKeyEncrypted: encryptedSecretKey,
+    })
+    .returning();
 
-  console.log("✓ Wallets created (NGN, USDC, XLM)");
+  console.log("✓ Hybrid wallet created");
+  console.log("  Wallet ID:", wallet.id);
+  console.log("  Stellar Public Key:", stellarPublicKey);
   console.log("\nLogin credentials:");
   console.log("  Email:", email);
   console.log("  Password:", password);
   console.log("\nYou can now log in at the /login page");
+  console.log("\n⚠️  IMPORTANT: This is a test account. Use a strong password in production!");
 
   process.exit(0);
 }
