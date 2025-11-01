@@ -6,6 +6,7 @@ import stellarConfig from "../lib/stellarConfig";
 import { authMiddleware, requireAdmin } from "../middleware/auth";
 import { accountExists, getAccountBalances } from "../lib/stellarAccount";
 import { verifyTokenExists, getTokenBalance } from "../lib/stellarToken";
+import { supabaseAdmin } from "../lib/supabase";
 
 const router = Router();
 
@@ -677,6 +678,101 @@ router.get("/verify-onchain", async (req, res) => {
     res.status(500).json({
       status: "error",
       message: "Failed to verify on-chain status",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
+ * GET /api/setup/verify-storage
+ * Validates Supabase storage buckets configuration
+ */
+router.get("/verify-storage", async (req, res) => {
+  try {
+    if (!supabaseAdmin) {
+      return res.json({
+        status: "error",
+        message: "Supabase is not configured - missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+        configured: false,
+        buckets: {
+          kyc: { exists: false, issue: "Supabase not configured" },
+          "project-photos": { exists: false, issue: "Supabase not configured" },
+          "project-documents": { exists: false, issue: "Supabase not configured" },
+        },
+        setupInstructions: {
+          step1: "Get Supabase URL and Service Role Key from your Supabase project",
+          step2: "Go to Project Settings → API in Supabase Dashboard",
+          step3: "Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to environment secrets",
+          step4: "Restart the application",
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Get list of all buckets
+    const { data: allBuckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+
+    if (listError) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to list storage buckets",
+        error: listError.message,
+        configured: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Check required buckets
+    const requiredBuckets = ["kyc", "project-photos", "project-documents"];
+    const bucketStatus: Record<string, { exists: boolean; public?: boolean; issue?: string }> = {};
+
+    for (const bucketName of requiredBuckets) {
+      const bucket = allBuckets?.find(b => b.name === bucketName);
+      if (bucket) {
+        bucketStatus[bucketName] = {
+          exists: true,
+          public: bucket.public,
+        };
+      } else {
+        bucketStatus[bucketName] = {
+          exists: false,
+          issue: "Bucket not found - needs to be created",
+        };
+      }
+    }
+
+    const allBucketsExist = requiredBuckets.every(name => bucketStatus[name].exists);
+    const missingBuckets = requiredBuckets.filter(name => !bucketStatus[name].exists);
+
+    res.json({
+      status: allBucketsExist ? "success" : "error",
+      message: allBucketsExist
+        ? "All required storage buckets exist"
+        : `Missing buckets: ${missingBuckets.join(", ")}`,
+      configured: true,
+      buckets: bucketStatus,
+      summary: {
+        totalRequired: requiredBuckets.length,
+        existing: requiredBuckets.filter(name => bucketStatus[name].exists).length,
+        missing: missingBuckets.length,
+        missingBuckets,
+      },
+      setupInstructions: !allBucketsExist ? {
+        step1: "Go to your Supabase Dashboard: https://supabase.com/dashboard",
+        step2: "Select your project",
+        step3: "Navigate to Storage (left sidebar)",
+        step4: `Create these buckets: ${missingBuckets.join(", ")}`,
+        step5: "Make sure each bucket is set to Public",
+        note: "After creating buckets, KYC upload will work immediately - no restart needed",
+      } : undefined,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("Storage verification error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to verify storage configuration",
       error: error.message,
       timestamp: new Date().toISOString(),
     });

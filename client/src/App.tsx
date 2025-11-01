@@ -17,6 +17,7 @@ import Portfolio from "@/pages/Portfolio";
 import Transactions from "@/pages/Transactions";
 import Admin from "@/pages/Admin";
 import OnChainVerification from "@/pages/OnChainVerification";
+import StorageSetup from "@/pages/StorageSetup";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/transactions" component={Transactions} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/onchain-verification" component={OnChainVerification} />
+      <Route path="/admin/storage-setup" component={StorageSetup} />
       <Route path="/about" component={About} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route component={NotFound} />
