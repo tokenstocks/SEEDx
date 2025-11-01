@@ -6,14 +6,417 @@ import {
   transactions, 
   wallets,
   users,
+  projects,
+  investments,
+  projectUpdates,
   approveDepositSchema,
   approveWithdrawalSchema,
+  updateKycStatusSchema,
+  insertProjectUpdateSchema,
 } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
 
 const router = Router();
+
+/**
+ * GET /api/admin/dashboard
+ * Returns dashboard metrics and recent activity (admin only)
+ */
+router.get("/dashboard", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Get total users count
+    const [{ totalUsers }] = await db
+      .select({ totalUsers: count() })
+      .from(users);
+
+    // Get total investments amount
+    const [{ totalInvestmentsAmount }] = await db
+      .select({ 
+        totalInvestmentsAmount: sql<string>`COALESCE(SUM(${investments.amount}), 0)` 
+      })
+      .from(investments);
+
+    // Get pending KYC count
+    const [{ pendingKycCount }] = await db
+      .select({ pendingKycCount: count() })
+      .from(users)
+      .where(eq(users.kycStatus, "submitted"));
+
+    // Get pending deposits count
+    const [{ pendingDepositsCount }] = await db
+      .select({ pendingDepositsCount: count() })
+      .from(depositRequests)
+      .where(eq(depositRequests.status, "pending"));
+
+    // Get pending withdrawals count
+    const [{ pendingWithdrawalsCount }] = await db
+      .select({ pendingWithdrawalsCount: count() })
+      .from(withdrawalRequests)
+      .where(eq(withdrawalRequests.status, "pending"));
+
+    // Get total tokens sold across all projects
+    const [{ totalTokensSold }] = await db
+      .select({ 
+        totalTokensSold: sql<string>`COALESCE(SUM(${projects.tokensSold}), 0)` 
+      })
+      .from(projects);
+
+    // Get total projects count
+    const [{ totalProjects }] = await db
+      .select({ totalProjects: count() })
+      .from(projects);
+
+    // Get recent activity (last 20 transactions)
+    const recentActivity = await db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+        amount: transactions.amount,
+        currency: transactions.currency,
+        status: transactions.status,
+        createdAt: transactions.createdAt,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+      })
+      .from(transactions)
+      .innerJoin(users, eq(transactions.userId, users.id))
+      .orderBy(desc(transactions.createdAt))
+      .limit(20);
+
+    res.json({
+      metrics: {
+        totalUsers: parseInt(totalUsers.toString()),
+        totalInvestmentsAmount: totalInvestmentsAmount || "0.00",
+        pendingKycCount: parseInt(pendingKycCount.toString()),
+        pendingDepositsCount: parseInt(pendingDepositsCount.toString()),
+        pendingWithdrawalsCount: parseInt(pendingWithdrawalsCount.toString()),
+        totalTokensSold: totalTokensSold || "0.00",
+        totalProjects: parseInt(totalProjects.toString()),
+      },
+      recentActivity,
+    });
+  } catch (error: any) {
+    console.error("Dashboard error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard data" });
+  }
+});
+
+/**
+ * GET /api/admin/users
+ * Lists all users with filters and pagination (admin only)
+ */
+router.get("/users", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { kycStatus, role, page = "1", limit = "50" } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build filter conditions
+    const conditions = [];
+    if (kycStatus && typeof kycStatus === "string") {
+      conditions.push(eq(users.kycStatus, kycStatus as any));
+    }
+    if (role && typeof role === "string") {
+      conditions.push(eq(users.role, role as any));
+    }
+
+    // Build query for users list
+    let queryBuilder = db.select().from(users);
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      queryBuilder = queryBuilder.where(and(...conditions));
+    }
+
+    // Build count query with same filters
+    let countQuery = db.select({ total: count() }).from(users);
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      countQuery = countQuery.where(and(...conditions));
+    }
+
+    // Get total count for pagination
+    const [{ total }] = await countQuery;
+
+    // Apply pagination and ordering
+    const usersList = await queryBuilder
+      .orderBy(desc(users.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    res.json({
+      users: usersList.map(user => ({
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        kycStatus: user.kycStatus,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })),
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: parseInt(total.toString()),
+        totalPages: Math.ceil(parseInt(total.toString()) / limitNum),
+      },
+    });
+  } catch (error: any) {
+    console.error("List users error:", error);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:id/kyc
+ * Approve or reject KYC (admin only)
+ */
+router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = updateKycStatusSchema.parse(req.body);
+
+    // Fetch the user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.kycStatus !== "submitted") {
+      return res.status(400).json({ 
+        error: "KYC can only be processed for submitted applications",
+        currentStatus: user.kycStatus,
+      });
+    }
+
+    const newStatus = body.action === "approve" ? "approved" : "rejected";
+
+    // Update user KYC status
+    await db
+      .update(users)
+      .set({
+        kycStatus: newStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id));
+
+    // TODO: Send email notification to user about KYC status
+
+    res.json({
+      message: `KYC ${newStatus} successfully`,
+      userId: id,
+      kycStatus: newStatus,
+    });
+  } catch (error: any) {
+    console.error("Update KYC error:", error);
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to update KYC status" });
+  }
+});
+
+/**
+ * GET /api/admin/transactions
+ * Lists all transactions with filters (admin only)
+ */
+router.get("/transactions", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { type, status, from, to, page = "1", limit = "50" } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build filter conditions
+    const conditions = [];
+    if (type && typeof type === "string") {
+      conditions.push(eq(transactions.type, type as any));
+    }
+    if (status && typeof status === "string") {
+      conditions.push(eq(transactions.status, status as any));
+    }
+    if (from && typeof from === "string") {
+      conditions.push(gte(transactions.createdAt, new Date(from)));
+    }
+    if (to && typeof to === "string") {
+      conditions.push(lte(transactions.createdAt, new Date(to)));
+    }
+
+    // Build query for transactions list
+    let queryBuilder = db
+      .select({
+        id: transactions.id,
+        userId: transactions.userId,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        type: transactions.type,
+        amount: transactions.amount,
+        currency: transactions.currency,
+        status: transactions.status,
+        paymentMethod: transactions.paymentMethod,
+        reference: transactions.reference,
+        notes: transactions.notes,
+        createdAt: transactions.createdAt,
+      })
+      .from(transactions)
+      .innerJoin(users, eq(transactions.userId, users.id));
+
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      queryBuilder = queryBuilder.where(and(...conditions));
+    }
+
+    // Build count query with same filters
+    let countQuery = db
+      .select({ total: count() })
+      .from(transactions);
+
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      countQuery = countQuery.where(and(...conditions));
+    }
+
+    // Get total count with filters applied
+    const [{ total }] = await countQuery;
+
+    // Apply pagination
+    const transactionsList = await queryBuilder
+      .orderBy(desc(transactions.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    res.json({
+      transactions: transactionsList,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: parseInt(total.toString()),
+        totalPages: Math.ceil(parseInt(total.toString()) / limitNum),
+      },
+    });
+  } catch (error: any) {
+    console.error("List transactions error:", error);
+    res.status(500).json({ error: "Failed to fetch transactions" });
+  }
+});
+
+/**
+ * POST /api/admin/projects/:id/updates
+ * Post a project update (admin only)
+ */
+router.post("/projects/:id/updates", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    // @ts-ignore - userId is added by auth middleware
+    const adminId = req.userId as string;
+    const body = insertProjectUpdateSchema.parse({
+      ...req.body,
+      projectId,
+      postedBy: adminId,
+    });
+
+    // Verify project exists
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Create project update
+    const [update] = await db
+      .insert(projectUpdates)
+      .values(body)
+      .returning();
+
+    res.json({
+      message: "Project update posted successfully",
+      update,
+    });
+  } catch (error: any) {
+    console.error("Post project update error:", error);
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to post project update" });
+  }
+});
+
+/**
+ * GET /api/admin/reports/investment-summary
+ * Generate investment summary report (admin only)
+ */
+router.get("/reports/investment-summary", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+
+    // Build base query for investment summary per project
+    let queryBuilder = db
+      .select({
+        projectId: investments.projectId,
+        projectName: projects.name,
+        totalInvestments: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        tokensSold: sql<string>`COALESCE(SUM(${investments.tokensReceived}), 0)`,
+        investorCount: count(sql`DISTINCT ${investments.userId}`),
+      })
+      .from(investments)
+      .innerJoin(projects, eq(investments.projectId, projects.id))
+      .groupBy(investments.projectId, projects.name);
+
+    // Apply date filters if provided
+    const conditions = [];
+    if (from && typeof from === "string") {
+      conditions.push(gte(investments.createdAt, new Date(from)));
+    }
+    if (to && typeof to === "string") {
+      conditions.push(lte(investments.createdAt, new Date(to)));
+    }
+
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      queryBuilder = queryBuilder.where(and(...conditions));
+    }
+
+    const summary = await queryBuilder;
+
+    // Get overall totals
+    const [{ overallTotal, overallTokensSold }] = await db
+      .select({
+        overallTotal: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        overallTokensSold: sql<string>`COALESCE(SUM(${investments.tokensReceived}), 0)`,
+      })
+      .from(investments);
+
+    res.json({
+      summary,
+      totals: {
+        totalRaised: overallTotal || "0.00",
+        totalTokensSold: overallTokensSold || "0.00",
+      },
+      filters: {
+        from: from || null,
+        to: to || null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Investment summary error:", error);
+    res.status(500).json({ error: "Failed to generate investment summary" });
+  }
+});
 
 /**
  * GET /api/admin/deposits
