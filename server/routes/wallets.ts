@@ -35,6 +35,67 @@ const upload = multer({
 });
 
 /**
+ * GET /api/wallets
+ * Get all wallets for the authenticated user
+ */
+router.get("/", authenticate, async (req, res) => {
+  try {
+    // @ts-ignore - userId is added by auth middleware
+    const userId = req.userId as string;
+
+    const userWallets = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId));
+
+    res.json(userWallets);
+  } catch (error: any) {
+    console.error("Get wallets error:", error);
+    res.status(500).json({ error: "Failed to fetch wallets" });
+  }
+});
+
+/**
+ * PATCH /api/wallets
+ * Update wallet balance (for testing/admin purposes)
+ */
+router.patch("/", authenticate, async (req, res) => {
+  try {
+    // @ts-ignore - userId is added by auth middleware
+    const userId = req.userId as string;
+    const { currency, amount } = req.body;
+
+    if (!currency || !amount) {
+      return res.status(400).json({ error: "Currency and amount are required" });
+    }
+
+    // Update wallet balance
+    const [updatedWallet] = await db
+      .update(wallets)
+      .set({
+        balance: amount,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(wallets.userId, userId),
+          eq(wallets.currency, currency)
+        )
+      )
+      .returning();
+
+    if (!updatedWallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    res.json(updatedWallet);
+  } catch (error: any) {
+    console.error("Update wallet error:", error);
+    res.status(500).json({ error: "Failed to update wallet" });
+  }
+});
+
+/**
  * POST /api/wallets/deposit/initiate
  * Initiates a deposit - returns payment instructions
  */

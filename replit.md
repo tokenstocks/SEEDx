@@ -8,6 +8,16 @@ TokenStocks is a blockchain-based platform for tokenized agricultural investment
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**November 1, 2025:**
+- Fixed database driver issue: Changed from Neon serverless driver to standard postgres-js driver for compatibility with Replit's built-in PostgreSQL database
+- Implemented complete withdrawal request system with bank transfer and crypto wallet support
+- Added row-level locking (SELECT FOR UPDATE) to prevent concurrent withdrawal double-spending vulnerabilities
+- Added missing GET and PATCH endpoints to `/api/wallets` for wallet balance management
+- All API endpoints now properly return JSON responses
+- Registration and authentication fully functional
+
 ## System Architecture
 
 ### Frontend Architecture

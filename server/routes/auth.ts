@@ -6,7 +6,7 @@ import { users, wallets, registerUserSchema, loginSchema } from "@shared/schema"
 import { generateToken } from "../lib/jwt";
 import { encrypt } from "../lib/encryption";
 import { authMiddleware } from "../middleware/auth";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -22,25 +22,16 @@ router.post("/register", async (req: Request, res: Response) => {
     const { email, phone, password, firstName, lastName } = validatedData;
 
     // Check if user already exists
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-
-    if (existingUser.length > 0) {
+    const existingUserResult = await db.execute(sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`);
+    // postgres-js returns results directly as an array
+    if (Array.isArray(existingUserResult) && existingUserResult.length > 0) {
       res.status(400).json({ error: "User with this email already exists" });
       return;
     }
 
     // Check if phone already exists
-    const existingPhone = await db
-      .select()
-      .from(users)
-      .where(eq(users.phone, phone))
-      .limit(1);
-
-    if (existingPhone.length > 0) {
+    const existingPhoneResult = await db.execute(sql`SELECT id FROM users WHERE phone = ${phone} LIMIT 1`);
+    if (Array.isArray(existingPhoneResult) && existingPhoneResult.length > 0) {
       res.status(400).json({ error: "User with this phone number already exists" });
       return;
     }
