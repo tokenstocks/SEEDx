@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Keypair } from "stellar-sdk";
 import { db } from "../db";
 import { 
   depositRequests, 
@@ -13,10 +14,13 @@ import {
   approveWithdrawalSchema,
   updateKycStatusSchema,
   insertProjectUpdateSchema,
+  createProjectSchema,
+  suspendUserSchema,
 } from "@shared/schema";
 import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
+import { encrypt } from "../lib/encryption";
 
 const router = Router();
 
@@ -855,6 +859,143 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
       return res.status(500).json({ error: "Critical error: Cannot refund to wallet. Please contact support." });
     }
     res.status(500).json({ error: "Failed to process withdrawal" });
+  }
+});
+
+/**
+ * POST /api/admin/projects
+ * Create a new investment project with Stellar token configuration (admin only)
+ */
+router.post("/projects", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const body = createProjectSchema.parse(req.body);
+
+    // Check if token symbol already exists
+    const existingProject = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.tokenSymbol, body.tokenSymbol))
+      .limit(1);
+
+    if (existingProject.length > 0) {
+      return res.status(400).json({ 
+        error: "Token symbol already in use",
+        details: "Each project must have a unique token symbol",
+      });
+    }
+
+    // Generate Stellar keypairs for issuer and distribution accounts
+    const issuerKeypair = Keypair.random();
+    const distributionKeypair = Keypair.random();
+
+    // Encrypt secret keys
+    const encryptedIssuerSecret = encrypt(issuerKeypair.secret());
+    const encryptedDistributionSecret = encrypt(distributionKeypair.secret());
+
+    // Create project with Stellar token configuration
+    const [project] = await db
+      .insert(projects)
+      .values({
+        name: body.name,
+        description: body.description,
+        location: body.location,
+        targetAmount: body.targetAmount,
+        tokenSymbol: body.tokenSymbol,
+        tokensIssued: body.tokensIssued,
+        pricePerToken: body.pricePerToken,
+        stellarAssetCode: body.tokenSymbol,
+        stellarIssuerPublicKey: issuerKeypair.publicKey(),
+        stellarIssuerSecretKeyEncrypted: encryptedIssuerSecret,
+        stellarDistributionPublicKey: distributionKeypair.publicKey(),
+        stellarDistributionSecretKeyEncrypted: encryptedDistributionSecret,
+        status: "draft",
+        startDate: body.startDate ? new Date(body.startDate) : null,
+        endDate: body.endDate ? new Date(body.endDate) : null,
+      })
+      .returning();
+
+    console.log(`Project created: ${project.id} with token ${project.tokenSymbol}`);
+    console.log(`Issuer: ${issuerKeypair.publicKey()}`);
+    console.log(`Distribution: ${distributionKeypair.publicKey()}`);
+
+    res.json({
+      message: "Project created successfully",
+      project: {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        location: project.location,
+        targetAmount: project.targetAmount,
+        tokenSymbol: project.tokenSymbol,
+        tokensIssued: project.tokensIssued,
+        pricePerToken: project.pricePerToken,
+        status: project.status,
+        stellarIssuerPublicKey: project.stellarIssuerPublicKey,
+        stellarDistributionPublicKey: project.stellarDistributionPublicKey,
+        createdAt: project.createdAt,
+      },
+    });
+  } catch (error: any) {
+    console.error("Create project error:", error);
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to create project" });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:id/suspend
+ * Suspend or unsuspend a user account (admin only)
+ */
+router.put("/users/:id/suspend", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = suspendUserSchema.parse(req.body);
+
+    // Check if user exists
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Prevent suspending admin users
+    if (user.role === "admin") {
+      return res.status(403).json({ error: "Cannot suspend admin users" });
+    }
+
+    // Update suspension status
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        isSuspended: body.isSuspended,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+
+    const action = body.isSuspended ? "suspended" : "unsuspended";
+    console.log(`User ${action}: ${id} - Reason: ${body.reason || "Not specified"}`);
+
+    res.json({
+      message: `User ${action} successfully`,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        isSuspended: updatedUser.isSuspended,
+      },
+    });
+  } catch (error: any) {
+    console.error("Suspend user error:", error);
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to update user suspension status" });
   }
 });
 
