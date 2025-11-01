@@ -11,10 +11,22 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **November 1, 2025:**
-- Fixed database driver issue: Changed from Neon serverless driver to standard postgres-js driver for compatibility with Replit's built-in PostgreSQL database
+- ✅ **Hybrid Wallet Migration Complete**: Migrated from 3-wallet-per-user to single hybrid wallet model
+  - Consolidated 15 wallet rows → 7 hybrid wallets (5 users + 2 platform wallets)
+  - Each wallet now has fiatBalance (NGN) + cryptoBalances (JSON for USDC/XLM/tokens)
+  - Separate Stellar keypair per wallet for blockchain operations
+  - Created LP (Liquidity Provider) and Admin platform wallets with Stellar keys
+- ✅ **Security Hardening**: Fixed critical vulnerability - encrypted Stellar secrets no longer exposed via API
+  - GET /api/wallets and PATCH /api/wallets now return sanitized wallet data only
+  - Architect-reviewed and approved
+- ✅ **Stellar Network Configuration**: Added STELLAR_NETWORK env var support (testnet/mainnet toggle)
+- ⚠️ **Manual Setup Required**: Supabase storage buckets must be created manually
+  - Required buckets: `kyc`, `project-photos`, `project-documents`
+  - Due to RLS policies, buckets cannot be created programmatically
+  - Use `tsx server/scripts/verify-storage-buckets.ts` to verify bucket existence
+- Fixed database driver issue: Changed from Neon serverless driver to standard postgres-js driver
 - Implemented complete withdrawal request system with bank transfer and crypto wallet support
 - Added row-level locking (SELECT FOR UPDATE) to prevent concurrent withdrawal double-spending vulnerabilities
-- Added missing GET and PATCH endpoints to `/api/wallets` for wallet balance management
 - All API endpoints now properly return JSON responses
 - Registration and authentication fully functional
 - Fixed frontend authentication: All API requests now include JWT token from localStorage in Authorization headers
@@ -263,3 +275,40 @@ All admin endpoints require authentication with an admin role.
 - Warning messages for missing configuration
 - Production mode enforces all required variables
 - Validation on application startup prevents runtime errors
+
+## Manual Setup Steps
+
+### Supabase Storage Buckets (Required)
+
+Due to Row-Level Security (RLS) policies on Supabase, storage buckets cannot be created programmatically. They must be created manually in the Supabase Dashboard before KYC document uploads will work.
+
+**Required Buckets:**
+
+| Bucket Name | Public | Purpose | File Size Limit |
+|-------------|--------|---------|-----------------|
+| `kyc` | ✅ Yes | KYC document uploads (ID, selfie, proof of address) | 10 MB |
+| `project-photos` | ✅ Yes | Agricultural project images | 10 MB |
+| `project-documents` | ✅ Yes | Project-related documents | 10 MB |
+
+**Setup Instructions:**
+
+1. Open your Supabase Dashboard: https://supabase.com/dashboard
+2. Select your TokenStocks project
+3. Navigate to **Storage** in the left sidebar
+4. Click **"New bucket"** for each required bucket:
+   - Enter the bucket name exactly as shown above
+   - Check **"Public bucket"** (all buckets must be public)
+   - Set **File size limit** to `10 MB` (10485760 bytes)
+   - Click **"Create bucket"**
+
+**Verification:**
+
+After creating the buckets, run the verification script to confirm:
+
+```bash
+tsx server/scripts/verify-storage-buckets.ts
+```
+
+You should see ✅ for all three buckets. If any are missing, the script will provide detailed instructions.
+
+**Note:** KYC document upload will fail with "Bucket not found" errors until all three buckets are created.
