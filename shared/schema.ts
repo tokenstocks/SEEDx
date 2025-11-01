@@ -116,6 +116,7 @@ export const projects = pgTable("projects", {
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   images: text("images").array(),
+  documents: text("documents").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

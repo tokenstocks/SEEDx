@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TrendingUp, MapPin, Calendar, Package, ArrowLeft } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload } from "lucide-react";
 import { Link } from "wouter";
 
 interface Project {
@@ -28,16 +28,20 @@ interface Project {
   startDate: string | null;
   endDate: string | null;
   images: string[] | null;
+  documents: string[] | null;
 }
 
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
+  const { toast} = useToast();
   const [user, setUser] = useState<any>(null);
   const [investDialogOpen, setInvestDialogOpen] = useState(false);
   const [tokenAmount, setTokenAmount] = useState("");
   const [currency, setCurrency] = useState("NGN");
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -79,6 +83,48 @@ export default function ProjectDetail() {
       toast({
         title: "Investment failed",
         description: error.message || "Failed to process investment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("document", file);
+      
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/projects/${params?.id}/documents`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
+      }
+
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document uploaded!",
+        description: "Teaser document has been uploaded successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", params?.id] });
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload document",
         variant: "destructive",
       });
     },

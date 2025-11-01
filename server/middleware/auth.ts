@@ -46,3 +46,25 @@ export function authMiddleware(
 
 // Export alias for consistency
 export const authenticate = authMiddleware;
+
+/**
+ * Middleware to require admin role
+ * Must be used after authMiddleware
+ */
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  if (req.user.role !== "admin") {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
+  next();
+}

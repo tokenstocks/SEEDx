@@ -4,6 +4,7 @@ import authRoutes from "./routes/auth";
 import kycRoutes from "./routes/kyc";
 import walletRoutes from "./routes/wallets";
 import adminRoutes from "./routes/admin";
+import projectRoutes from "./routes/projects";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
@@ -14,6 +15,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register wallet routes
   app.use("/api/wallets", walletRoutes);
+  
+  // Register project routes
+  app.use("/api/projects", projectRoutes);
   
   // Register admin routes
   app.use("/api/admin", adminRoutes);

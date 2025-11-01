@@ -275,10 +275,11 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-3">
+          <TabsList className="grid w-full md:w-auto grid-cols-4">
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
+            <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
           </TabsList>
 
           {/* Deposits Tab */}
@@ -388,6 +389,28 @@ export default function Admin() {
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">No pending KYC requests</p>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Projects Tab */}
+          <TabsContent value="projects">
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Management</CardTitle>
+                <CardDescription>Manage investment projects and upload teaser documents</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Link href="/projects">
+                    <Button data-testid="button-view-all-projects">
+                      View All Projects
+                    </Button>
+                  </Link>
+                  <p className="text-sm text-muted-foreground">
+                    Click on any project from the Projects page to view details and upload teaser documents.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
