@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
@@ -93,12 +94,15 @@ export default function Admin() {
     name: "",
     description: "",
     location: "",
+    currency: "NGN",
     targetAmount: "",
     tokenSymbol: "",
     tokensIssued: "",
     pricePerToken: "",
   });
   const [projectPhoto, setProjectPhoto] = useState<File | null>(null);
+  const [teaserDocument, setTeaserDocument] = useState<File | null>(null);
+  const [projectDocuments, setProjectDocuments] = useState<FileList | null>(null);
   const [allUsersData, setAllUsersData] = useState<{ users: User[] } | null>(null);
 
   useEffect(() => {
@@ -212,13 +216,21 @@ export default function Admin() {
   });
 
   const createProjectMutation = useMutation({
-    mutationFn: async (data: { form: any; photo: File | null }) => {
+    mutationFn: async (data: { form: any; photo: File | null; teaserDoc: File | null; docs: FileList | null }) => {
       const formData = new FormData();
       Object.keys(data.form).forEach(key => {
         formData.append(key, data.form[key]);
       });
       if (data.photo) {
         formData.append("photo", data.photo);
+      }
+      if (data.teaserDoc) {
+        formData.append("teaserDocument", data.teaserDoc);
+      }
+      if (data.docs) {
+        Array.from(data.docs).forEach(doc => {
+          formData.append("documents", doc);
+        });
       }
 
       const token = localStorage.getItem("token");
@@ -243,12 +255,15 @@ export default function Admin() {
         name: "",
         description: "",
         location: "",
+        currency: "NGN",
         targetAmount: "",
         tokenSymbol: "",
         tokensIssued: "",
         pricePerToken: "",
       });
       setProjectPhoto(null);
+      setTeaserDocument(null);
+      setProjectDocuments(null);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -779,9 +794,25 @@ export default function Admin() {
                   data-testid="input-project-location"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="currency">Investment Currency</Label>
+                <Select
+                  value={projectForm.currency}
+                  onValueChange={(value) => setProjectForm({ ...projectForm, currency: value })}
+                >
+                  <SelectTrigger id="currency" data-testid="select-currency">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NGN" data-testid="option-currency-ngn">NGN (Nigerian Naira)</SelectItem>
+                    <SelectItem value="USDC" data-testid="option-currency-usdc">USDC (USD Coin)</SelectItem>
+                    <SelectItem value="XLM" data-testid="option-currency-xlm">XLM (Stellar Lumens)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="targetAmount">Target Amount (₦)</Label>
+                  <Label htmlFor="targetAmount">Target Amount</Label>
                   <Input
                     id="targetAmount"
                     type="number"
@@ -842,9 +873,45 @@ export default function Admin() {
                   </p>
                 )}
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="teaserDocument">Teaser Document (Optional)</Label>
+                <Input
+                  id="teaserDocument"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => setTeaserDocument(e.target.files?.[0] || null)}
+                  data-testid="input-teaser-document"
+                />
+                {teaserDocument && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {teaserDocument.name}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="documents">Additional Documents (Optional)</Label>
+                <Input
+                  id="documents"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  multiple
+                  onChange={(e) => setProjectDocuments(e.target.files)}
+                  data-testid="input-project-documents"
+                />
+                {projectDocuments && projectDocuments.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {projectDocuments.length} file(s)
+                  </p>
+                )}
+              </div>
               <Button
                 className="w-full"
-                onClick={() => createProjectMutation.mutate({ form: projectForm, photo: projectPhoto })}
+                onClick={() => createProjectMutation.mutate({ 
+                  form: projectForm, 
+                  photo: projectPhoto,
+                  teaserDoc: teaserDocument,
+                  docs: projectDocuments
+                })}
                 disabled={createProjectMutation.isPending || !projectForm.name || !projectForm.tokenSymbol}
                 data-testid="button-submit-project"
               >

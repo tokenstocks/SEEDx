@@ -28,16 +28,42 @@ import { createProjectToken } from "../lib/stellarToken";
 
 const router = Router();
 
-// Configure multer for project photo uploads
+// Configure multer for project photo and document uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 15 * 1024 * 1024, // 15MB limit for documents/presentations
   },
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    const allowedMimeTypes = [
+      // Images
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp",
+      "image/gif",
+      // PDF Documents
+      "application/pdf",
+      // Microsoft Word
+      "application/msword", // .doc
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+      // Microsoft Excel
+      "application/vnd.ms-excel", // .xls
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+      // Microsoft PowerPoint
+      "application/vnd.ms-powerpoint", // .ppt
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+      // CSV and Text
+      "text/csv",
+      "text/plain",
+      "application/csv",
+      // Google Workspace (sometimes exported with these MIME types)
+      "application/vnd.google-apps.document",
+      "application/vnd.google-apps.spreadsheet",
+      "application/vnd.google-apps.presentation",
+    ];
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      cb(new Error("Unsupported file type. Allowed: images (JPEG, PNG, GIF, WebP) and documents (PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, CSV, TXT)"));
       return;
     }
     cb(null, true);
@@ -266,7 +292,7 @@ router.get("/wallets", authenticate, requireAdmin, async (req, res) => {
       .select({ total: count() })
       .from(wallets);
 
-    // Get wallets with user info
+    // Get wallets with user info (using innerJoin to avoid null user issues)
     const walletsList = await db
       .select({
         id: wallets.id,
@@ -282,7 +308,7 @@ router.get("/wallets", authenticate, requireAdmin, async (req, res) => {
         updatedAt: wallets.updatedAt,
       })
       .from(wallets)
-      .leftJoin(users, eq(wallets.userId, users.id))
+      .innerJoin(users, eq(wallets.userId, users.id))
       .orderBy(desc(wallets.createdAt))
       .limit(limitNum)
       .offset(offset);
@@ -937,12 +963,16 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
 /**
  * POST /api/admin/projects
  * Create a new investment project with Stellar token configuration (admin only)
- * Supports multipart/form-data for photo upload
+ * Supports multipart/form-data for photo, teaser, and documents upload
  */
-router.post("/projects", authenticate, requireAdmin, upload.single("photo"), async (req, res) => {
+router.post("/projects", authenticate, requireAdmin, upload.fields([
+  { name: "photo", maxCount: 1 },
+  { name: "teaserDocument", maxCount: 1 },
+  { name: "documents", maxCount: 10 }
+]), async (req, res) => {
   try {
     const body = createProjectSchema.parse(req.body);
-    const photo = req.file;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     // Check if token symbol already exists
     const existingProject = await db
@@ -960,11 +990,34 @@ router.post("/projects", authenticate, requireAdmin, upload.single("photo"), asy
 
     // Upload photo if provided
     let photoUrl: string | undefined;
-    if (photo) {
+    if (files?.photo && files.photo.length > 0) {
+      const photo = files.photo[0];
       const fileName = `${Date.now()}-${photo.originalname}`;
       const path = `projects/${fileName}`;
       photoUrl = await uploadFile("project-photos", path, photo.buffer, photo.mimetype);
       console.log(`Uploaded project photo: ${photoUrl}`);
+    }
+
+    // Upload teaser document if provided
+    let teaserDocUrl: string | undefined;
+    if (files?.teaserDocument && files.teaserDocument.length > 0) {
+      const teaserDoc = files.teaserDocument[0];
+      const fileName = `${Date.now()}-teaser-${teaserDoc.originalname}`;
+      const path = `teasers/${fileName}`;
+      teaserDocUrl = await uploadFile("project-documents", path, teaserDoc.buffer, teaserDoc.mimetype);
+      console.log(`Uploaded teaser document: ${teaserDocUrl}`);
+    }
+
+    // Upload additional documents if provided
+    const documentUrls: string[] = [];
+    if (files?.documents && files.documents.length > 0) {
+      for (const doc of files.documents) {
+        const fileName = `${Date.now()}-${doc.originalname}`;
+        const path = `docs/${fileName}`;
+        const docUrl = await uploadFile("project-documents", path, doc.buffer, doc.mimetype);
+        documentUrls.push(docUrl);
+        console.log(`Uploaded document: ${docUrl}`);
+      }
     }
 
     // Generate Stellar keypairs for issuer and distribution accounts
@@ -982,11 +1035,14 @@ router.post("/projects", authenticate, requireAdmin, upload.single("photo"), asy
         name: body.name,
         description: body.description,
         location: body.location,
+        currency: body.currency || "NGN",
         targetAmount: body.targetAmount,
         tokenSymbol: body.tokenSymbol,
         tokensIssued: body.tokensIssued,
         pricePerToken: body.pricePerToken,
         images: photoUrl ? [photoUrl] : [],
+        teaserDocument: teaserDocUrl,
+        documents: documentUrls.length > 0 ? documentUrls : [],
         stellarAssetCode: body.tokenSymbol,
         stellarIssuerPublicKey: issuerKeypair.publicKey(),
         stellarIssuerSecretKeyEncrypted: encryptedIssuerSecret,
