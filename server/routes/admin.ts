@@ -908,7 +908,7 @@ router.post("/projects", authenticate, requireAdmin, async (req, res) => {
         stellarIssuerSecretKeyEncrypted: encryptedIssuerSecret,
         stellarDistributionPublicKey: distributionKeypair.publicKey(),
         stellarDistributionSecretKeyEncrypted: encryptedDistributionSecret,
-        status: "draft",
+        status: "active",
         startDate: body.startDate ? new Date(body.startDate) : null,
         endDate: body.endDate ? new Date(body.endDate) : null,
       })
