@@ -146,7 +146,21 @@ export default function Dashboard() {
         formData.append("paymentProof", selectedFile);
       }
 
-      const res = await apiRequest("POST", "/api/wallets/deposit/confirm", formData);
+      // Use fetch directly for FormData (apiRequest would JSON-stringify it)
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/wallets/deposit/confirm", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Deposit confirmation failed");
+      }
+
       return await res.json();
     },
     onSuccess: (data: any) => {
