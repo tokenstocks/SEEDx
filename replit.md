@@ -50,11 +50,11 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 
 ### Investment Transactions (Phase 2-B)
 - **Stellar Operations Library** (`server/lib/stellarOps.ts`): Core Stellar SDK functions for trustline management, asset transfers, and transaction recording. Includes `ensureTrustline()`, `transferAsset()`, `recordTransaction()`, and helper functions.
-- **Investment API** (`/api/investments/create`): Authenticated endpoint that handles complete investment flow: validates user balance, ensures trustline, transfers tokens from distribution account, updates database in atomic transaction. Returns transaction hashes and success confirmation.
+- **Multi-Currency Investment API** (`/api/investments/create`): Authenticated endpoint supporting NGN, USDC, and XLM investments. Validates balance based on project currency (fiatBalance for NGN, cryptoBalances for crypto), ensures trustline, transfers tokens from distribution account, updates database in atomic transaction with proper balance deductions. Deep clones cryptoBalances to prevent reference issues during concurrent updates.
 - **Portfolio APIs**: GET `/api/investments` (investment history), GET `/api/investments/portfolio` (consolidated token holdings), GET `/api/investments/stats` (investment statistics).
-- **Investment Dialog** (Project Detail Page): NGN-amount-based investment form with real-time token calculation, validation, and transaction submission. Shows blockchain sync status warnings.
+- **Investment Dialog** (Project Detail Page): Multi-currency investment form with real-time token calculation, validation, and transaction submission. Supports NGN (fiat), USDC, and XLM payments based on project configuration. Shows blockchain sync status warnings.
 - **Enhanced Portfolio Page**: Tabbed interface showing token holdings (consolidated by project with Stellar Explorer links) and investment history. Four summary cards: Total Invested, Portfolio Value, Gain/Loss, and Projects count.
-- **Database Transactions**: All database mutations wrapped in Drizzle transactions to ensure data integrity. If Stellar transfer succeeds but database fails, detailed error logging enables manual reconciliation.
+- **Database Transactions**: All database mutations wrapped in Drizzle transactions to ensure data integrity. CryptoBalances deep-cloned before mutation to ensure atomic updates. If Stellar transfer succeeds but database fails, detailed error logging enables manual reconciliation.
 
 ## External Dependencies
 
