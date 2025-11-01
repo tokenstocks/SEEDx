@@ -602,6 +602,14 @@ export default function ProjectDetail() {
                 </p>
               </div>
 
+              {!project.stellarMintTx && (
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <p className="text-sm text-destructive font-medium text-center">
+                    ⚠️ Tokens not available yet - This project's tokens haven't been minted on blockchain. Investments will be enabled once minting is complete.
+                  </p>
+                </div>
+              )}
+
               {investmentAmount && parseFloat(investmentAmount) >= 100 && (
                 <div className="p-4 bg-muted rounded-lg space-y-2">
                   <div className="flex justify-between">
@@ -631,18 +639,13 @@ export default function ProjectDetail() {
                   !investmentAmount || 
                   investMutation.isPending || 
                   parseFloat(investmentAmount) < 100 ||
-                  calculateTokensToReceive() > tokensAvailable
+                  calculateTokensToReceive() > tokensAvailable ||
+                  !project.stellarMintTx
                 }
                 data-testid="button-confirm-invest"
               >
                 {investMutation.isPending ? "Processing Investment..." : "Confirm Investment"}
               </Button>
-
-              {!project.onChainSynced && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Note: This project's tokens haven't been minted on blockchain yet. Please check back later or contact support.
-                </p>
-              )}
             </div>
           </DialogContent>
         </Dialog>
