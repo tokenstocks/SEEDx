@@ -6,6 +6,11 @@ TokenStocks is a blockchain-based platform built on the Stellar network for toke
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Admin Credentials
+- Email: admin@tokenstocks.local
+- Password: 1234567890
+- Note: This is a test account. Use a strong password in production.
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -35,6 +40,13 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 - **Typography:** Inter font family for readability in data-rich interfaces.
 - **Component Library:** Shadcn UI for accessible, pre-built components.
 - **Responsiveness:** Mobile-first approach with responsive grid layouts.
+
+### Blockchain UI Components (Phase 2-A)
+- **On-Chain Verification Dashboard** (`/admin/onchain-verification`): Admin-only page showing blockchain sync status for all projects, including issuer/distribution accounts, trustline status, token minting status, and transaction hashes. Auto-refreshes every 30 seconds.
+- **Blockchain Activity Feed** (Admin Dashboard): Displays recent blockchain activities (project creation, token minting, account activation) with transaction hashes and timestamps. Links to Stellar Explorer for verification.
+- **Wallet Activation Status** (User Dashboard): Badge component that queries Horizon API to check if user's Stellar account is activated on-chain. Shows "Activated" (green) or "Pending Activation" (yellow) status.
+- **Transaction Hash Display** (Project Detail): "Blockchain Info" card showing asset code, issuer account, distribution account, and all transaction hashes (issuer creation, distribution creation, trustline, minting). All transaction hashes link to Stellar Explorer testnet.
+- **Environment Awareness:** All components use `VITE_STELLAR_HORIZON_URL` environment variable with fallback to testnet, ensuring network flexibility.
 
 ## External Dependencies
 

@@ -6,7 +6,7 @@ import { encrypt } from "../lib/encryption";
 import { eq } from "drizzle-orm";
 
 async function createAdminUser() {
-  const email = "admin";
+  const email = "admin@tokenstocks.local";
   const password = "1234567890";
   const firstName = "Admin";
   const lastName = "User";
@@ -14,7 +14,7 @@ async function createAdminUser() {
 
   console.log("Creating admin user...");
 
-  // Check if admin user already exists
+  // Check if admin user already exists with new email
   const existingUser = await db
     .select()
     .from(users)
@@ -34,6 +34,33 @@ async function createAdminUser() {
         .where(eq(users.id, existingUser[0].id));
       console.log("✓ Updated existing user to admin role");
     }
+    return;
+  }
+
+  // Check for old admin user with email "admin" and update it
+  const oldAdmin = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, "admin"))
+    .limit(1);
+
+  if (oldAdmin.length > 0) {
+    console.log("Found old admin user, updating email...");
+    const passwordHash = await bcrypt.hash(password, 12);
+    await db
+      .update(users)
+      .set({ 
+        email,
+        passwordHash,
+        role: "admin",
+        kycStatus: "approved"
+      })
+      .where(eq(users.id, oldAdmin[0].id));
+    console.log("✓ Updated old admin user to new email:", email);
+    console.log("  ID:", oldAdmin[0].id);
+    console.log("\nLogin credentials:");
+    console.log("  Email:", email);
+    console.log("  Password:", password);
     return;
   }
 
