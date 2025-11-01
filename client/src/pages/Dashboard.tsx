@@ -57,11 +57,29 @@ const withdrawalSchema = z.object({
 
 type WithdrawalForm = z.infer<typeof withdrawalSchema>;
 
+const depositInitiateSchema = z.object({
+  currency: z.enum(["NGN", "USDC", "XLM"]),
+});
+
+const depositConfirmSchema = z.object({
+  amount: z.string().min(1, "Amount is required"),
+});
+
+type DepositInitiateForm = z.infer<typeof depositInitiateSchema>;
+type DepositConfirmForm = z.infer<typeof depositConfirmSchema>;
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<any>(null);
   const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("NGN");
+  
+  // Deposit dialog states
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [depositStep, setDepositStep] = useState<"select" | "instructions" | "confirm">("select");
+  const [depositInstructions, setDepositInstructions] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
   const { toast } = useToast();
 
   const form = useForm<WithdrawalForm>({
@@ -74,6 +92,81 @@ export default function Dashboard() {
       accountNumber: "",
       bankName: "",
       cryptoAddress: "",
+    },
+  });
+
+  const depositInitiateForm = useForm<DepositInitiateForm>({
+    resolver: zodResolver(depositInitiateSchema),
+    defaultValues: {
+      currency: "NGN",
+    },
+  });
+
+  const depositConfirmForm = useForm<DepositConfirmForm>({
+    resolver: zodResolver(depositConfirmSchema),
+    defaultValues: {
+      amount: "",
+    },
+  });
+
+  const initiateDepositMutation = useMutation({
+    mutationFn: async (data: DepositInitiateForm) => {
+      const res = await apiRequest("POST", "/api/wallets/deposit/initiate", data);
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      setDepositInstructions(data);
+      setDepositStep("instructions");
+      toast({
+        title: "Payment Instructions Ready",
+        description: "Please follow the instructions to complete your deposit.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Get Instructions",
+        description: error.message || "Failed to initiate deposit",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const confirmDepositMutation = useMutation({
+    mutationFn: async (data: DepositConfirmForm) => {
+      if (!depositInstructions) {
+        throw new Error("No deposit instructions available");
+      }
+      
+      const formData = new FormData();
+      formData.append("transactionReference", depositInstructions.reference);
+      formData.append("amount", data.amount);
+      formData.append("currency", selectedCurrency);
+      
+      if (selectedFile) {
+        formData.append("paymentProof", selectedFile);
+      }
+
+      const res = await apiRequest("POST", "/api/wallets/deposit/confirm", formData);
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Deposit Submitted",
+        description: `Your deposit of ${data.depositRequest.amount} ${data.depositRequest.currency} has been submitted and is pending admin approval.`,
+      });
+      setDepositDialogOpen(false);
+      setDepositStep("select");
+      setDepositInstructions(null);
+      setSelectedFile(null);
+      depositInitiateForm.reset();
+      depositConfirmForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Deposit Confirmation Failed",
+        description: error.message || "Failed to confirm deposit",
+        variant: "destructive",
+      });
     },
   });
 
@@ -139,8 +232,32 @@ export default function Dashboard() {
     setWithdrawalDialogOpen(true);
   };
 
+  const handleDepositClick = (currency: string) => {
+    setSelectedCurrency(currency);
+    depositInitiateForm.setValue("currency", currency as any);
+    setDepositDialogOpen(true);
+    setDepositStep("select");
+    setDepositInstructions(null);
+    setSelectedFile(null);
+  };
+
   const onWithdrawalSubmit = (data: WithdrawalForm) => {
     withdrawalMutation.mutate(data);
+  };
+
+  const onDepositInitiate = (data: DepositInitiateForm) => {
+    initiateDepositMutation.mutate(data);
+  };
+
+  const onDepositConfirm = (data: DepositConfirmForm) => {
+    confirmDepositMutation.mutate(data);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
   };
 
   if (!user) {
@@ -223,7 +340,12 @@ export default function Dashboard() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Available balance</p>
                 <div className="flex gap-2 mt-4">
-                  <Button size="sm" className="flex-1" data-testid={`button-deposit-${wallet.currency}`}>
+                  <Button 
+                    size="sm" 
+                    className="flex-1" 
+                    onClick={() => handleDepositClick(wallet.currency)}
+                    data-testid={`button-deposit-${wallet.currency}`}
+                  >
                     <ArrowDownLeft className="w-4 h-4 mr-1" />
                     Deposit
                   </Button>
@@ -483,6 +605,217 @@ export default function Dashboard() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Deposit {selectedCurrency}</DialogTitle>
+            <DialogDescription>
+              {depositStep === "select" && "Get payment instructions for your deposit"}
+              {depositStep === "instructions" && "Follow the instructions to make your payment"}
+              {depositStep === "confirm" && "Confirm your deposit with payment proof"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {depositStep === "select" && (
+            <Form {...depositInitiateForm}>
+              <form onSubmit={depositInitiateForm.handleSubmit(onDepositInitiate)} className="space-y-4">
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    <strong>Selected Currency:</strong> {selectedCurrency}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Click below to get payment instructions for your {selectedCurrency} deposit.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setDepositDialogOpen(false)}
+                    data-testid="button-cancel-deposit"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="flex-1"
+                    disabled={initiateDepositMutation.isPending}
+                    data-testid="button-get-instructions"
+                  >
+                    {initiateDepositMutation.isPending ? "Loading..." : "Get Payment Instructions"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
+
+          {depositStep === "instructions" && depositInstructions && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <div>
+                  <p className="text-sm font-medium mb-1">Payment Method:</p>
+                  <p className="text-sm text-muted-foreground" data-testid="text-payment-method">
+                    {depositInstructions.paymentMethod === "bank_transfer" ? "Bank Transfer" : "Stellar Network"}
+                  </p>
+                </div>
+
+                {depositInstructions.paymentMethod === "bank_transfer" && (
+                  <>
+                    <div>
+                      <p className="text-sm font-medium mb-1">Bank Account Details:</p>
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap" data-testid="text-bank-details">
+                        {depositInstructions.instructions.bankAccount}
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-1">Reference Code:</p>
+                      <p className="font-mono text-sm" data-testid="text-reference">
+                        {depositInstructions.instructions.reference}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {depositInstructions.instructions.note}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {depositInstructions.paymentMethod === "stellar" && (
+                  <>
+                    <div>
+                      <p className="text-sm font-medium mb-1">Stellar Address:</p>
+                      <p className="font-mono text-xs break-all" data-testid="text-stellar-address">
+                        {depositInstructions.instructions.stellarAddress}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-1">Memo (Required):</p>
+                      <p className="font-mono text-sm" data-testid="text-memo">
+                        {depositInstructions.instructions.memo}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-1">Asset:</p>
+                      <p className="text-sm text-muted-foreground" data-testid="text-asset">
+                        {depositInstructions.instructions.asset}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {depositInstructions.instructions.note}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg">
+                <p className="text-sm font-medium mb-2">Important:</p>
+                <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                  <li>Make sure to include the reference/memo in your payment</li>
+                  <li>After making the payment, proceed to confirm your deposit</li>
+                  <li>Upload proof of payment for verification</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setDepositStep("select");
+                    setDepositInstructions(null);
+                  }}
+                  data-testid="button-back-to-select"
+                >
+                  Back
+                </Button>
+                <Button 
+                  type="button" 
+                  className="flex-1"
+                  onClick={() => setDepositStep("confirm")}
+                  data-testid="button-proceed-confirm"
+                >
+                  I've Made the Payment
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {depositStep === "confirm" && (
+            <Form {...depositConfirmForm}>
+              <form onSubmit={depositConfirmForm.handleSubmit(onDepositConfirm)} className="space-y-4">
+                <FormField
+                  control={depositConfirmForm.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Amount Deposited</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="Enter the amount you deposited" 
+                          {...field}
+                          data-testid="input-deposit-amount"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div>
+                  <FormLabel>Payment Proof (Optional)</FormLabel>
+                  <Input 
+                    type="file" 
+                    accept="image/*,.pdf"
+                    onChange={handleFileChange}
+                    className="mt-2"
+                    data-testid="input-payment-proof"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload a screenshot or receipt of your payment
+                  </p>
+                  {selectedFile && (
+                    <p className="text-xs text-muted-foreground mt-1" data-testid="text-selected-file">
+                      Selected: {selectedFile.name}
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Note:</strong> Your deposit will be reviewed and approved by an admin. 
+                    This process typically takes 1-24 hours.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setDepositStep("instructions")}
+                    data-testid="button-back-to-instructions"
+                  >
+                    Back
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="flex-1"
+                    disabled={confirmDepositMutation.isPending}
+                    data-testid="button-submit-deposit"
+                  >
+                    {confirmDepositMutation.isPending ? "Submitting..." : "Confirm Deposit"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
