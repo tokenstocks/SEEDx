@@ -1,326 +1,57 @@
 # TokenStocks MVP - Stellar Tokenized Agricultural Investments
 
 ## Overview
-
-TokenStocks is a blockchain-based platform for tokenized agricultural investments built on the Stellar network. The platform enables fractional ownership of agricultural assets through blockchain tokens, allowing investors to participate in agricultural projects with as little as $100. The application provides secure user authentication, KYC verification, multi-currency wallet management, and a modern responsive interface for browsing and investing in agricultural opportunities.
+TokenStocks is a blockchain-based platform built on the Stellar network for tokenized agricultural investments. It facilitates fractional ownership of agricultural assets through blockchain tokens, enabling investments starting from $100. The platform includes secure user authentication, KYC verification, multi-currency wallet management, and a responsive interface for exploring and investing in agricultural opportunities. The project's vision is to democratize agricultural investment, leveraging blockchain for transparency and accessibility.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
-
-## Recent Changes
-
-**November 1, 2025:**
-- ✅ **Hybrid Wallet Migration Complete**: Migrated from 3-wallet-per-user to single hybrid wallet model
-  - Consolidated 15 wallet rows → 7 hybrid wallets (5 users + 2 platform wallets)
-  - Each wallet now has fiatBalance (NGN) + cryptoBalances (JSON for USDC/XLM/tokens)
-  - Separate Stellar keypair per wallet for blockchain operations
-  - Created LP (Liquidity Provider) and Admin platform wallets with Stellar keys
-- ✅ **Security Hardening**: Fixed critical vulnerability - encrypted Stellar secrets no longer exposed via API
-  - GET /api/wallets and PATCH /api/wallets now return sanitized wallet data only
-  - Architect-reviewed and approved
-- ✅ **Stellar Network Configuration**: Added STELLAR_NETWORK env var support (testnet/mainnet toggle)
-- ⚠️ **Manual Setup Required**: Supabase storage buckets must be created manually
-  - Required buckets: `kyc`, `project-photos`, `project-documents`
-  - Due to RLS policies, buckets cannot be created programmatically
-  - Use `tsx server/scripts/verify-storage-buckets.ts` to verify bucket existence
-- Fixed database driver issue: Changed from Neon serverless driver to standard postgres-js driver
-- Implemented complete withdrawal request system with bank transfer and crypto wallet support
-- Added row-level locking (SELECT FOR UPDATE) to prevent concurrent withdrawal double-spending vulnerabilities
-- All API endpoints now properly return JSON responses
-- Registration and authentication fully functional
-- Fixed frontend authentication: All API requests now include JWT token from localStorage in Authorization headers
-- Added projects, investments, and project_updates tables to database schema
-- Implemented comprehensive admin dashboard APIs:
-  - GET /api/admin/dashboard - Aggregated metrics and recent activity
-  - GET /api/admin/users - User management with filters and pagination
-  - PUT /api/admin/users/:id/kyc - KYC approval/rejection
-  - GET /api/admin/transactions - Transaction list with filters and pagination
-  - POST /api/admin/projects/:id/updates - Post project updates
-  - GET /api/admin/reports/investment-summary - Investment reporting by project
-- All admin endpoints secured with requireAdmin middleware
 
 ## System Architecture
 
 ### Frontend Architecture
-
-**Framework & Tooling:**
-- React with TypeScript for type safety and developer experience
-- Vite as the build tool for fast development and optimized production builds
-- Wouter for lightweight client-side routing
-
-**State Management:**
-- TanStack Query (React Query) for server state management, data fetching, and caching
-- Query client configured with custom request handlers for API communication
-- Credential-based authentication with cookie support
-
-**UI/UX Framework:**
-- Tailwind CSS for utility-first styling with custom theme configuration
-- Shadcn UI component library providing pre-built, accessible components
-- Custom design system based on fintech principles (inspired by Coinbase, Stripe)
-- Typography system using Inter font family for data-rich interfaces
-- Responsive grid layouts with mobile-first approach
-
-**Component Architecture:**
-- Modular component structure with reusable UI primitives
-- Custom components for domain-specific features (InvestmentCard, MetricCard, etc.)
-- Example components for development reference
-- Separation of presentation and container components
-
-### Admin API Endpoints
-
-All admin endpoints require authentication with an admin role.
-
-**Dashboard & Metrics:**
-- `GET /api/admin/dashboard` - Returns platform metrics and recent activity:
-  - Metrics: totalUsers, totalInvestmentsAmount, pendingKycCount, pendingDepositsCount, pendingWithdrawalsCount, totalTokensSold, totalProjects
-  - Recent activity: Last 20 transactions with user details
-
-**User Management:**
-- `GET /api/admin/users?kycStatus=&role=&page=1&limit=50` - List users with filters and pagination
-  - Filters: kycStatus (pending/submitted/approved/rejected), role (investor/admin)
-  - Returns: users array, pagination object (page, limit, total, totalPages)
-- `PUT /api/admin/users/:id/kyc` - Approve or reject KYC
-  - Body: `{ action: "approve" | "reject", adminNotes?: string }`
-
-**Transaction Management:**
-- `GET /api/admin/transactions?type=&status=&from=&to=&page=1&limit=50` - List transactions with filters
-  - Filters: type (deposit/withdrawal/investment/return/fee), status, date range
-  - Returns: transactions array with user details, pagination object
-
-**Deposit/Withdrawal Management:**
-- `GET /api/admin/deposits?status=` - List deposit requests
-- `PUT /api/admin/deposits/:id` - Approve or reject deposit
-  - Body: `{ action: "approve" | "reject", approvedAmount?: string, adminNotes?: string }`
-- `GET /api/admin/withdrawals?status=` - List withdrawal requests
-- `PUT /api/admin/withdrawals/:id` - Approve or reject withdrawal
-  - Body: `{ action: "approve" | "reject", processedAmount?: string, adminNotes?: string }`
-
-**Project Management:**
-- `POST /api/admin/projects/:id/updates` - Post project update
-  - Body: `{ title: string, content: string }`
-
-**Reporting:**
-- `GET /api/admin/reports/investment-summary?from=&to=` - Investment summary by project
-  - Returns: Per-project totals (totalInvestments, tokensSold, investorCount), overall totals
-
-**Phase 1 Setup Verification (Admin Only):**
-- `GET /api/setup/verify-database` - Validates all required database tables exist
-  - Returns: status, tables object (users, wallets, depositRequests, withdrawalRequests, transactions, projects, investments)
-- `GET /api/setup/verify-wallets` - Confirms one hybrid wallet per user
-  - Returns: status, summary (totalUsers, totalWallets, validUsers), user validations
-- `GET /api/setup/verify-platform-wallets` - Shows LP and Admin wallet status
-  - Returns: status, platformWallets object (lp, admin) with validation status
-- `GET /api/setup/verify-network` - Confirms Stellar network configuration
-  - Returns: status, configuration (network, isTestnet, horizonUrl, networkPassphrase)
-- `GET /api/setup/verify-all` - Combined verification report
-  - Returns: status, summary (allChecksPass, detailed flags), complete diagnostic report
+The frontend is built with React and TypeScript, using Vite for fast builds. It employs Wouter for routing and TanStack Query for server state management. UI/UX is based on Tailwind CSS and Shadcn UI, following a fintech-inspired design with a responsive, mobile-first approach. Components are modular, separating presentation from container logic.
 
 ### Backend Architecture
-
-**Runtime & Framework:**
-- Node.js with Express.js for the HTTP server
-- TypeScript for type safety across the entire stack
-- ES Modules for modern JavaScript module system
-
-**Database Layer:**
-- Drizzle ORM for type-safe database operations
-- PostgreSQL as the primary database (via Neon serverless driver)
-- Schema-first approach with centralized schema definitions in `shared/schema.ts`
-- Support for migrations through Drizzle Kit
-
-**Authentication & Security:**
-- JWT-based authentication with 24-hour token expiry
-- bcrypt for password hashing (12 salt rounds)
-- AES-256-CBC encryption for Stellar secret key storage
-- Middleware-based route protection
-- Environment variable validation on startup
-
-**Blockchain Integration:**
-- Stellar SDK for blockchain operations
-- Automatic Stellar keypair generation during user registration
-- Encrypted storage of Stellar secret keys
-- Support for testnet and mainnet configurations
-
-**API Design:**
-- RESTful API endpoints organized by domain
-- Modular route structure (`/api/auth`, `/api/users`)
-- JSON request/response format
-- Comprehensive error handling and validation
+The backend uses Node.js with Express.js and TypeScript. It integrates Drizzle ORM with PostgreSQL for type-safe database operations. Authentication is JWT-based with bcrypt for password hashing and AES-256-CBC for encrypting sensitive data. Blockchain integration is handled via the Stellar SDK, supporting both testnet and mainnet configurations. The API is RESTful, with modular routes and comprehensive error handling.
 
 ### Data Storage Solutions
-
-**Primary Database (PostgreSQL):**
-- User accounts with role-based access (investor, admin)
-- Wallet management for multiple currencies (NGN, USDC, XLM)
-- Transaction records with comprehensive tracking
-- KYC document metadata storage
-- Enums for type safety (user roles, KYC status, transaction types, etc.)
-
-**Database Schema Highlights:**
-- UUID primary keys for all entities
-- Timestamps for audit trails (createdAt, updatedAt)
-- Foreign key relationships with cascade delete
-- Unique constraints on sensitive fields (email, phone)
-- Decimal precision for financial data (18 digits, 2 decimal places)
-
-**File Storage (Supabase Storage):**
-- KYC document storage in dedicated bucket
-- Server-side uploads using service role key
-- Public bucket configuration for simplified access
-- URL-based file references stored in database
+PostgreSQL serves as the primary database, storing user accounts, wallet information, transaction records, and KYC metadata. Supabase Storage is used for file storage, specifically for KYC documents and project-related media, with public URLs referenced in the database.
 
 ### Authentication Flow
-
-1. **Registration:**
-   - User provides email, phone, password, and personal information
-   - Password hashed with bcrypt before storage
-   - Stellar keypair automatically generated
-   - Secret key encrypted with AES-256 and stored
-   - Three wallets created (NGN, USDC, XLM) with zero balance
-   - JWT token issued for immediate authentication
-
-2. **Login:**
-   - Credentials validated against stored password hash
-   - JWT token issued upon successful authentication
-
-3. **Protected Routes:**
-   - Authorization header required: `Bearer <token>`
-   - Middleware validates JWT and attaches user to request
-   - 401 responses for invalid/expired tokens
+User registration involves email, phone, password, and personal info, with automatic Stellar keypair generation and encrypted secret key storage. Multiple wallets (NGN, USDC, XLM) are created, and a JWT token is issued for immediate authentication. Login validates credentials against stored password hashes and issues a JWT. Protected routes require a valid JWT in the Authorization header.
 
 ### KYC Verification System
+The system supports uploading ID cards, selfies, and address proofs (up to 5MB per document) via multipart form data. Files are uploaded to a dedicated "kyc" bucket in Supabase Storage, and public URLs are stored in the user's database record.
 
-**Document Upload:**
-- Multipart form data support via multer
-- Three document types: ID card, selfie, address proof
-- 5MB file size limit per document
-- Image file type validation
-- In-memory processing before upload
+### Technical Implementations
+- **Real On-Chain Stellar Operations (Testnet Only):** User wallets are activated on the Stellar testnet during registration, and projects can mint real tokens. Stellar operations are asynchronous, with transaction hashes stored in the database.
+- **Hybrid Wallet Model:** Migrated to a single hybrid wallet per user, supporting fiatBalance (NGN) and cryptoBalances (JSON for USDC/XLM/tokens), each with a separate Stellar keypair.
+- **Security Hardening:** Encrypted Stellar secrets are no longer exposed via API.
+- **Admin Dashboard APIs:** Comprehensive APIs for dashboard metrics, user management (including KYC approval/rejection), transaction management, and project updates, all secured with admin-role middleware.
+- **Setup Verification Endpoints:** Admin-only endpoints (`/api/setup/*`) to verify database schema, wallet configurations, platform wallets, and Stellar network settings.
 
-**Storage Process:**
-- Files uploaded to Supabase Storage bucket named "kyc"
-- Public URLs returned and stored in user record
-- JSON structure in database for document URLs
-- Automatic KYC status tracking
+### UI/UX Decisions
+- **Color Scheme:** Professional, modern fintech aesthetic inspired by platforms like Coinbase and Stripe.
+- **Typography:** Inter font family for readability in data-rich interfaces.
+- **Component Library:** Shadcn UI for accessible, pre-built components.
+- **Responsiveness:** Mobile-first approach with responsive grid layouts.
 
 ## External Dependencies
 
 ### Third-Party Services
-
-**Supabase:**
-- PostgreSQL database hosting (via connection string)
-- File storage for KYC documents
-- Service role key for server-side operations
-- Anon key for potential client-side operations (future use)
-
-**Stellar Network:**
-- Blockchain platform for tokenized assets
-- Testnet/mainnet configuration support
-- Keypair generation and management
-- Future transaction processing capabilities
-
-**Neon Database Driver:**
-- Serverless PostgreSQL driver for edge compatibility
-- HTTP-based connection to Supabase PostgreSQL
-- Integrated with Drizzle ORM
+- **Supabase:** PostgreSQL database hosting and file storage (for KYC documents, project photos, project documents).
+- **Stellar Network:** Blockchain for tokenized assets, keypair generation, and transaction processing (testnet configured, mainnet capability).
 
 ### NPM Dependencies
-
-**Core Framework:**
-- `express` - Web server framework
-- `react`, `react-dom` - Frontend library
-- `vite` - Build tool and dev server
-- `typescript` - Type system
-
-**Database & ORM:**
-- `drizzle-orm` - TypeScript ORM
-- `@neondatabase/serverless` - PostgreSQL driver
-- `drizzle-kit` - Migration management
-
-**Authentication & Security:**
-- `jsonwebtoken` - JWT token generation/validation
-- `bcrypt` - Password hashing
-- `crypto` (Node.js built-in) - AES encryption
-
-**Blockchain:**
-- `stellar-sdk` - Stellar network integration
-
-**Storage:**
-- `@supabase/supabase-js` - Supabase client library
-- `multer` - Multipart form data handling
-
-**UI Components:**
-- `@radix-ui/*` - Accessible component primitives
-- `tailwindcss` - Utility-first CSS framework
-- `class-variance-authority` - Component variant management
-- `clsx`, `tailwind-merge` - Conditional styling utilities
-
-**Data Fetching:**
-- `@tanstack/react-query` - Server state management
-
-**Routing:**
-- `wouter` - Lightweight React router
-
-**Validation:**
-- `zod` - Schema validation
-- `drizzle-zod` - Drizzle schema to Zod conversion
+- **Core:** `express`, `react`, `react-dom`, `vite`, `typescript`.
+- **Database & ORM:** `drizzle-orm`, `@neondatabase/serverless`, `drizzle-kit`.
+- **Auth & Security:** `jsonwebtoken`, `bcrypt`, `crypto`.
+- **Blockchain:** `stellar-sdk`.
+- **Storage:** `@supabase/supabase-js`, `multer`.
+- **UI:** `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `clsx`, `tailwind-merge`.
+- **Data Fetching:** `@tanstack/react-query`.
+- **Routing:** `wouter`.
+- **Validation:** `zod`, `drizzle-zod`.
 
 ### Environment Configuration
-
-**Required Variables:**
-- `DATABASE_URL` - PostgreSQL connection string (32+ character validation)
-- `JWT_SECRET` - Secret for JWT signing (32+ character requirement)
-- `ENCRYPTION_KEY` - 32-character key for AES-256 encryption
-- `SUPABASE_URL` - Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase admin access key
-
-**Optional/Future Variables:**
-- `STELLAR_NETWORK` - Network selection (testnet/mainnet)
-- `STELLAR_ISSUER_SECRET/PUBLIC` - Token issuer credentials
-- `EMAIL_SERVICE_API_KEY` - Email notifications
-- `FRONTEND_URL` - CORS and redirect configuration
-- `NODE_ENV` - Environment mode (development/production)
-
-**Development Flexibility:**
-- Graceful degradation in development mode
-- Warning messages for missing configuration
-- Production mode enforces all required variables
-- Validation on application startup prevents runtime errors
-
-## Manual Setup Steps
-
-### Supabase Storage Buckets (Required)
-
-Due to Row-Level Security (RLS) policies on Supabase, storage buckets cannot be created programmatically. They must be created manually in the Supabase Dashboard before KYC document uploads will work.
-
-**Required Buckets:**
-
-| Bucket Name | Public | Purpose | File Size Limit |
-|-------------|--------|---------|-----------------|
-| `kyc` | ✅ Yes | KYC document uploads (ID, selfie, proof of address) | 10 MB |
-| `project-photos` | ✅ Yes | Agricultural project images | 10 MB |
-| `project-documents` | ✅ Yes | Project-related documents | 10 MB |
-
-**Setup Instructions:**
-
-1. Open your Supabase Dashboard: https://supabase.com/dashboard
-2. Select your TokenStocks project
-3. Navigate to **Storage** in the left sidebar
-4. Click **"New bucket"** for each required bucket:
-   - Enter the bucket name exactly as shown above
-   - Check **"Public bucket"** (all buckets must be public)
-   - Set **File size limit** to `10 MB` (10485760 bytes)
-   - Click **"Create bucket"**
-
-**Verification:**
-
-After creating the buckets, run the verification script to confirm:
-
-```bash
-tsx server/scripts/verify-storage-buckets.ts
-```
-
-You should see ✅ for all three buckets. If any are missing, the script will provide detailed instructions.
-
-**Note:** KYC document upload will fail with "Bucket not found" errors until all three buckets are created.
+Required environment variables include `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`. Optional variables support Stellar network configuration and email services. Validation of these variables occurs at application startup.
