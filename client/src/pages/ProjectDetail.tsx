@@ -167,6 +167,42 @@ export default function ProjectDetail() {
     setInvestDialogOpen(true);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a PDF file",
+        variant: "destructive",
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleUploadDocument = () => {
+    if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a PDF file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    uploadDocumentMutation.mutate(selectedFile);
+  };
+
+  const handleDownloadDocument = (documentUrl: string) => {
+    window.open(documentUrl, "_blank");
+  };
+
   if (isLoading || !project) {
     return (
       <div className="min-h-screen bg-muted/30 p-4">
@@ -274,6 +310,46 @@ export default function ProjectDetail() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Documents Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Documents</CardTitle>
+                <CardDescription>Download investment teasers and project documentation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {project.documents && project.documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {project.documents.map((doc, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className="w-full justify-start gap-2"
+                        onClick={() => handleDownloadDocument(doc)}
+                        data-testid={`button-download-document-${index}`}
+                      >
+                        <FileDown className="w-4 h-4" />
+                        Download Document {index + 1}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No documents available yet</p>
+                )}
+
+                {user?.role === "admin" && (
+                  <Button
+                    variant="secondary"
+                    className="w-full gap-2"
+                    onClick={() => setUploadDialogOpen(true)}
+                    data-testid="button-upload-document"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Teaser Document
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar - Investment Info */}
@@ -318,6 +394,55 @@ export default function ProjectDetail() {
             </Card>
           </div>
         </div>
+
+        {/* Upload Document Dialog */}
+        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Teaser Document</DialogTitle>
+              <DialogDescription>
+                Upload a PDF document for investors to download
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="document-upload">Select PDF Document</Label>
+                <input
+                  ref={fileInputRef}
+                  id="document-upload"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  data-testid="input-file"
+                />
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="button-select-file"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {selectedFile ? "Change File" : "Select File"}
+                </Button>
+                {selectedFile && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-selected-filename">
+                    Selected: {selectedFile.name}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleUploadDocument}
+                disabled={!selectedFile || uploadDocumentMutation.isPending}
+                data-testid="button-upload"
+              >
+                {uploadDocumentMutation.isPending ? "Uploading..." : "Upload Document"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Investment Dialog */}
         <Dialog open={investDialogOpen} onOpenChange={setInvestDialogOpen}>
