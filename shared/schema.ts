@@ -14,6 +14,7 @@ export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "car
 export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved", "rejected"]);
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
 export const destinationTypeEnum = pgEnum("destination_type", ["bank_account", "crypto_wallet"]);
+export const projectStatusEnum = pgEnum("project_status", ["draft", "active", "funded", "completed", "cancelled"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -99,6 +100,50 @@ export const withdrawalRequests = pgTable("withdrawal_requests", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Projects table
+export const projects = pgTable("projects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  location: text("location").notNull(),
+  targetAmount: decimal("target_amount", { precision: 18, scale: 2 }).notNull(),
+  raisedAmount: decimal("raised_amount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  tokenSymbol: text("token_symbol").notNull(),
+  tokensIssued: decimal("tokens_issued", { precision: 18, scale: 2 }).notNull(),
+  tokensSold: decimal("tokens_sold", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  pricePerToken: decimal("price_per_token", { precision: 18, scale: 2 }).notNull(),
+  status: projectStatusEnum("status").notNull().default("draft"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  images: text("images").array(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Investments table
+export const investments = pgTable("investments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 18, scale: 2 }).notNull(),
+  tokensReceived: decimal("tokens_received", { precision: 18, scale: 2 }).notNull(),
+  currency: currencyEnum("currency").notNull(),
+  transactionId: uuid("transaction_id").references(() => transactions.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Project updates table
+export const projectUpdates = pgTable("project_updates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  postedBy: uuid("posted_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   wallets: many(wallets),
@@ -117,6 +162,33 @@ export const walletsRelations = relations(wallets, ({ one }) => ({
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   user: one(users, {
     fields: [transactions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const projectsRelations = relations(projects, ({ many }) => ({
+  investments: many(investments),
+  updates: many(projectUpdates),
+}));
+
+export const investmentsRelations = relations(investments, ({ one }) => ({
+  user: one(users, {
+    fields: [investments.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [investments.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const projectUpdatesRelations = relations(projectUpdates, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectUpdates.projectId],
+    references: [projects.id],
+  }),
+  author: one(users, {
+    fields: [projectUpdates.postedBy],
     references: [users.id],
   }),
 }));
@@ -220,6 +292,29 @@ export const approveWithdrawalSchema = z.object({
   adminNotes: z.string().optional(),
 });
 
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvestmentSchema = createInsertSchema(investments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProjectUpdateSchema = createInsertSchema(projectUpdates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateKycStatusSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  adminNotes: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -238,3 +333,10 @@ export type ConfirmDeposit = z.infer<typeof confirmDepositSchema>;
 export type ApproveDeposit = z.infer<typeof approveDepositSchema>;
 export type InitiateWithdrawal = z.infer<typeof initiateWithdrawalSchema>;
 export type ApproveWithdrawal = z.infer<typeof approveWithdrawalSchema>;
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Investment = typeof investments.$inferSelect;
+export type InsertInvestment = z.infer<typeof insertInvestmentSchema>;
+export type ProjectUpdate = typeof projectUpdates.$inferSelect;
+export type InsertProjectUpdate = z.infer<typeof insertProjectUpdateSchema>;
+export type UpdateKycStatus = z.infer<typeof updateKycStatusSchema>;
