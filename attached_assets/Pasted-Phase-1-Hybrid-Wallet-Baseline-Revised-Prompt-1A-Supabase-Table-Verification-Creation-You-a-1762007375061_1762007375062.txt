@@ -1,0 +1,80 @@
+Phase 1 – Hybrid Wallet Baseline (Revised)
+Prompt 1A – Supabase Table Verification & Creation
+
+You are building the TokenStocks MVP backend. Verify that the following tables exist in Supabase Postgres:
+users, wallets, transactions, deposit_requests, withdrawal_requests, projects, investments, project_token_balances, project_token_ledger.
+For any missing table, create it with proper fields, foreign keys, and indexes based on the latest Drizzle/Prisma model specifications.
+Ensure the wallets table supports a hybrid model:
+
+fiat_balance column for NGN (DB-only)
+
+crypto_wallet_public_key + crypto_wallet_secret_encrypted for Stellar-based assets (XLM, USDC, project tokens)
+Return a JSON report:
+
+{ 
+  "table_name": "users",
+  "exists": true,
+  "created": false,
+  "warnings": []
+}
+
+Prompt 1B – User Wallet Setup (Hybrid Model)
+
+For every registered user:
+
+Ensure they have a single wallet row.
+
+NGN: initialize fiat_balance = 0 if missing.
+
+XLM/USDC/project tokens: check if crypto_wallet_public_key exists; if not, generate Stellar keypair.
+
+Encrypt Stellar secret key with AES-256-CBC using ENCRYPTION_KEY.
+
+Return JSON for each user:
+
+{ 
+  "userId": "UUID",
+  "walletId": "UUID",
+  "fiatBalance": 0,
+  "cryptoWalletPublicKey": "G...",
+  "walletStatus": "existing" | "newlyCreated"
+}
+
+Prompt 1C – LP & Admin Wallet Setup
+
+Ensure LP and admin/platform wallets exist in hybrid model:
+
+NGN: DB-only balance
+
+XLM/USDC/project tokens: Stellar keypair with encrypted secret
+
+Return JSON report:
+
+{ 
+  "walletId": "UUID",
+  "type": "LP" | "admin",
+  "fiatBalance": 0,
+  "cryptoWalletPublicKey": "G...",
+  "status": "existing" | "newlyCreated"
+}
+
+Prompt 1D – Network Toggle Prep
+
+Ensure all Stellar wallets (user, LP, admin) reference the STELLAR_NETWORK env variable (testnet or mainnet).
+Return JSON:
+
+{ 
+  "walletId": "UUID",
+  "network": "testnet" | "mainnet",
+  "confirmation": true
+}
+
+Outcome Phase 1 (Hybrid Model)
+
+Users see one wallet in UI (NGN + crypto balances).
+
+Stellar assets (XLM, USDC, project tokens) have dedicated keypairs for trustlines.
+
+LP and admin wallets exist and are funded/ready.
+
+All wallets respect testnet/mainnet toggle.
