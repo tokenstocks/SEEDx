@@ -1,0 +1,36 @@
+Context: Prepare project for production readiness with tests, CI, and deployment recommendations (deploy backend and frontend separately).
+
+Goal: create test suites, CI config, and deployment steps for Supabase + backend + frontend.
+
+Deliverables:
+1. Tests:
+   - Unit tests for wallet arithmetic, auth functions (bcrypt + JWT), encryption helpers, and Stellar helper functions (mocked)
+   - Integration tests for register→login flow, deposit→admin approve flow, invest flow (can run against test db)
+   - Provide example Jest config and test examples
+2. CI:
+   - Create GitHub Actions workflow template:
+     - steps: install, lint, run tests, build, deploy previews
+     - set secrets: DATABASE_URL (to a test db), SUPABASE keys (for tests), JWT_SECRET
+3. Deployment:
+   - Backend: recommended hosts (Railway/Render/DigitalOcean). Show sample environment variables and Dockerfile (optional)
+   - Frontend: Vercel (Next.js)
+   - Database & Storage: Supabase (managed Postgres + Storage). Explain how to get DATABASE_URL and service role key from Supabase and where to store them in host secrets
+   - Provide step-by-step deployment checklist:
+     - Create Supabase project
+     - Add buckets for kyc with correct public/private policies
+     - Create issuing Stellar account on production (generate keys offline; store STELLAR_ISSUER_SECRET in platform env)
+     - Configure ENV variables on host
+     - Run Prisma migrate with production db
+     - Start services
+4. Monitoring & backups:
+   - Suggest Sentry for error tracking, daily DB backups (via Supabase or pg_dump to S3), and log retention
+5. Post-deploy checklist:
+   - Run manual end-to-end sanity tests
+   - Verify admin processes work (approve deposit, issue tokens)
+   - Security review: ensure no secret keys in logs or frontend
+6. Provide a sample `README_PRODUCTION.md` with deploy steps and env variable mapping.
+
+Acceptance criteria:
+- Tests and CI templates included
+- Clear deployment checklist for Supabase + backend + frontend
+Next step: final polish, docs, and handover package (Phase 9).
