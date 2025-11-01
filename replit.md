@@ -17,6 +17,16 @@ Preferred communication style: Simple, everyday language.
 - Added missing GET and PATCH endpoints to `/api/wallets` for wallet balance management
 - All API endpoints now properly return JSON responses
 - Registration and authentication fully functional
+- Fixed frontend authentication: All API requests now include JWT token from localStorage in Authorization headers
+- Added projects, investments, and project_updates tables to database schema
+- Implemented comprehensive admin dashboard APIs:
+  - GET /api/admin/dashboard - Aggregated metrics and recent activity
+  - GET /api/admin/users - User management with filters and pagination
+  - PUT /api/admin/users/:id/kyc - KYC approval/rejection
+  - GET /api/admin/transactions - Transaction list with filters and pagination
+  - POST /api/admin/projects/:id/updates - Post project updates
+  - GET /api/admin/reports/investment-summary - Investment reporting by project
+- All admin endpoints secured with requireAdmin middleware
 
 ## System Architecture
 
@@ -44,6 +54,43 @@ Preferred communication style: Simple, everyday language.
 - Custom components for domain-specific features (InvestmentCard, MetricCard, etc.)
 - Example components for development reference
 - Separation of presentation and container components
+
+### Admin API Endpoints
+
+All admin endpoints require authentication with an admin role.
+
+**Dashboard & Metrics:**
+- `GET /api/admin/dashboard` - Returns platform metrics and recent activity:
+  - Metrics: totalUsers, totalInvestmentsAmount, pendingKycCount, pendingDepositsCount, pendingWithdrawalsCount, totalTokensSold, totalProjects
+  - Recent activity: Last 20 transactions with user details
+
+**User Management:**
+- `GET /api/admin/users?kycStatus=&role=&page=1&limit=50` - List users with filters and pagination
+  - Filters: kycStatus (pending/submitted/approved/rejected), role (investor/admin)
+  - Returns: users array, pagination object (page, limit, total, totalPages)
+- `PUT /api/admin/users/:id/kyc` - Approve or reject KYC
+  - Body: `{ action: "approve" | "reject", adminNotes?: string }`
+
+**Transaction Management:**
+- `GET /api/admin/transactions?type=&status=&from=&to=&page=1&limit=50` - List transactions with filters
+  - Filters: type (deposit/withdrawal/investment/return/fee), status, date range
+  - Returns: transactions array with user details, pagination object
+
+**Deposit/Withdrawal Management:**
+- `GET /api/admin/deposits?status=` - List deposit requests
+- `PUT /api/admin/deposits/:id` - Approve or reject deposit
+  - Body: `{ action: "approve" | "reject", approvedAmount?: string, adminNotes?: string }`
+- `GET /api/admin/withdrawals?status=` - List withdrawal requests
+- `PUT /api/admin/withdrawals/:id` - Approve or reject withdrawal
+  - Body: `{ action: "approve" | "reject", processedAmount?: string, adminNotes?: string }`
+
+**Project Management:**
+- `POST /api/admin/projects/:id/updates` - Post project update
+  - Body: `{ title: string, content: string }`
+
+**Reporting:**
+- `GET /api/admin/reports/investment-summary?from=&to=` - Investment summary by project
+  - Returns: Per-project totals (totalInvestments, tokensSold, investorCount), overall totals
 
 ### Backend Architecture
 
