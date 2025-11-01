@@ -83,6 +83,7 @@ export default function Admin() {
     tokensIssued: "",
     pricePerToken: "",
   });
+  const [projectPhoto, setProjectPhoto] = useState<File | null>(null);
   const [allUsersData, setAllUsersData] = useState<{ users: User[] } | null>(null);
 
   useEffect(() => {
@@ -191,8 +192,24 @@ export default function Admin() {
   });
 
   const createProjectMutation = useMutation({
-    mutationFn: async (project: any) => {
-      const res = await apiRequest("POST", "/api/admin/projects", project);
+    mutationFn: async (data: { form: any; photo: File | null }) => {
+      const formData = new FormData();
+      Object.keys(data.form).forEach(key => {
+        formData.append(key, data.form[key]);
+      });
+      if (data.photo) {
+        formData.append("photo", data.photo);
+      }
+
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/projects", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to create project");
@@ -211,6 +228,7 @@ export default function Admin() {
         tokensIssued: "",
         pricePerToken: "",
       });
+      setProjectPhoto(null);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -697,9 +715,24 @@ export default function Admin() {
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="photo">Project Photo (Optional)</Label>
+                <Input
+                  id="photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/jpg,image/webp"
+                  onChange={(e) => setProjectPhoto(e.target.files?.[0] || null)}
+                  data-testid="input-project-photo"
+                />
+                {projectPhoto && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {projectPhoto.name}
+                  </p>
+                )}
+              </div>
               <Button
                 className="w-full"
-                onClick={() => createProjectMutation.mutate(projectForm)}
+                onClick={() => createProjectMutation.mutate({ form: projectForm, photo: projectPhoto })}
                 disabled={createProjectMutation.isPending || !projectForm.name || !projectForm.tokenSymbol}
                 data-testid="button-submit-project"
               >

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Keypair } from "stellar-sdk";
+import multer from "multer";
 import { db } from "../db";
 import { 
   depositRequests, 
@@ -21,8 +22,25 @@ import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
 import { encrypt } from "../lib/encryption";
+import { uploadFile } from "../lib/supabase";
 
 const router = Router();
+
+// Configure multer for project photo uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 /**
  * GET /api/admin/dashboard
@@ -865,10 +883,12 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
 /**
  * POST /api/admin/projects
  * Create a new investment project with Stellar token configuration (admin only)
+ * Supports multipart/form-data for photo upload
  */
-router.post("/projects", authenticate, requireAdmin, async (req, res) => {
+router.post("/projects", authenticate, requireAdmin, upload.single("photo"), async (req, res) => {
   try {
     const body = createProjectSchema.parse(req.body);
+    const photo = req.file;
 
     // Check if token symbol already exists
     const existingProject = await db
@@ -882,6 +902,15 @@ router.post("/projects", authenticate, requireAdmin, async (req, res) => {
         error: "Token symbol already in use",
         details: "Each project must have a unique token symbol",
       });
+    }
+
+    // Upload photo if provided
+    let photoUrl: string | undefined;
+    if (photo) {
+      const fileName = `${Date.now()}-${photo.originalname}`;
+      const path = `projects/${fileName}`;
+      photoUrl = await uploadFile("project-photos", path, photo.buffer, photo.mimetype);
+      console.log(`Uploaded project photo: ${photoUrl}`);
     }
 
     // Generate Stellar keypairs for issuer and distribution accounts
@@ -903,6 +932,7 @@ router.post("/projects", authenticate, requireAdmin, async (req, res) => {
         tokenSymbol: body.tokenSymbol,
         tokensIssued: body.tokensIssued,
         pricePerToken: body.pricePerToken,
+        images: photoUrl ? [photoUrl] : [],
         stellarAssetCode: body.tokenSymbol,
         stellarIssuerPublicKey: issuerKeypair.publicKey(),
         stellarIssuerSecretKeyEncrypted: encryptedIssuerSecret,
