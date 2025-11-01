@@ -5,6 +5,7 @@ import kycRoutes from "./routes/kyc";
 import walletRoutes from "./routes/wallets";
 import adminRoutes from "./routes/admin";
 import projectRoutes from "./routes/projects";
+import investmentRoutes from "./routes/investments";
 import setupRoutes from "./routes/setup";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -19,6 +20,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register project routes
   app.use("/api/projects", projectRoutes);
+  
+  // Register investment routes
+  app.use("/api/investments", investmentRoutes);
   
   // Register admin routes
   app.use("/api/admin", adminRoutes);

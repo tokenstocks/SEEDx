@@ -48,6 +48,14 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 - **Transaction Hash Display** (Project Detail): "Blockchain Info" card showing asset code, issuer account, distribution account, and all transaction hashes (issuer creation, distribution creation, trustline, minting). All transaction hashes link to Stellar Explorer testnet.
 - **Environment Awareness:** All components use `VITE_STELLAR_HORIZON_URL` environment variable with fallback to testnet, ensuring network flexibility.
 
+### Investment Transactions (Phase 2-B)
+- **Stellar Operations Library** (`server/lib/stellarOps.ts`): Core Stellar SDK functions for trustline management, asset transfers, and transaction recording. Includes `ensureTrustline()`, `transferAsset()`, `recordTransaction()`, and helper functions.
+- **Investment API** (`/api/investments/create`): Authenticated endpoint that handles complete investment flow: validates user balance, ensures trustline, transfers tokens from distribution account, updates database in atomic transaction. Returns transaction hashes and success confirmation.
+- **Portfolio APIs**: GET `/api/investments` (investment history), GET `/api/investments/portfolio` (consolidated token holdings), GET `/api/investments/stats` (investment statistics).
+- **Investment Dialog** (Project Detail Page): NGN-amount-based investment form with real-time token calculation, validation, and transaction submission. Shows blockchain sync status warnings.
+- **Enhanced Portfolio Page**: Tabbed interface showing token holdings (consolidated by project with Stellar Explorer links) and investment history. Four summary cards: Total Invested, Portfolio Value, Gain/Loss, and Projects count.
+- **Database Transactions**: All database mutations wrapped in Drizzle transactions to ensure data integrity. If Stellar transfer succeeds but database fails, detailed error logging enables manual reconciliation.
+
 ## External Dependencies
 
 ### Third-Party Services

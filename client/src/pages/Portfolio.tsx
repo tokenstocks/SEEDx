@@ -5,22 +5,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Package, DollarSign, ArrowLeft } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins } from "lucide-react";
 import { Link } from "wouter";
 
 interface Investment {
   id: string;
   projectId: string;
+  projectName: string;
+  projectTokenSymbol: string;
   amount: string;
   tokensReceived: string;
   currency: string;
   createdAt: string;
-  project: {
-    name: string;
-    tokenSymbol: string;
-    pricePerToken: string;
-    status: string;
-  };
+}
+
+interface TokenHolding {
+  id: string;
+  projectId: string;
+  projectName: string;
+  tokenSymbol: string;
+  tokenAmount: string;
+  pricePerToken: string;
+  stellarAssetCode: string;
+  stellarIssuerPublicKey: string;
+  updatedAt: string;
+}
+
+interface Portfolio {
+  holdings: TokenHolding[];
+  totalValue: string;
+  currency: string;
 }
 
 export default function Portfolio() {
@@ -39,8 +54,23 @@ export default function Portfolio() {
     setUser(JSON.parse(userData));
   }, [setLocation]);
 
-  const { data: investments, isLoading } = useQuery<Investment[]>({
+  const { data: portfolio, isLoading: portfolioLoading } = useQuery<Portfolio>({
+    queryKey: ["/api/investments/portfolio"],
+    enabled: !!user,
+  });
+
+  const { data: investments, isLoading: investmentsLoading } = useQuery<Investment[]>({
     queryKey: ["/api/investments"],
+    enabled: !!user,
+  });
+
+  const { data: stats } = useQuery<{
+    totalInvested: string;
+    totalTokensReceived: string;
+    projectsInvestedIn: number;
+    investmentsCount: number;
+  }>({
+    queryKey: ["/api/investments/stats"],
     enabled: !!user,
   });
 
@@ -49,30 +79,20 @@ export default function Portfolio() {
     return `${symbol}${parseFloat(amount).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const calculateCurrentValue = (tokens: string, pricePerToken: string) => {
-    return parseFloat(tokens) * parseFloat(pricePerToken);
+  const getTotalInvested = () => {
+    return parseFloat(stats?.totalInvested || "0");
   };
 
-  const calculateTotalValue = () => {
-    if (!investments) return 0;
-    return investments.reduce((total, inv) => {
-      return total + calculateCurrentValue(inv.tokensReceived, inv.project.pricePerToken);
-    }, 0);
-  };
-
-  const calculateTotalInvested = () => {
-    if (!investments) return 0;
-    return investments.reduce((total, inv) => total + parseFloat(inv.amount), 0);
+  const getTotalValue = () => {
+    return parseFloat(portfolio?.totalValue || "0");
   };
 
   const calculateGainLoss = () => {
-    const current = calculateTotalValue();
-    const invested = calculateTotalInvested();
-    return current - invested;
+    return getTotalValue() - getTotalInvested();
   };
 
   const calculateGainLossPercentage = () => {
-    const invested = calculateTotalInvested();
+    const invested = getTotalInvested();
     if (invested === 0) return 0;
     const gainLoss = calculateGainLoss();
     return (gainLoss / invested) * 100;
@@ -99,39 +119,39 @@ export default function Portfolio() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
               <DollarSign className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(calculateTotalInvested().toFixed(2))}
+                {formatCurrency(getTotalInvested().toFixed(2))}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Across {investments?.length || 0} {investments?.length === 1 ? 'project' : 'projects'}
+                {stats?.investmentsCount || 0} investments
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Current Value</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(calculateTotalValue().toFixed(2))}
+                {formatCurrency(getTotalValue().toFixed(2))}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Based on current token prices
+                Current market value
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Gain/Loss</CardTitle>
               <Package className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
@@ -144,90 +164,187 @@ export default function Portfolio() {
               </p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Projects</CardTitle>
+              <Coins className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats?.projectsInvestedIn || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Unique projects
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Investments List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Investments</CardTitle>
-            <CardDescription>
-              Your tokenized agricultural asset holdings
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-1/3" />
-                      <Skeleton className="h-3 w-1/4" />
-                    </div>
-                    <Skeleton className="h-4 w-20" />
-                  </div>
-                ))}
-              </div>
-            ) : investments && investments.length > 0 ? (
-              <div className="space-y-4">
-                {investments.map((investment) => {
-                  const currentValue = calculateCurrentValue(
-                    investment.tokensReceived,
-                    investment.project.pricePerToken
-                  );
-                  const gainLoss = currentValue - parseFloat(investment.amount);
-                  const gainLossPercent = (gainLoss / parseFloat(investment.amount)) * 100;
+        {/* Token Holdings & Investment History */}
+        <Tabs defaultValue="holdings" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="holdings" data-testid="tab-holdings">Token Holdings</TabsTrigger>
+            <TabsTrigger value="history" data-testid="tab-history">Investment History</TabsTrigger>
+          </TabsList>
 
-                  return (
-                    <div
-                      key={investment.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
-                      data-testid={`investment-${investment.id}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center">
-                          <Package className="w-6 h-6 text-primary" />
+          {/* Token Holdings Tab */}
+          <TabsContent value="holdings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Token Holdings</CardTitle>
+                <CardDescription>
+                  Consolidated view of your token holdings by project
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {portfolioLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-1/4" />
                         </div>
-                        <div>
-                          <h4 className="font-semibold">{investment.project.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {parseFloat(investment.tokensReceived).toLocaleString()} {investment.project.tokenSymbol}
-                          </p>
-                          <Badge variant="outline" className="mt-1 capitalize">
-                            {investment.project.status}
-                          </Badge>
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : portfolio && portfolio.holdings.length > 0 ? (
+                  <div className="space-y-4">
+                    {portfolio.holdings.map((holding) => {
+                      const currentValue = parseFloat(holding.tokenAmount) * parseFloat(holding.pricePerToken);
+                      return (
+                        <div
+                          key={holding.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
+                          data-testid={`holding-${holding.projectId}`}
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
+                              <Coins className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold">{holding.projectName}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {parseFloat(holding.tokenAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 7 })} {holding.tokenSymbol}
+                              </p>
+                              {holding.stellarAssetCode && (
+                                <div className="mt-1 flex items-center gap-1">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {holding.stellarAssetCode}
+                                  </Badge>
+                                  <a
+                                    href={`https://stellar.expert/explorer/testnet/account/${holding.stellarIssuerPublicKey}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    View on Stellar
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-semibold">
+                              {formatCurrency(currentValue.toFixed(2))}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              @ {formatCurrency(holding.pricePerToken)}/token
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Coins className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No token holdings yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Start investing in agricultural projects to receive tokens
+                    </p>
+                    <Link href="/projects" data-testid="link-browse-projects-holdings">
+                      <Button>Browse Projects</Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Investment History Tab */}
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Investment History</CardTitle>
+                <CardDescription>
+                  Complete history of all your investments
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {investmentsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-1/4" />
+                        </div>
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : investments && investments.length > 0 ? (
+                  <div className="space-y-3">
+                    {investments.map((investment) => (
+                      <div
+                        key={investment.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                        data-testid={`investment-${investment.id}`}
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
+                            <Package className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium">{investment.projectName}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(investment.createdAt).toLocaleDateString()} at {new Date(investment.createdAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-semibold">
+                            {formatCurrency(investment.amount)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            +{parseFloat(investment.tokensReceived).toLocaleString(undefined, { maximumFractionDigits: 2 })} {investment.projectTokenSymbol}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {formatCurrency(currentValue.toFixed(2))}
-                        </div>
-                        <div className={`text-sm ${gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {gainLoss >= 0 ? '+' : ''}{formatCurrency(gainLoss.toFixed(2))}
-                          <span className="ml-1">({gainLoss >= 0 ? '+' : ''}{gainLossPercent.toFixed(2)}%)</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Invested: {formatCurrency(investment.amount)}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No investments yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start investing in agricultural projects to build your portfolio
-                </p>
-                <Link href="/projects" data-testid="link-browse-projects">
-                  <Button>Browse Projects</Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No investments yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Start investing in agricultural projects to build your portfolio
+                    </p>
+                    <Link href="/projects" data-testid="link-browse-projects-history">
+                      <Button>Browse Projects</Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

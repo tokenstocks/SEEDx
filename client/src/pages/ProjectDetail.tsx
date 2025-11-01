@@ -45,8 +45,7 @@ export default function ProjectDetail() {
   const { toast} = useToast();
   const [user, setUser] = useState<any>(null);
   const [investDialogOpen, setInvestDialogOpen] = useState(false);
-  const [tokenAmount, setTokenAmount] = useState("");
-  const [currency, setCurrency] = useState("NGN");
+  const [investmentAmount, setInvestmentAmount] = useState("");
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -69,23 +68,24 @@ export default function ProjectDetail() {
   });
 
   const investMutation = useMutation({
-    mutationFn: async (data: { tokenAmount: string; currency: string }) => {
-      const res = await apiRequest("POST", `/api/projects/${params?.id}/invest`, {
-        tokenAmount: data.tokenAmount,
-        currency: data.currency,
+    mutationFn: async (data: { amount: string; projectId: string }) => {
+      const res = await apiRequest("POST", "/api/investments/create", {
+        amount: data.amount,
+        projectId: data.projectId,
       });
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       toast({
         title: "Investment successful!",
-        description: "Your investment has been processed. View your portfolio to see your tokens.",
+        description: data.message || "Your investment has been processed. View your portfolio to see your tokens.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", params?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/investments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/investments/portfolio"] });
       setInvestDialogOpen(false);
-      setTokenAmount("");
+      setInvestmentAmount("");
     },
     onError: (error: any) => {
       toast({
@@ -147,9 +147,9 @@ export default function ProjectDetail() {
     return Math.min(percentage, 100).toFixed(1);
   };
 
-  const calculateTotalCost = () => {
-    if (!tokenAmount || !project) return 0;
-    return parseFloat(tokenAmount) * parseFloat(project.pricePerToken);
+  const calculateTokensToReceive = () => {
+    if (!investmentAmount || !project) return 0;
+    return parseFloat(investmentAmount) / parseFloat(project.pricePerToken);
   };
 
   const handleInvest = () => {
@@ -576,52 +576,73 @@ export default function ProjectDetail() {
             <DialogHeader>
               <DialogTitle>Invest in {project.name}</DialogTitle>
               <DialogDescription>
-                Enter the number of tokens you want to purchase
+                Enter the amount you want to invest (minimum ₦100)
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="tokenAmount">Number of Tokens</Label>
-                <Input
-                  id="tokenAmount"
-                  type="number"
-                  placeholder="100"
-                  value={tokenAmount}
-                  onChange={(e) => setTokenAmount(e.target.value)}
-                  min="1"
-                  max={tokensAvailable}
-                  data-testid="input-tokenAmount"
-                />
+                <Label htmlFor="investmentAmount">Investment Amount (NGN)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    ₦
+                  </span>
+                  <Input
+                    id="investmentAmount"
+                    type="number"
+                    placeholder="1000"
+                    value={investmentAmount}
+                    onChange={(e) => setInvestmentAmount(e.target.value)}
+                    min="100"
+                    className="pl-8"
+                    data-testid="input-investmentAmount"
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Maximum: {tokensAvailable.toLocaleString()} tokens
+                  Minimum investment: ₦100
                 </p>
               </div>
 
-              {tokenAmount && (
+              {investmentAmount && parseFloat(investmentAmount) >= 100 && (
                 <div className="p-4 bg-muted rounded-lg space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Tokens</span>
-                    <span className="font-medium">{parseFloat(tokenAmount).toLocaleString()}</span>
+                    <span className="text-sm">Investment Amount</span>
+                    <span className="font-medium">{formatCurrency(investmentAmount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Price per token</span>
+                    <span className="text-sm">Price per Token</span>
                     <span className="font-medium">{formatCurrency(project.pricePerToken)}</span>
                   </div>
                   <div className="border-t pt-2 flex justify-between">
-                    <span className="font-semibold">Total Cost</span>
-                    <span className="text-lg font-bold">{formatCurrency(calculateTotalCost().toFixed(2))}</span>
+                    <span className="font-semibold">Tokens You'll Receive</span>
+                    <span className="text-lg font-bold">{calculateTokensToReceive().toFixed(2)} {project.tokenSymbol}</span>
                   </div>
+                  {calculateTokensToReceive() > tokensAvailable && (
+                    <p className="text-xs text-destructive">
+                      Only {tokensAvailable.toFixed(2)} tokens available
+                    </p>
+                  )}
                 </div>
               )}
 
               <Button
                 className="w-full"
-                onClick={() => investMutation.mutate({ tokenAmount, currency })}
-                disabled={!tokenAmount || investMutation.isPending || parseFloat(tokenAmount) > tokensAvailable}
+                onClick={() => investMutation.mutate({ amount: investmentAmount, projectId: params!.id })}
+                disabled={
+                  !investmentAmount || 
+                  investMutation.isPending || 
+                  parseFloat(investmentAmount) < 100 ||
+                  calculateTokensToReceive() > tokensAvailable
+                }
                 data-testid="button-confirm-invest"
               >
-                {investMutation.isPending ? "Processing..." : "Confirm Investment"}
+                {investMutation.isPending ? "Processing Investment..." : "Confirm Investment"}
               </Button>
+
+              {!project.onChainSynced && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Note: This project's tokens haven't been minted on blockchain yet. Please check back later or contact support.
+                </p>
+              )}
             </div>
           </DialogContent>
         </Dialog>
