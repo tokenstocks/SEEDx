@@ -7,6 +7,7 @@ import { generateToken } from "../lib/jwt";
 import { encrypt } from "../lib/encryption";
 import { authMiddleware } from "../middleware/auth";
 import { eq, sql } from "drizzle-orm";
+import { createAndFundAccount } from "../lib/stellarAccount";
 
 const router = Router();
 const SALT_ROUNDS = 12;
@@ -75,6 +76,20 @@ router.post("/register", async (req: Request, res: Response) => {
       cryptoWalletPublicKey,
       cryptoWalletSecretEncrypted,
     });
+
+    // Activate wallet account on Stellar testnet (async, non-blocking)
+    // If this fails, the user can still use the platform - account will be activated later
+    createAndFundAccount(cryptoWalletPublicKey, "2")
+      .then((result) => {
+        if (result.success) {
+          console.log(`✅ Wallet activated for user ${newUser.email}: ${result.txHash || 'already exists'}`);
+        } else {
+          console.warn(`⚠️  Failed to activate wallet for user ${newUser.email}: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error(`❌ Error activating wallet for user ${newUser.email}:`, error);
+      });
 
     // Generate JWT token
     const token = generateToken({

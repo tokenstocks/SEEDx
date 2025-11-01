@@ -4,6 +4,8 @@ import { users, wallets, depositRequests, withdrawalRequests, transactions, proj
 import { sql, count, eq } from "drizzle-orm";
 import stellarConfig from "../lib/stellarConfig";
 import { authMiddleware, requireAdmin } from "../middleware/auth";
+import { accountExists, getAccountBalances } from "../lib/stellarAccount";
+import { verifyTokenExists, getTokenBalance } from "../lib/stellarToken";
 
 const router = Router();
 
@@ -518,6 +520,163 @@ router.get("/verify-all", async (req, res) => {
     res.status(500).json({
       status: "error",
       message: "Failed to run verification checks",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
+ * GET /api/setup/verify-onchain
+ * Verify on-chain status of all projects - checks accounts and tokens on Stellar testnet
+ * Requires admin authentication
+ */
+router.get("/verify-onchain", async (req, res) => {
+  try {
+    // Get all projects from database
+    const allProjects = await db.select().from(projects);
+
+    if (allProjects.length === 0) {
+      return res.json({
+        status: "success",
+        message: "No projects found - nothing to verify on-chain",
+        summary: {
+          totalProjects: 0,
+          syncedProjects: 0,
+          unsyncedProjects: 0,
+        },
+        projects: [],
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Verify each project's on-chain status
+    const projectStatuses = await Promise.all(
+      allProjects.map(async (project) => {
+        const status: any = {
+          projectId: project.id,
+          projectName: project.name,
+          tokenSymbol: project.tokenSymbol,
+          dbSyncStatus: project.onChainSynced,
+          issuerPublicKey: project.stellarIssuerPublicKey,
+          distributionPublicKey: project.stellarDistributionPublicKey,
+          onChainStatus: {
+            issuerAccountExists: false,
+            distributionAccountExists: false,
+            trustlineEstablished: false,
+            tokenMinted: false,
+            tokenBalance: null,
+          },
+          transactionHashes: {
+            issuerTx: project.stellarIssuerTx,
+            distributionTx: project.stellarDistributionTx,
+            trustlineTx: project.stellarTrustlineTx,
+            mintTx: project.stellarMintTx,
+          },
+          issues: [] as string[],
+        };
+
+        // Check if issuer account exists on Stellar
+        if (project.stellarIssuerPublicKey) {
+          try {
+            status.onChainStatus.issuerAccountExists = await accountExists(
+              project.stellarIssuerPublicKey
+            );
+          } catch (error: any) {
+            status.issues.push(`Failed to check issuer account: ${error.message}`);
+          }
+        } else {
+          status.issues.push("No issuer public key configured");
+        }
+
+        // Check if distribution account exists on Stellar
+        if (project.stellarDistributionPublicKey) {
+          try {
+            status.onChainStatus.distributionAccountExists = await accountExists(
+              project.stellarDistributionPublicKey
+            );
+          } catch (error: any) {
+            status.issues.push(`Failed to check distribution account: ${error.message}`);
+          }
+        } else {
+          status.issues.push("No distribution public key configured");
+        }
+
+        // Check trustline and token balance if distribution account exists
+        if (
+          status.onChainStatus.distributionAccountExists &&
+          project.stellarIssuerPublicKey &&
+          project.stellarDistributionPublicKey &&
+          project.stellarAssetCode
+        ) {
+          try {
+            const tokenExists = await verifyTokenExists(
+              project.stellarDistributionPublicKey,
+              project.stellarAssetCode,
+              project.stellarIssuerPublicKey
+            );
+            status.onChainStatus.trustlineEstablished = tokenExists;
+
+            if (tokenExists) {
+              const balance = await getTokenBalance(
+                project.stellarDistributionPublicKey,
+                project.stellarAssetCode,
+                project.stellarIssuerPublicKey
+              );
+              status.onChainStatus.tokenBalance = balance;
+              status.onChainStatus.tokenMinted = balance && parseFloat(balance) > 0;
+            }
+          } catch (error: any) {
+            status.issues.push(`Failed to verify token: ${error.message}`);
+          }
+        }
+
+        // Overall validation
+        const fullyOnChain =
+          status.onChainStatus.issuerAccountExists &&
+          status.onChainStatus.distributionAccountExists &&
+          status.onChainStatus.trustlineEstablished &&
+          status.onChainStatus.tokenMinted;
+
+        status.fullySynced = fullyOnChain;
+        status.syncStatusMatch = project.onChainSynced === fullyOnChain;
+
+        if (!status.syncStatusMatch) {
+          status.issues.push(
+            `Database sync status (${project.onChainSynced}) doesn't match on-chain reality (${fullyOnChain})`
+          );
+        }
+
+        return status;
+      })
+    );
+
+    // Calculate summary
+    const syncedProjects = projectStatuses.filter((p) => p.fullySynced).length;
+    const unsyncedProjects = projectStatuses.length - syncedProjects;
+    const allSynced = syncedProjects === projectStatuses.length;
+
+    res.json({
+      status: allSynced ? "success" : "warning",
+      message: allSynced
+        ? `All ${projectStatuses.length} projects are fully synced on-chain`
+        : `${unsyncedProjects}/${projectStatuses.length} projects have on-chain issues`,
+      summary: {
+        totalProjects: projectStatuses.length,
+        syncedProjects,
+        unsyncedProjects,
+        allSynced,
+      },
+      projects: projectStatuses,
+      network: stellarConfig.network,
+      horizonUrl: stellarConfig.horizonUrl,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("On-chain verification error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to verify on-chain status",
       error: error.message,
       timestamp: new Date().toISOString(),
     });

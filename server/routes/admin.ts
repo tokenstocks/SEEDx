@@ -11,6 +11,7 @@ import {
   projects,
   investments,
   projectUpdates,
+  projectTokenLedger,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
@@ -23,6 +24,7 @@ import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
 import { encrypt } from "../lib/encryption";
 import { uploadFile } from "../lib/supabase";
+import { createProjectToken } from "../lib/stellarToken";
 
 const router = Router();
 
@@ -948,8 +950,85 @@ router.post("/projects", authenticate, requireAdmin, upload.single("photo"), asy
     console.log(`Issuer: ${issuerKeypair.publicKey()}`);
     console.log(`Distribution: ${distributionKeypair.publicKey()}`);
 
+    // Mint tokens on Stellar testnet (async)
+    createProjectToken({
+      projectId: project.id,
+      assetCode: project.tokenSymbol,
+      tokensIssued: project.tokensIssued,
+      issuerPublicKey: issuerKeypair.publicKey(),
+      issuerSecretKeyEncrypted: encryptedIssuerSecret,
+      distributionPublicKey: distributionKeypair.publicKey(),
+      distributionSecretKeyEncrypted: encryptedDistributionSecret,
+    })
+      .then(async (result) => {
+        if (result.success) {
+          console.log(`✅ Token ${project.tokenSymbol} minted on-chain successfully!`);
+          
+          // Update project with transaction hashes
+          await db
+            .update(projects)
+            .set({
+              stellarIssuerTx: result.issuerAccountTxHash,
+              stellarDistributionTx: result.distributionAccountTxHash,
+              stellarTrustlineTx: result.trustlineTxHash,
+              stellarMintTx: result.mintTxHash,
+              onChainSynced: true,
+              updatedAt: new Date(),
+            })
+            .where(eq(projects.id, project.id));
+
+          // Record "create" ledger entry
+          if (result.issuerAccountTxHash) {
+            await db.insert(projectTokenLedger).values({
+              projectId: project.id,
+              action: "create",
+              tokenAmount: "0",
+              stellarTransactionHash: result.issuerAccountTxHash,
+              notes: "Issuer account created on Stellar testnet",
+            });
+          }
+
+          // Record "mint" ledger entry
+          if (result.mintTxHash) {
+            await db.insert(projectTokenLedger).values({
+              projectId: project.id,
+              action: "mint",
+              tokenAmount: project.tokensIssued,
+              stellarTransactionHash: result.mintTxHash,
+              notes: `Initial token minting: ${project.tokensIssued} ${project.tokenSymbol}`,
+            });
+          }
+        } else {
+          console.error(`❌ Failed to mint token ${project.tokenSymbol}:`, result.error);
+          console.error(`   Failed at step: ${result.step}`);
+          
+          // Mark as not synced, but keep the project
+          await db
+            .update(projects)
+            .set({
+              onChainSynced: false,
+              updatedAt: new Date(),
+            })
+            .where(eq(projects.id, project.id));
+        }
+      })
+      .catch((error) => {
+        console.error(`❌ Error minting token ${project.tokenSymbol}:`, error);
+        
+        // Mark as not synced on error
+        db.update(projects)
+          .set({
+            onChainSynced: false,
+            updatedAt: new Date(),
+          })
+          .where(eq(projects.id, project.id))
+          .catch((dbError) => {
+            console.error("Failed to update project sync status:", dbError);
+          });
+      });
+
     res.json({
-      message: "Project created successfully",
+      message: "Project created successfully - token minting in progress",
       project: {
         id: project.id,
         name: project.name,
@@ -962,6 +1041,7 @@ router.post("/projects", authenticate, requireAdmin, upload.single("photo"), asy
         status: project.status,
         stellarIssuerPublicKey: project.stellarIssuerPublicKey,
         stellarDistributionPublicKey: project.stellarDistributionPublicKey,
+        onChainSynced: false, // Will be updated asynchronously
         createdAt: project.createdAt,
       },
     });
