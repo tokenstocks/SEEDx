@@ -1,0 +1,36 @@
+Context: Frontend is Next.js with Tailwind and React Query. Use Supabase client on frontend only to fetch public KYC URLs (if public) and for optional static assets. Backend APIs handle protected operations.
+
+Goal: create UI pages for user registration/login, KYC upload, wallet funding flow (initiate & confirm), project listing & detail, invest flow, portfolio, transactions, and simple notifications.
+
+Deliverables (web):
+1. Authentication:
+   - Sign up & Login forms wired to backend endpoints
+   - Store JWT in httpOnly cookie (server should set cookie) or use localStorage (prefer httpOnly cookie)
+2. KYC:
+   - KYC upload page (form with three file uploads)
+   - Use fetch to POST multipart/form-data to /api/users/kyc
+3. Wallet:
+   - Wallet page with balances (GET /api/wallets)
+   - Fund Wallet modal:
+     - Bank transfer: show bank details and generated reference
+     - Crypto transfer: show Stellar address and memo
+     - “I have paid/sent” button to call /api/wallets/deposit/confirm with optional proof upload
+4. Projects:
+   - Projects list page with filters
+   - Project detail page with invest calculator (enter tokens, show total cost)
+   - Invest button calls /api/projects/:id/invest and shows success/error states
+5. Portfolio:
+   - Show investments and current values (use project.token_price and expected ROI; for live pricing just use stored project.token_price)
+6. Admin UI (basic):
+   - Admin login and dashboard stub to view metrics via /api/admin/dashboard
+   - Pages to approve deposits, withdrawals, and KYC (use admin endpoints)
+7. UX details:
+   - Loading states, toasts for success/error, basic responsive layout mobile-first, Naira format (₦)
+8. Wiring:
+   - Use react-query for data fetching and caching
+   - Use @supabase/supabase-js only for public file URLs or if you choose to implement Supabase Auth (but primary auth uses backend JWT)
+9. Provide example fetch calls, auth flow, and error handling samples.
+
+Acceptance criteria:
+- Frontend pages developed and wired to backend endpoints for happy-path flows: register → upload KYC → initiate deposit → confirm deposit → invest → view portfolio
+Next step: tests, CI, and deployment (Phase 8).
