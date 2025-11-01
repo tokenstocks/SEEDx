@@ -1,0 +1,124 @@
+PHASE 2-A IMPLEMENTATION REQUEST — ON-CHAIN PROJECT TOKEN MINTING & WALLET ACTIVATION
+
+We are moving from cosmetic Stellar integration to real on-chain functionality.
+Build the following for testnet only using the existing stellarConfig.ts and hybrid wallet structure.
+
+1️⃣ Account Activation Flow
+
+Purpose: Every project and user wallet should exist as a funded account on the Stellar testnet.
+
+Implement server/lib/stellarAccount.ts:
+
+createAndFundAccount(publicKey, startingBalance = "2")
+
+Uses the Admin wallet as the funding source.
+
+Submits a CreateAccount operation.
+
+Returns { txHash, success: true/false }.
+
+Handle “already exists” gracefully (don’t fail).
+
+Extend registration flow:
+
+After wallet keypair creation, call createAndFundAccount to activate the account.
+
+Extend project creation flow:
+
+After issuer/distribution keypair generation, call createAndFundAccount for both.
+
+2️⃣ Project Token Minting
+
+Purpose: When an admin creates a project, automatically mint its asset on Stellar.
+
+Implement server/lib/stellarToken.ts:
+
+createProjectToken({ projectId, assetCode, issuerKeys, distributionKeys })
+
+Create a trustline: distribution → issuer.
+
+Send custom asset from issuer → distribution.
+
+Lock issuer account after minting (optional for now).
+
+Store and return TX hashes for audit.
+
+Update /api/admin/projects POST:
+
+After creating project in DB, call createProjectToken.
+
+Save TX hashes to projects table (stellarIssuerTx, stellarMintTx fields).
+
+3️⃣ Transaction Recording
+
+Purpose: Preserve full audit trail.
+
+Extend projectTokenLedger to include:
+
+action: "create" | "mint"
+
+stellarTransactionHash
+
+notes
+
+Every on-chain operation should append a ledger entry.
+
+4️⃣ Verification Endpoint
+
+Add GET /api/setup/verify-onchain
+
+Checks for each project:
+
+Issuer & distribution accounts exist on Stellar (via Horizon)
+
+Trustline established
+
+Token visible in Horizon response
+
+Returns summary of all projects and statuses.
+
+5️⃣ Testing & Safety
+
+Use only https://horizon-testnet.stellar.org.
+
+Do not touch mainnet yet.
+
+Include robust error handling and logging for Horizon API calls.
+
+Add fallback so if Horizon API fails, system still creates DB entries but marks onChainSynced: false.
+
+Expected Outcomes
+
+✅ Project creation now creates real on-chain Stellar assets
+✅ User & project wallets exist as active accounts on the testnet
+✅ All actions are auditable in projectTokenLedger
+✅ Admin can confirm everything using /api/setup/verify-onchain
+
+Deliverables
+
+server/lib/stellarAccount.ts
+
+server/lib/stellarToken.ts
+
+Updated /api/admin/projects route
+
+GET /api/setup/verify-onchain
+
+Documentation updates in replit.md
+
+Let’s proceed carefully on testnet.
+Once this is verified, we’ll move to Phase 2-B (user trustlines + token distribution during investment).
+
+💡 Assessment of This Step
+
+This milestone:
+
+Activates the full Stellar testnet pipeline.
+
+Keeps your system modular (stellarAccount + stellarToken libs).
+
+Leaves room for LP and investor wallet logic later.
+
+Is testnet-only, so zero risk to production assets.
+
+Once this is done, we’ll have real tokens existing on Stellar and can confirm them via Stellar Expert.
