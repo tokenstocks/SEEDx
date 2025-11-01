@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -15,6 +15,7 @@ export const depositStatusEnum = pgEnum("deposit_status", ["pending", "approved"
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "approved", "rejected", "completed"]);
 export const destinationTypeEnum = pgEnum("destination_type", ["bank_account", "crypto_wallet"]);
 export const projectStatusEnum = pgEnum("project_status", ["draft", "active", "funded", "completed", "cancelled"]);
+export const tokenLedgerActionEnum = pgEnum("token_ledger_action", ["mint", "transfer", "burn", "redemption"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -31,6 +32,7 @@ export const users = pgTable("users", {
     selfie?: string;
     addressProof?: string;
   }>(),
+  isSuspended: boolean("is_suspended").notNull().default(false),
   stellarPublicKey: text("stellar_public_key"),
   stellarSecretKeyEncrypted: text("stellar_secret_key_encrypted"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -108,10 +110,15 @@ export const projects = pgTable("projects", {
   location: text("location").notNull(),
   targetAmount: decimal("target_amount", { precision: 18, scale: 2 }).notNull(),
   raisedAmount: decimal("raised_amount", { precision: 18, scale: 2 }).notNull().default("0.00"),
-  tokenSymbol: text("token_symbol").notNull(),
+  tokenSymbol: text("token_symbol").notNull().unique(),
   tokensIssued: decimal("tokens_issued", { precision: 18, scale: 2 }).notNull(),
   tokensSold: decimal("tokens_sold", { precision: 18, scale: 2 }).notNull().default("0.00"),
   pricePerToken: decimal("price_per_token", { precision: 18, scale: 2 }).notNull(),
+  stellarAssetCode: text("stellar_asset_code"),
+  stellarIssuerPublicKey: text("stellar_issuer_public_key"),
+  stellarIssuerSecretKeyEncrypted: text("stellar_issuer_secret_key_encrypted"),
+  stellarDistributionPublicKey: text("stellar_distribution_public_key"),
+  stellarDistributionSecretKeyEncrypted: text("stellar_distribution_secret_key_encrypted"),
   status: projectStatusEnum("status").notNull().default("draft"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
@@ -143,6 +150,28 @@ export const projectUpdates = pgTable("project_updates", {
   postedBy: uuid("posted_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Project token balances table - tracks user holdings of project-specific tokens
+export const projectTokenBalances = pgTable("project_token_balances", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  tokenAmount: decimal("token_amount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Project token ledger table - audit trail for all token movements
+export const projectTokenLedger = pgTable("project_token_ledger", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  action: tokenLedgerActionEnum("action").notNull(),
+  tokenAmount: decimal("token_amount", { precision: 18, scale: 2 }).notNull(),
+  stellarTransactionHash: text("stellar_transaction_hash"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations
@@ -190,6 +219,28 @@ export const projectUpdatesRelations = relations(projectUpdates, ({ one }) => ({
   }),
   author: one(users, {
     fields: [projectUpdates.postedBy],
+    references: [users.id],
+  }),
+}));
+
+export const projectTokenBalancesRelations = relations(projectTokenBalances, ({ one }) => ({
+  user: one(users, {
+    fields: [projectTokenBalances.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [projectTokenBalances.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const projectTokenLedgerRelations = relations(projectTokenLedger, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectTokenLedger.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [projectTokenLedger.userId],
     references: [users.id],
   }),
 }));
@@ -316,6 +367,34 @@ export const updateKycStatusSchema = z.object({
   adminNotes: z.string().optional(),
 });
 
+export const insertProjectTokenBalanceSchema = createInsertSchema(projectTokenBalances).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProjectTokenLedgerSchema = createInsertSchema(projectTokenLedger).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const createProjectSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  location: z.string().min(1),
+  targetAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  tokenSymbol: z.string().min(1).max(12).regex(/^[A-Z0-9]+$/, "Token symbol must be uppercase alphanumeric"),
+  tokensIssued: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  pricePerToken: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const suspendUserSchema = z.object({
+  isSuspended: z.boolean(),
+  reason: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -341,3 +420,9 @@ export type InsertInvestment = z.infer<typeof insertInvestmentSchema>;
 export type ProjectUpdate = typeof projectUpdates.$inferSelect;
 export type InsertProjectUpdate = z.infer<typeof insertProjectUpdateSchema>;
 export type UpdateKycStatus = z.infer<typeof updateKycStatusSchema>;
+export type ProjectTokenBalance = typeof projectTokenBalances.$inferSelect;
+export type InsertProjectTokenBalance = z.infer<typeof insertProjectTokenBalanceSchema>;
+export type ProjectTokenLedger = typeof projectTokenLedger.$inferSelect;
+export type InsertProjectTokenLedger = z.infer<typeof insertProjectTokenLedgerSchema>;
+export type CreateProject = z.infer<typeof createProjectSchema>;
+export type SuspendUser = z.infer<typeof suspendUserSchema>;
