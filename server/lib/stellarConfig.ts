@@ -1,4 +1,4 @@
-import { Networks, Server } from "stellar-sdk";
+import * as StellarSdk from "stellar-sdk";
 
 /**
  * Stellar Network Configuration
@@ -19,8 +19,8 @@ if (STELLAR_NETWORK !== "testnet" && STELLAR_NETWORK !== "mainnet") {
 // Network passphrase
 export const NETWORK_PASSPHRASE = 
   STELLAR_NETWORK === "testnet" 
-    ? Networks.TESTNET 
-    : Networks.PUBLIC;
+    ? StellarSdk.Networks.TESTNET 
+    : StellarSdk.Networks.PUBLIC;
 
 // Horizon server URL
 export const HORIZON_URL = 
@@ -29,7 +29,7 @@ export const HORIZON_URL =
     : "https://horizon.stellar.org";
 
 // Create Horizon server instance
-export const horizonServer = new Server(HORIZON_URL);
+export const horizonServer = new StellarSdk.Horizon.Server(HORIZON_URL);
 
 // Export current network type
 export const currentNetwork: StellarNetworkType = STELLAR_NETWORK;
