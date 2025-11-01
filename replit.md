@@ -104,6 +104,18 @@ All admin endpoints require authentication with an admin role.
 - `GET /api/admin/reports/investment-summary?from=&to=` - Investment summary by project
   - Returns: Per-project totals (totalInvestments, tokensSold, investorCount), overall totals
 
+**Phase 1 Setup Verification (Admin Only):**
+- `GET /api/setup/verify-database` - Validates all required database tables exist
+  - Returns: status, tables object (users, wallets, depositRequests, withdrawalRequests, transactions, projects, investments)
+- `GET /api/setup/verify-wallets` - Confirms one hybrid wallet per user
+  - Returns: status, summary (totalUsers, totalWallets, validUsers), user validations
+- `GET /api/setup/verify-platform-wallets` - Shows LP and Admin wallet status
+  - Returns: status, platformWallets object (lp, admin) with validation status
+- `GET /api/setup/verify-network` - Confirms Stellar network configuration
+  - Returns: status, configuration (network, isTestnet, horizonUrl, networkPassphrase)
+- `GET /api/setup/verify-all` - Combined verification report
+  - Returns: status, summary (allChecksPass, detailed flags), complete diagnostic report
+
 ### Backend Architecture
 
 **Runtime & Framework:**
