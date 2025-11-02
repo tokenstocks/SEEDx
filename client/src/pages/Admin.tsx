@@ -613,7 +613,7 @@ export default function Admin() {
                 {walletsData && walletsData.wallets.length > 0 ? (
                   <div className="space-y-4">
                     {walletsData.wallets.map((wallet) => {
-                      const cryptoBalances = JSON.parse(wallet.cryptoBalances || "{}");
+                      const cryptoBalances = (wallet.cryptoBalances || {}) as Record<string, string>;
                       return (
                         <div key={wallet.id} className="p-4 border rounded-lg" data-testid={`wallet-${wallet.id}`}>
                           <div className="flex items-start justify-between mb-3">
