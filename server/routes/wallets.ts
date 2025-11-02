@@ -238,7 +238,7 @@ router.post("/deposit/initiate", authenticate, async (req, res) => {
         instructions: {
           stellarAddress,
           memo,
-          asset: body.currency === "XLM" ? "XLM (native)" : `${body.currency} (issued asset)`,
+          asset: body.currency === "XLM" ? "XLM (native)" : body.currency === "USDC" ? "USDC (issued asset)" : `${body.currency} (issued asset)`,
           note: `Send ${body.currency} to the address above with the memo. The memo is required to identify your deposit.`,
         },
       });
@@ -537,8 +537,166 @@ router.post("/withdraw", authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/wallets/blockchain-balances
+ * Query Stellar network for ALL balances (NGNTS, USDC, XLM) - Blockchain is source of truth
+ * Also syncs these balances to database for integrity
+ */
+router.get("/blockchain-balances", authenticate, async (req, res) => {
+  try {
+    // Disable caching to ensure fresh blockchain data
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
+    // @ts-ignore - userId is added by auth middleware
+    const userId = req.userId as string;
+
+    // Get user's wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId));
+
+    if (!userWallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    if (!userWallet.cryptoWalletPublicKey) {
+      return res.json({ 
+        balances: {
+          NGNTS: "0",
+          USDC: "0", 
+          XLM: "0"
+        },
+        message: "Wallet not activated on blockchain",
+      });
+    }
+
+    // Get Treasury wallet to identify NGNTS issuer
+    const [treasuryWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "treasury"));
+
+    if (!treasuryWallet) {
+      return res.status(500).json({ error: "Treasury wallet not configured" });
+    }
+
+    // Query Horizon API for account balances (SOURCE OF TRUTH)
+    const horizonUrl = process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+    const horizonServer = new StellarSdk.Horizon.Server(horizonUrl);
+    const network = process.env.STELLAR_NETWORK || "testnet";
+
+    try {
+      const account = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey);
+      
+      // Extract balances from blockchain
+      let ngntsBalance = "0";
+      let usdcBalance = "0";
+      let xlmBalance = "0";
+
+      account.balances.forEach((balance) => {
+        if (balance.asset_type === "native") {
+          xlmBalance = balance.balance;
+        } else if (balance.asset_type !== "liquidity_pool_shares") {
+          if (balance.asset_code === "NGNTS" && balance.asset_issuer === treasuryWallet.publicKey) {
+            ngntsBalance = balance.balance;
+          } else if (balance.asset_code === "USDC") {
+            usdcBalance = balance.balance;
+          }
+        }
+      });
+
+      // SYNC BLOCKCHAIN BALANCES TO DATABASE FOR INTEGRITY
+      // Only update if balances have changed to avoid hammering the database
+      const existingBalances = userWallet.cryptoBalances as any || {};
+      const balancesChanged = 
+        existingBalances.NGNTS !== ngntsBalance ||
+        existingBalances.USDC !== usdcBalance ||
+        existingBalances.XLM !== xlmBalance;
+
+      if (balancesChanged) {
+        await db
+          .update(wallets)
+          .set({
+            cryptoBalances: {
+              NGNTS: ngntsBalance,
+              USDC: usdcBalance,
+              XLM: xlmBalance,
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.userId, userId));
+      }
+
+      return res.json({
+        balances: {
+          NGNTS: ngntsBalance,
+          USDC: usdcBalance,
+          XLM: xlmBalance,
+        },
+        userPublicKey: userWallet.cryptoWalletPublicKey,
+        network,
+        explorerUrl: network === "testnet" 
+          ? `https://stellar.expert/explorer/testnet/account/${userWallet.cryptoWalletPublicKey}`
+          : `https://stellar.expert/explorer/public/account/${userWallet.cryptoWalletPublicKey}`,
+        ngntsIssuer: treasuryWallet.publicKey,
+        message: balancesChanged 
+          ? "Balances queried from Stellar blockchain and synced to database"
+          : "Balances queried from Stellar blockchain (no changes)",
+      });
+    } catch (error: any) {
+      // Handle unfunded/non-existent account (404)
+      if (error?.response?.status === 404 || error.name === "NotFoundError") {
+        console.log(`[Blockchain] Account not activated: ${userWallet.cryptoWalletPublicKey}`);
+        return res.json({
+          balances: {
+            NGNTS: "0",
+            USDC: "0",
+            XLM: "0"
+          },
+          userPublicKey: userWallet.cryptoWalletPublicKey,
+          network,
+          explorerUrl: network === "testnet" 
+            ? `https://stellar.expert/explorer/testnet/account/${userWallet.cryptoWalletPublicKey}`
+            : `https://stellar.expert/explorer/public/account/${userWallet.cryptoWalletPublicKey}`,
+          message: "Account not yet activated on Stellar network",
+        });
+      }
+      
+      // Handle Horizon API outages - return cached database balances
+      if (error.code === "ECONNREFUSED" || error.code === "ETIMEDOUT" || error?.response?.status >= 500) {
+        console.error("[Blockchain] Horizon API unavailable, using cached database balances:", error.message);
+        const cachedBalances = userWallet.cryptoBalances as any || {};
+        return res.json({
+          balances: {
+            NGNTS: cachedBalances.NGNTS || "0",
+            USDC: cachedBalances.USDC || "0",
+            XLM: cachedBalances.XLM || "0",
+          },
+          userPublicKey: userWallet.cryptoWalletPublicKey,
+          network,
+          explorerUrl: network === "testnet" 
+            ? `https://stellar.expert/explorer/testnet/account/${userWallet.cryptoWalletPublicKey}`
+            : `https://stellar.expert/explorer/public/account/${userWallet.cryptoWalletPublicKey}`,
+          message: "Stellar network temporarily unavailable - showing cached balances",
+          cached: true,
+        });
+      }
+      
+      // Unknown error - throw it
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Blockchain balances query error:", error);
+    res.status(500).json({ error: "Failed to query blockchain balances" });
+  }
+});
+
+/**
  * GET /api/wallets/ngnts-balance
  * Get user's NGNTS balance from Stellar blockchain
+ * @deprecated Use /api/wallets/blockchain-balances instead for all balances
  */
 router.get("/ngnts-balance", authenticate, async (req, res) => {
   try {
@@ -568,6 +726,10 @@ router.get("/ngnts-balance", authenticate, async (req, res) => {
 
     if (!treasuryWallet) {
       return res.status(500).json({ error: "Treasury wallet not configured" });
+    }
+
+    if (!userWallet.cryptoWalletPublicKey) {
+      return res.status(400).json({ error: "Wallet not activated on blockchain" });
     }
 
     // Query Horizon API for account balances

@@ -321,22 +321,23 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch actual wallet data (before early return to avoid hook ordering issues)
-  const { data: walletData } = useQuery({
-    queryKey: ["/api/wallets"],
-    enabled: !!user,
-    refetchInterval: 10000, // Refresh every 10 seconds to catch admin approvals
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 0, // Always consider data stale, force refetch
-  });
-
-  // Fetch NGNTS balance from Stellar blockchain
-  const { data: ngntsData, isLoading: isNgntsLoading } = useQuery({
-    queryKey: ["/api/wallets/ngnts-balance"],
+  // Fetch blockchain balances - SOURCE OF TRUTH (queries Stellar network)
+  // This also syncs balances to database for integrity
+  const { data: blockchainData, isLoading: isBlockchainLoading } = useQuery({
+    queryKey: ["/api/wallets/blockchain-balances"],
     enabled: !!user,
     refetchInterval: 10000, // Refresh every 10 seconds to show live blockchain data
     refetchOnWindowFocus: true, // Refetch when window regains focus
     staleTime: 0, // Always consider data stale, force refetch
+  });
+
+  // Fetch wallet metadata (public key, network info)
+  const { data: walletData } = useQuery({
+    queryKey: ["/api/wallets"],
+    enabled: !!user,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   if (!user) {
@@ -344,24 +345,24 @@ export default function Dashboard() {
   }
 
   const wallet = walletData as any;
-  const cryptoBalances = wallet?.cryptoBalances || {};
-  const ngntsBalance = ngntsData ? (ngntsData as any).balance || "0" : "0";
-  const ngntsExplorerUrl = ngntsData ? (ngntsData as any).explorerUrl : "";
-  const ngntsMessage = ngntsData ? (ngntsData as any).message : null;
+  
+  // BLOCKCHAIN IS SOURCE OF TRUTH - Get all balances from Stellar network
+  const blockchainBalances = blockchainData ? (blockchainData as any).balances : null;
+  const ngntsBalance = blockchainBalances?.NGNTS || "0";
+  const usdcBalance = blockchainBalances?.USDC || "0";
+  const xlmBalance = blockchainBalances?.XLM || "0.00";
+  const explorerUrl = blockchainData ? (blockchainData as any).explorerUrl : "";
+  const blockchainMessage = blockchainData ? (blockchainData as any).message : null;
   
   // Check if wallet has been funded
-  const fiatBalance = parseFloat(wallet?.fiatBalance || "0");
-  const usdcBalance = parseFloat(cryptoBalances.USDC || "0");
   const ngntsBalanceNum = parseFloat(ngntsBalance);
-  const isWalletFunded = fiatBalance > 0 || usdcBalance > 0 || ngntsBalanceNum > 0;
-  
-  // XLM gas fees info
-  const xlmBalance = cryptoBalances.XLM || "0.00";
+  const usdcBalanceNum = parseFloat(usdcBalance);
+  const isWalletFunded = ngntsBalanceNum > 0 || usdcBalanceNum > 0;
   
   // USDC wallet
   const usdcWallet = {
     currency: "USDC",
-    balance: cryptoBalances.USDC || "0.00",
+    balance: usdcBalance,
     symbol: "$",
   };
 
@@ -574,9 +575,9 @@ export default function Dashboard() {
                       <CardTitle className="text-lg font-semibold mb-1">NGNTS Balance</CardTitle>
                       <CardDescription className="flex items-center gap-2">
                         Naira Token Stellar (1 NGNTS = ₦1.00)
-                        {ngntsExplorerUrl && (
+                        {explorerUrl && (
                           <a 
-                            href={ngntsExplorerUrl} 
+                            href={explorerUrl} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             data-testid="link-ngnts-explorer"
@@ -593,7 +594,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-5xl font-bold mb-6" data-testid="balance-NGNTS">
-                    {isNgntsLoading ? (
+                    {isBlockchainLoading ? (
                       <span className="text-muted-foreground">...</span>
                     ) : (
                       <>
