@@ -32,7 +32,9 @@ import {
   Receipt,
   FileCheck,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Zap,
+  Info
 } from "lucide-react";
 import { Link } from "wouter";
 import { WalletActivationStatus } from "@/components/WalletActivationStatus";
@@ -245,12 +247,32 @@ export default function Dashboard() {
   };
 
   const handleWithdrawClick = (currency: string) => {
+    // Block XLM withdrawals - XLM is for gas fees only
+    if (currency === "XLM") {
+      toast({
+        title: "XLM Not Withdrawable",
+        description: "XLM is used for gas fees only and is managed automatically by the platform.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSelectedCurrency(currency);
     form.setValue("currency", currency as any);
     setWithdrawalDialogOpen(true);
   };
 
   const handleDepositClick = (currency: string) => {
+    // Block XLM deposits - XLM is for gas fees only
+    if (currency === "XLM") {
+      toast({
+        title: "XLM Not Depositable",
+        description: "XLM is used for gas fees only and is managed automatically by the platform.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSelectedCurrency(currency);
     depositInitiateForm.setValue("currency", currency as any);
     setDepositDialogOpen(true);
@@ -288,14 +310,22 @@ export default function Dashboard() {
     return null;
   }
 
-  const wallet = walletData?.wallet;
+  const wallet = walletData ? (walletData as { wallet: any }).wallet : undefined;
   const cryptoBalances = wallet ? JSON.parse(wallet.cryptoBalances || "{}") : {};
   
+  // Active wallets with deposit/withdraw functionality
   const wallets = [
-    { currency: "NGN", balance: wallet?.fiatBalance || "0.00", symbol: "₦" },
-    { currency: "USDC", balance: cryptoBalances.USDC || "0.00", symbol: "$" },
-    { currency: "XLM", balance: cryptoBalances.XLM || "0.00", symbol: "XLM" },
+    { currency: "NGN", balance: wallet?.fiatBalance || "0.00", symbol: "₦", isGasFees: false },
+    { currency: "USDC", balance: cryptoBalances.USDC || "0.00", symbol: "$", isGasFees: false },
   ];
+  
+  // XLM is for gas fees only - displayed separately
+  const xlmGasFees = {
+    currency: "XLM",
+    balance: cryptoBalances.XLM || "0.00",
+    symbol: "XLM",
+    isGasFees: true,
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -441,31 +471,24 @@ export default function Dashboard() {
         )}
 
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {wallets.map((wallet) => (
-            <Card key={wallet.currency}>
+          {wallets.map((walletItem) => (
+            <Card key={walletItem.currency}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{wallet.currency} Wallet</CardTitle>
+                <CardTitle className="text-sm font-medium">{walletItem.currency} Wallet</CardTitle>
                 <Wallet className="w-4 h-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" data-testid={`balance-${wallet.currency}`}>
-                  {wallet.symbol}{wallet.balance}
+                <div className="text-2xl font-bold" data-testid={`balance-${walletItem.currency}`}>
+                  {walletItem.symbol}{walletItem.balance}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Available balance</p>
-                
-                {/* Show wallet activation status */}
-                {walletData?.wallet?.stellarPublicKey && (
-                  <div className="mt-2">
-                    <WalletActivationStatus stellarPublicKey={walletData.wallet.stellarPublicKey} />
-                  </div>
-                )}
                 
                 <div className="flex gap-2 mt-4">
                   <Button 
                     size="sm" 
                     className="flex-1" 
-                    onClick={() => handleDepositClick(wallet.currency)}
-                    data-testid={`button-deposit-${wallet.currency}`}
+                    onClick={() => handleDepositClick(walletItem.currency)}
+                    data-testid={`button-deposit-${walletItem.currency}`}
                   >
                     <ArrowDownLeft className="w-4 h-4 mr-1" />
                     Deposit
@@ -474,8 +497,8 @@ export default function Dashboard() {
                     size="sm" 
                     variant="outline" 
                     className="flex-1" 
-                    onClick={() => handleWithdrawClick(wallet.currency)}
-                    data-testid={`button-withdraw-${wallet.currency}`}
+                    onClick={() => handleWithdrawClick(walletItem.currency)}
+                    data-testid={`button-withdraw-${walletItem.currency}`}
                   >
                     <ArrowUpRight className="w-4 h-4 mr-1" />
                     Withdraw
@@ -484,6 +507,29 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
+          
+          {/* XLM Gas Fees Card - No deposit/withdraw */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">XLM Gas Fees</CardTitle>
+              <Zap className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="balance-XLM">
+                {xlmGasFees.symbol} {xlmGasFees.balance}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for blockchain transactions
+              </p>
+              
+              <div className="mt-4 p-3 bg-muted rounded-md">
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Info className="w-3 h-3" />
+                  XLM is automatically managed as gas fees for Stellar transactions
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="mb-8">

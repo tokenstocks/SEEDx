@@ -46,37 +46,70 @@ The platform is in **transition**:
 
 ## 🎯 HOW TO SEE THE CHANGES
 
-### Step 1: Login as Admin
+### Step 1: Test Exchange Rates (Public Endpoint)
+```bash
+curl http://localhost:5000/api/exchange-rates
+```
+
+You'll see live rates:
+- XLM/NGN: ~₦441
+- USDC/NGN: ~₦1,444
+- NGNTS/NGN: ₦1.00 (pegged)
+
+### Step 2: Login as Admin
 ```
 Email: admin@tokenstocks.local
 Password: 1234567890
 ```
 
-### Step 2: Go to Admin Dashboard
+### Step 3: Go to Admin Dashboard
 Navigate to `/admin` route
 
-### Step 3: Click "Platform" Tab
+### Step 4: Click "Platform" Tab
 You'll see 4 wallet cards showing:
 - Public keys
 - XLM balances (10,000 each for 3 wallets)
 - **NGNTS balance (100M on Distribution wallet)**
 - Links to Stellar Explorer
 
-### Step 4: Verify on Blockchain
+### Step 5: Check User Dashboard
+Login as a regular user:
+- XLM shows as "Gas Fees" (no deposit/withdraw buttons)
+- NGN & USDC have deposit/withdraw options
+- Clicking XLM deposit/withdraw shows error toast
+
+### Step 6: Verify on Blockchain
 Click the Stellar Explorer link on Distribution wallet:
 - You'll see 100M NGNTS balance on-chain
 - Verifiable by anyone in the world!
 
-## 📋 NEXT STEPS TO SEE USER CHANGES
+## 📋 WHAT'S BEEN BUILT (Latest Update)
 
-To update the **user experience**, we need to build:
+### ✅ Completed Features:
+1. **Exchange Rate System** ✅
+   - CoinGecko API integration with retry/exponential backoff
+   - 5-minute cache with automatic refresh
+   - Public endpoint: `GET /api/exchange-rates`
+   - Admin refresh: `POST /api/exchange-rates/refresh`
 
-1. **Exchange Rate System** - Auto-fetch XLM/NGN conversion rates
-2. **NGNTS Deposit Flow** - Bank transfer → Admin approval → NGNTS credited on-chain
-3. **Update Investment Flow** - Use NGNTS instead of fiatBalance
-4. **User Dashboard Update** - Show NGNTS balance from Stellar API
+2. **XLM UI Updates** ✅
+   - XLM shown as "Gas Fees" card (no deposit/withdraw)
+   - Handlers block XLM deposits/withdrawals with error toasts
+   - Info message: "XLM is automatically managed as gas fees"
 
-**Current Progress: 10/30 tasks (33%) - Foundation complete!**
+3. **NGNTS Deposit Flow** ✅
+   - Admin deposit approval now credits NGNTS on-chain
+   - Trustline automatically established
+   - Transfer from Distribution wallet to user wallet
+   - Database balance updated after blockchain confirmation
+   - Error logging for manual reconciliation if needed
+
+### ⏳ Remaining Tasks:
+1. **User Dashboard** - Show NGNTS balance from blockchain (not just database)
+2. **Investment Flow** - Update to use NGNTS balance for NGN investments
+3. **Testing** - End-to-end tests for deposit → approval → NGNTS credit flow
+
+**Current Progress: 15/30 tasks (50%) - Core infrastructure complete!**
 
 ---
 

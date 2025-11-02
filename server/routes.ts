@@ -7,6 +7,7 @@ import adminRoutes from "./routes/admin";
 import projectRoutes from "./routes/projects";
 import investmentRoutes from "./routes/investments";
 import setupRoutes from "./routes/setup";
+import exchangeRatesRoutes from "./routes/exchangeRates";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
@@ -29,6 +30,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register setup/verification routes
   app.use("/api/setup", setupRoutes);
+  
+  // Register exchange rates routes (public)
+  app.use("/api/exchange-rates", exchangeRatesRoutes);
 
   const httpServer = createServer(app);
 

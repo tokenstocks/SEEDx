@@ -154,6 +154,14 @@ router.post("/deposit/initiate", authenticate, async (req, res) => {
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId as string;
 
+    // Block XLM deposits - XLM is for gas fees only
+    if (body.currency === "XLM") {
+      return res.status(400).json({
+        error: "XLM deposits not allowed",
+        details: "XLM is used for gas fees only and is managed automatically by the platform",
+      });
+    }
+
     if (body.currency === "NGN") {
       // Generate unique reference for bank transfer
       const reference = generateBankReference();
@@ -357,6 +365,14 @@ router.post("/withdraw", authenticate, async (req, res) => {
     const body = initiateWithdrawalSchema.parse(req.body);
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId as string;
+
+    // Block XLM withdrawals - XLM is for gas fees only
+    if (body.currency === "XLM") {
+      return res.status(400).json({
+        error: "XLM withdrawals not allowed",
+        details: "XLM is used for gas fees only and is managed automatically by the platform",
+      });
+    }
 
     // Use database transaction for atomic operations with row-level locking
     const result = await db.transaction(async (tx) => {

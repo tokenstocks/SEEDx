@@ -654,16 +654,11 @@ router.put("/deposits/:id", authenticate, requireAdmin, async (req, res) => {
           .where(eq(transactions.id, depositRequest.transactionId));
 
         // Update wallet balance based on currency
-        // Hybrid wallet model: NGN uses fiatBalance, crypto uses cryptoBalances JSON
+        // Hybrid wallet model: NGN deposits are converted to NGNTS (on-chain), crypto uses cryptoBalances JSON
         if (depositRequest.currency === "NGN") {
-          // Update fiat balance (atomic operation)
-          await tx
-            .update(wallets)
-            .set({
-              fiatBalance: sql`COALESCE(${wallets.fiatBalance}, 0) + ${approvedAmount}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(wallets.userId, depositRequest.userId));
+          // NGN deposits are credited as NGNTS on Stellar blockchain
+          // This will be handled after the database transaction commits
+          // to ensure proper error handling
         } else {
           // For crypto deposits (USDC, XLM), update cryptoBalances JSON atomically
           // Use PostgreSQL JSONB functions for atomic updates
@@ -690,7 +685,40 @@ router.put("/deposits/:id", authenticate, requireAdmin, async (req, res) => {
         }
       });
 
-      // TODO: Send email notification to user about approved deposit
+      // If NGN deposit, credit NGNTS on Stellar blockchain
+      // This is done after DB transaction to ensure atomic DB changes
+      // If this fails, deposit is marked as approved but no NGNTS credited - manual reconciliation required
+      if (depositRequest.currency === "NGN") {
+        try {
+          const { creditNgntsDeposit } = await import("../lib/ngntsOps");
+          
+          const result = await creditNgntsDeposit(
+            depositRequest.userId,
+            approvedAmount,
+            depositRequest.transactionId
+          );
+          
+          console.log("[Admin] NGNTS deposited successfully:", {
+            trustlineTxHash: result.trustlineTxHash,
+            transferTxHash: result.transferTxHash,
+            amount: result.amount,
+          });
+          
+          // TODO: Send email notification to user about approved deposit and NGNTS credit
+        } catch (error: any) {
+          console.error("[Admin] NGNTS credit failed after approval:", error);
+          // Log critical error but don't fail the request
+          // Admin can manually reconcile by checking blockchain vs database
+          console.error("[Admin] CRITICAL: Deposit approved but NGNTS not credited", {
+            depositId: id,
+            userId: depositRequest.userId,
+            amount: approvedAmount,
+            error: error.message,
+          });
+        }
+      } else {
+        // TODO: Send email notification to user about approved deposit
+      }
 
       res.json({
         message: "Deposit approved successfully",
