@@ -34,8 +34,11 @@ import {
   Copy,
   ExternalLink,
   Zap,
-  Info
+  Info,
+  PlusCircle,
+  Sparkles
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "wouter";
 import { WalletActivationStatus } from "@/components/WalletActivationStatus";
 import { useQuery } from "@tanstack/react-query";
@@ -323,18 +326,20 @@ export default function Dashboard() {
   const ngntsExplorerUrl = ngntsData ? (ngntsData as any).explorerUrl : "";
   const ngntsMessage = ngntsData ? (ngntsData as any).message : null;
   
-  // Active wallets with deposit/withdraw functionality
-  const wallets = [
-    { currency: "NGN", balance: wallet?.fiatBalance || "0.00", symbol: "₦", isGasFees: false },
-    { currency: "USDC", balance: cryptoBalances.USDC || "0.00", symbol: "$", isGasFees: false },
-  ];
+  // Check if wallet has been funded
+  const fiatBalance = parseFloat(wallet?.fiatBalance || "0");
+  const usdcBalance = parseFloat(cryptoBalances.USDC || "0");
+  const ngntsBalanceNum = parseFloat(ngntsBalance);
+  const isWalletFunded = fiatBalance > 0 || usdcBalance > 0 || ngntsBalanceNum > 0;
   
-  // XLM is for gas fees only - displayed separately
-  const xlmGasFees = {
-    currency: "XLM",
-    balance: cryptoBalances.XLM || "0.00",
-    symbol: "XLM",
-    isGasFees: true,
+  // XLM gas fees info
+  const xlmBalance = cryptoBalances.XLM || "0.00";
+  
+  // USDC wallet
+  const usdcWallet = {
+    currency: "USDC",
+    balance: cryptoBalances.USDC || "0.00",
+    symbol: "$",
   };
 
   return (
@@ -349,6 +354,22 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold" data-testid="text-title">TokenStocks Dashboard</h1>
             </div>
             <div className="flex items-center gap-4">
+              {/* XLM Gas Fees - Subtle display */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md cursor-help" data-testid="xlm-gas-info">
+                    <Zap className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">{xlmBalance} XLM</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Gas Fees Balance</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    XLM is automatically managed for Stellar blockchain transactions
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+
               <Avatar>
                 <AvatarFallback data-testid="avatar-user">
                   {user.firstName?.[0]}{user.lastName?.[0]}
@@ -480,122 +501,167 @@ export default function Dashboard() {
           </Card>
         )}
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {wallets.map((walletItem) => (
-            <Card key={walletItem.currency}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{walletItem.currency} Wallet</CardTitle>
-                <Wallet className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid={`balance-${walletItem.currency}`}>
-                  {walletItem.symbol}{walletItem.balance}
+        {/* Show welcome state if wallet is not funded, otherwise show wallet tiles */}
+        {!isWalletFunded ? (
+          /* Pre-funding Welcome State */
+          <Card className="mb-8 border-2">
+            <CardContent className="pt-12 pb-12">
+              <div className="max-w-2xl mx-auto text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-8 h-8 text-primary" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Available balance</p>
                 
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    className="flex-1" 
-                    onClick={() => handleDepositClick(walletItem.currency)}
-                    data-testid={`button-deposit-${walletItem.currency}`}
-                  >
-                    <ArrowDownLeft className="w-4 h-4 mr-1" />
-                    Deposit
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1" 
-                    onClick={() => handleWithdrawClick(walletItem.currency)}
-                    data-testid={`button-withdraw-${walletItem.currency}`}
-                  >
-                    <ArrowUpRight className="w-4 h-4 mr-1" />
-                    Withdraw
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          
-          {/* XLM Gas Fees Card - No deposit/withdraw */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">XLM Gas Fees</CardTitle>
-              <Zap className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="balance-XLM">
-                {xlmGasFees.symbol} {xlmGasFees.balance}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Used for blockchain transactions
-              </p>
-              
-              <div className="mt-4 p-3 bg-muted rounded-md">
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Info className="w-3 h-3" />
-                  XLM is automatically managed as gas fees for Stellar transactions
+                <h2 className="text-3xl font-bold mb-3" data-testid="welcome-title">
+                  Welcome to TokenStocks
+                </h2>
+                
+                <p className="text-muted-foreground text-lg mb-8 max-w-lg mx-auto">
+                  Start your journey in tokenized agricultural investments. Fund your wallet to explore and invest in vetted farm projects.
                 </p>
+
+                <Button 
+                  size="lg" 
+                  className="gap-2"
+                  onClick={() => {
+                    setDepositDialogOpen(true);
+                    setDepositStep("select");
+                  }}
+                  data-testid="button-fund-wallet"
+                >
+                  <PlusCircle className="w-5 h-5" />
+                  Fund Wallet
+                </Button>
+
+                <div className="mt-12 grid md:grid-cols-2 gap-4 text-left">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <DollarSign className="w-5 h-5 text-primary mb-2" />
+                    <h3 className="font-semibold mb-1">Start with ₦100</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Low minimum investment makes agricultural projects accessible to everyone
+                    </p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-primary mb-2" />
+                    <h3 className="font-semibold mb-1">Blockchain Verified</h3>
+                    <p className="text-sm text-muted-foreground">
+                      All investments are tokenized on Stellar and publicly verifiable
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </div>
+        ) : (
+          <>
+            {/* Funded State - Wallet Tiles */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {/* Consolidated Naira Balance (NGN + NGNTS) */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium">Naira Balance</CardTitle>
+                    <Badge variant="secondary" className="text-xs">Fiat + Blockchain</Badge>
+                  </div>
+                  <Wallet className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Fiat NGN */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Fiat Naira (NGN)</p>
+                      <div className="text-2xl font-bold" data-testid="balance-NGN">
+                        ₦{fiatBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    
+                    {/* Blockchain NGNTS */}
+                    <div className="pt-3 border-t">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-muted-foreground">Blockchain Naira (NGNTS)</p>
+                        {ngntsExplorerUrl && (
+                          <a 
+                            href={ngntsExplorerUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            data-testid="link-ngnts-explorer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Verify
+                          </a>
+                        )}
+                      </div>
+                      <div className="text-xl font-semibold" data-testid="balance-NGNTS">
+                        {isNgntsLoading ? "..." : parseFloat(ngntsBalance).toLocaleString("en-NG", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 7,
+                        })} NGNTS
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-6">
+                    <Button 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => handleDepositClick("NGN")}
+                      data-testid="button-deposit-NGN"
+                    >
+                      <ArrowDownLeft className="w-4 h-4 mr-1" />
+                      Deposit
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1" 
+                      onClick={() => handleWithdrawClick("NGN")}
+                      data-testid="button-withdraw-NGN"
+                    >
+                      <ArrowUpRight className="w-4 h-4 mr-1" />
+                      Withdraw
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* NGNTS Balance Card - Blockchain-backed Naira */}
-        <Card className="mb-8">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg font-semibold">NGNTS Balance</CardTitle>
-              <Badge variant="secondary" className="text-xs">Blockchain</Badge>
+              {/* USDC Wallet */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">USDC Wallet</CardTitle>
+                  <Wallet className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold mb-1" data-testid="balance-USDC">
+                    ${usdcWallet.balance}
+                  </div>
+                  <p className="text-xs text-muted-foreground">USD Coin (Stablecoin)</p>
+                  
+                  <div className="flex gap-2 mt-6">
+                    <Button 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => handleDepositClick("USDC")}
+                      data-testid="button-deposit-USDC"
+                    >
+                      <ArrowDownLeft className="w-4 h-4 mr-1" />
+                      Deposit
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1" 
+                      onClick={() => handleWithdrawClick("USDC")}
+                      data-testid="button-withdraw-USDC"
+                    >
+                      <ArrowUpRight className="w-4 h-4 mr-1" />
+                      Withdraw
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            {ngntsExplorerUrl && (
-              <a 
-                href={ngntsExplorerUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                data-testid="link-ngnts-explorer"
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-              >
-                <ExternalLink className="w-3 h-3" />
-                View on Explorer
-              </a>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold" data-testid="balance-NGNTS">
-                {isNgntsLoading ? "..." : parseFloat(ngntsBalance).toLocaleString("en-NG", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 7,
-                })}
-              </span>
-              <span className="text-lg text-muted-foreground">NGNTS</span>
-            </div>
-            
-            <p className="text-xs text-muted-foreground mt-2">
-              Naira Token Stellar • 1 NGNTS = ₦1.00
-            </p>
-            
-            {ngntsMessage && (
-              <div className="mt-4 p-3 bg-muted rounded-md">
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Info className="w-3 h-3" />
-                  {ngntsMessage}
-                </p>
-              </div>
-            )}
-            
-            {!isNgntsLoading && parseFloat(ngntsBalance) > 0 && (
-              <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
-                <p className="text-xs font-medium text-primary flex items-center gap-2">
-                  <CheckCircle className="w-3 h-3" />
-                  Your NGNTS tokens are stored on the Stellar blockchain and can be verified by anyone
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </>
+        )}
 
         <Card className="mb-8">
           <CardHeader>
@@ -843,9 +909,11 @@ export default function Dashboard() {
       <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Deposit {selectedCurrency}</DialogTitle>
+            <DialogTitle>
+              {depositStep === "select" ? "Fund Wallet" : `Deposit ${selectedCurrency}`}
+            </DialogTitle>
             <DialogDescription>
-              {depositStep === "select" && "Get payment instructions for your deposit"}
+              {depositStep === "select" && "Choose a currency to fund your wallet"}
               {depositStep === "instructions" && "Follow the instructions to make your payment"}
               {depositStep === "confirm" && "Confirm your deposit with payment proof"}
             </DialogDescription>
@@ -854,12 +922,47 @@ export default function Dashboard() {
           {depositStep === "select" && (
             <Form {...depositInitiateForm}>
               <form onSubmit={depositInitiateForm.handleSubmit(onDepositInitiate)} className="space-y-4">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Select Currency</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      type="button"
+                      variant={selectedCurrency === "NGN" ? "default" : "outline"}
+                      className="h-auto py-4 flex-col gap-2"
+                      onClick={() => {
+                        setSelectedCurrency("NGN");
+                        depositInitiateForm.setValue("currency", "NGN");
+                      }}
+                      data-testid="button-select-ngn"
+                    >
+                      <DollarSign className="w-6 h-6" />
+                      <div>
+                        <p className="font-semibold">Naira</p>
+                        <p className="text-xs opacity-80">NGN (Bank Transfer)</p>
+                      </div>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={selectedCurrency === "USDC" ? "default" : "outline"}
+                      className="h-auto py-4 flex-col gap-2"
+                      onClick={() => {
+                        setSelectedCurrency("USDC");
+                        depositInitiateForm.setValue("currency", "USDC");
+                      }}
+                      data-testid="button-select-usdc"
+                    >
+                      <DollarSign className="w-6 h-6" />
+                      <div>
+                        <p className="font-semibold">USDC</p>
+                        <p className="text-xs opacity-80">Stablecoin</p>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="bg-muted p-4 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    <strong>Selected Currency:</strong> {selectedCurrency}
-                  </p>
                   <p className="text-sm text-muted-foreground">
-                    Click below to get payment instructions for your {selectedCurrency} deposit.
+                    Click "Continue" to get payment instructions for {selectedCurrency} deposit.
                   </p>
                 </div>
 
@@ -879,7 +982,7 @@ export default function Dashboard() {
                     disabled={initiateDepositMutation.isPending}
                     data-testid="button-get-instructions"
                   >
-                    {initiateDepositMutation.isPending ? "Loading..." : "Get Payment Instructions"}
+                    {initiateDepositMutation.isPending ? "Loading..." : "Continue"}
                   </Button>
                 </div>
               </form>
