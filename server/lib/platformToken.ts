@@ -7,12 +7,13 @@ import { eq } from "drizzle-orm";
 
 /**
  * Issue NGNTS token from Treasury wallet and establish trustline with Distribution wallet
+ * Sets authorization flags on Treasury account for proper asset control
  * 
  * @returns Result object with transaction hashes
  */
 export async function issueNGNTS(): Promise<{
   success: boolean;
-  treasuryTxHash?: string;
+  authFlagsTxHash?: string;
   trustlineTxHash?: string;
   error?: string;
 }> {
@@ -46,8 +47,30 @@ export async function issueNGNTS(): Promise<{
     console.log(`1️⃣  Treasury (issuer): ${treasuryWallet.publicKey.substring(0, 8)}...`);
     console.log(`2️⃣  Distribution (holder): ${distributionWallet.publicKey.substring(0, 8)}...`);
 
-    // Step 1: Distribution wallet establishes trustline to NGNTS
-    console.log(`3️⃣  Creating trustline from Distribution to Treasury...`);
+    // Step 1: Set authorization flags on Treasury account (issuer)
+    console.log(`3️⃣  Setting authorization flags on Treasury account...`);
+    const treasuryAccount = await horizonServer.loadAccount(treasuryWallet.publicKey);
+    
+    const authFlagsTransaction = new StellarSdk.TransactionBuilder(treasuryAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.setOptions({
+          setFlags: StellarSdk.AuthRevocableFlag,
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    authFlagsTransaction.sign(treasuryKeypair);
+    const authFlagsResult = await horizonServer.submitTransaction(authFlagsTransaction);
+    const authFlagsTxHash = authFlagsResult.hash;
+    
+    console.log(`   ✅ Auth flags set: ${authFlagsTxHash}`);
+
+    // Step 2: Distribution wallet establishes trustline to NGNTS
+    console.log(`4️⃣  Creating trustline from Distribution to Treasury...`);
     const distributionAccount = await horizonServer.loadAccount(distributionWallet.publicKey);
     
     const trustlineTransaction = new StellarSdk.TransactionBuilder(distributionAccount, {
@@ -69,6 +92,31 @@ export async function issueNGNTS(): Promise<{
     
     console.log(`   ✅ Trustline created: ${trustlineTxHash}`);
 
+    // Step 3: Authorize Distribution account to hold NGNTS
+    console.log(`5️⃣  Authorizing Distribution account...`);
+    const treasuryAccountRefresh = await horizonServer.loadAccount(treasuryWallet.publicKey);
+    
+    const authorizeTransaction = new StellarSdk.TransactionBuilder(treasuryAccountRefresh, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.setTrustLineFlags({
+          trustor: distributionWallet.publicKey,
+          asset: ngntsAsset,
+          flags: {
+            authorized: true,
+          },
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    authorizeTransaction.sign(treasuryKeypair);
+    await horizonServer.submitTransaction(authorizeTransaction);
+    
+    console.log(`   ✅ Distribution account authorized`);
+
     console.log(`✅ NGNTS token issued successfully!`);
     console.log(`   Asset Code: NGNTS`);
     console.log(`   Issuer: ${treasuryWallet.publicKey}`);
@@ -76,6 +124,7 @@ export async function issueNGNTS(): Promise<{
 
     return {
       success: true,
+      authFlagsTxHash,
       trustlineTxHash,
     };
   } catch (error: any) {
@@ -89,13 +138,15 @@ export async function issueNGNTS(): Promise<{
 
 /**
  * Mint NGNTS tokens by sending from Treasury to Distribution wallet
+ * Updates Distribution wallet balance in database after minting
  * 
  * @param amount Amount of NGNTS to mint (as string)
- * @returns Transaction hash or null on failure
+ * @returns Transaction hash and updated balance
  */
 export async function mintNGNTS(amount: string): Promise<{
   success: boolean;
   txHash?: string;
+  newBalance?: string;
   error?: string;
 }> {
   try {
@@ -142,12 +193,32 @@ export async function mintNGNTS(amount: string): Promise<{
 
     mintTransaction.sign(treasuryKeypair);
     const mintResult = await horizonServer.submitTransaction(mintTransaction);
+    const txHash = mintResult.hash;
     
-    console.log(`   ✅ Minted ${amount} NGNTS: ${mintResult.hash}`);
+    console.log(`   ✅ Minted ${amount} NGNTS: ${txHash}`);
+
+    // Sync Distribution wallet balance from Horizon
+    const distributionAccount = await horizonServer.loadAccount(distributionWallet.publicKey);
+    const ngntsBalance = distributionAccount.balances.find(
+      (b: any) => b.asset_code === "NGNTS" && b.asset_issuer === treasuryWallet.publicKey
+    );
+    const newBalance = ngntsBalance ? ngntsBalance.balance : "0";
+
+    // Update database with new balance
+    await db
+      .update(platformWallets)
+      .set({
+        balanceNGNTS: newBalance,
+        lastSyncedAt: new Date(),
+      })
+      .where(eq(platformWallets.id, distributionWallet.id));
+
+    console.log(`   💾 Updated database: ${newBalance} NGNTS`);
 
     return {
       success: true,
-      txHash: mintResult.hash,
+      txHash,
+      newBalance,
     };
   } catch (error: any) {
     console.error("❌ Error minting NGNTS:", error);

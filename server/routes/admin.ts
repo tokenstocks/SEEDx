@@ -1454,6 +1454,29 @@ router.post("/wallets/:userId/activate", authenticate, requireAdmin, async (req,
 });
 
 /**
+ * GET /api/admin/platform-wallets
+ * Get all platform wallets with balances
+ */
+router.get("/platform-wallets", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const wallets = await db
+      .select()
+      .from(platformWallets)
+      .orderBy(platformWallets.createdAt);
+
+    res.json({
+      wallets,
+    });
+  } catch (error: any) {
+    console.error("Platform wallets fetch error:", error);
+    res.status(500).json({
+      error: "Failed to fetch platform wallets",
+      details: error.message,
+    });
+  }
+});
+
+/**
  * POST /api/admin/platform-wallets/initialize
  * Initialize all 4 platform wallets (Operations, Treasury, Distribution, Liquidity Pool)
  * Admin only - should only be called once during platform setup
@@ -1573,7 +1596,7 @@ router.get("/platform-wallets", authenticate, requireAdmin, async (req, res) => 
 
 /**
  * POST /api/admin/platform/issue-ngnts
- * Issue NGNTS token from Treasury wallet and establish trustline with Distribution wallet
+ * Issue NGNTS token from Treasury wallet with auth flags and trustline
  */
 router.post("/platform/issue-ngnts", authenticate, requireAdmin, async (req, res) => {
   try {
@@ -1587,7 +1610,8 @@ router.post("/platform/issue-ngnts", authenticate, requireAdmin, async (req, res
     }
 
     res.json({
-      message: "NGNTS token issued successfully",
+      message: "NGNTS token issued successfully with authorization controls",
+      authFlagsTxHash: result.authFlagsTxHash,
       trustlineTxHash: result.trustlineTxHash,
       nextStep: "Mint initial NGNTS supply using POST /api/admin/platform/mint-ngnts",
     });
@@ -1602,7 +1626,7 @@ router.post("/platform/issue-ngnts", authenticate, requireAdmin, async (req, res
 
 /**
  * POST /api/admin/platform/mint-ngnts
- * Mint NGNTS tokens (send from Treasury to Distribution wallet)
+ * Mint NGNTS tokens and sync balance to database
  */
 router.post("/platform/mint-ngnts", authenticate, requireAdmin, async (req, res) => {
   try {
@@ -1626,6 +1650,8 @@ router.post("/platform/mint-ngnts", authenticate, requireAdmin, async (req, res)
     res.json({
       message: `Minted ${amount} NGNTS successfully`,
       txHash: result.txHash,
+      newBalance: result.newBalance,
+      distributionWalletBalance: `${result.newBalance} NGNTS`,
     });
   } catch (error: any) {
     console.error("NGNTS minting error:", error);

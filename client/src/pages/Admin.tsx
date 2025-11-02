@@ -16,6 +16,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
+import PlatformWallets from "@/pages/PlatformWallets";
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -590,8 +591,9 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-7">
+          <TabsList className="grid w-full md:w-auto grid-cols-4 md:grid-cols-8">
             <TabsTrigger value="admin-wallet" data-testid="tab-admin-wallet">My Wallet</TabsTrigger>
+            <TabsTrigger value="platform" data-testid="tab-platform">Platform</TabsTrigger>
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
@@ -603,6 +605,11 @@ export default function Admin() {
           {/* Admin Wallet Tab */}
           <TabsContent value="admin-wallet">
             <AdminWalletCard />
+          </TabsContent>
+
+          {/* Platform Wallets Tab */}
+          <TabsContent value="platform">
+            <PlatformWallets />
           </TabsContent>
 
           {/* Deposits Tab */}
