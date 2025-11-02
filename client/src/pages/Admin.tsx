@@ -777,14 +777,26 @@ export default function Admin() {
                             </div>
                           </div>
                           {u.role !== 'admin' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => suspendUserMutation.mutate({ id: u.id, isSuspended: true })}
-                              data-testid={`button-suspend-user-${u.id}`}
-                            >
-                              Suspend
-                            </Button>
+                            <div className="flex gap-2">
+                              {u.kycStatus === 'submitted' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => setApprovalDialog({ type: 'kyc', item: { id: u.id, userEmail: u.email, firstName: u.firstName, lastName: u.lastName, userPhone: u.phone, kycDocuments: u.kycDocuments } })}
+                                  data-testid={`button-review-kyc-${u.id}`}
+                                >
+                                  Review KYC
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => suspendUserMutation.mutate({ id: u.id, isSuspended: true })}
+                                data-testid={`button-suspend-user-${u.id}`}
+                              >
+                                Suspend
+                              </Button>
+                            </div>
                           )}
                         </div>
                       ))}

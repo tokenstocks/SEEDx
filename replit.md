@@ -28,6 +28,16 @@ User registration involves email, phone, password, and personal info, with autom
 ### KYC Verification System
 The system supports uploading ID cards, selfies, and address proofs (up to 5MB per document) via multipart form data. Files are uploaded to a dedicated "kyc" bucket in Supabase Storage, and public URLs are stored in the user's database record.
 
+**Real-Time KYC Status Updates (Phase 2-D):**
+- **User Profile API** (`GET /api/users/me`): Authenticated endpoint returning current user profile including KYC status and document URLs. Used by frontend for real-time status checks.
+- **TanStack Query Integration**: Dashboard, ProjectDetail, and KYCVerification pages use React Query with 10-second auto-refetch polling interval. User data updates automatically when admin approves KYC.
+- **Admin KYC Review UI**: Admin dashboard Users tab shows "Review KYC" button for users with pending status. Clicking opens approval dialog showing:
+  - User details (name, email, phone)
+  - KYC documents section with clickable links to ID card, selfie, and address proof (or "Not uploaded" placeholders)
+  - Approve/Reject buttons
+- **Automatic Status Propagation**: When admin approves/rejects KYC, query invalidation triggers automatic refetch on user's frontend within 10 seconds, unblocking project investments without manual refresh.
+- **localStorage Compatibility**: User data synced to localStorage for backward compatibility with any remaining code that expects it.
+
 ### Technical Implementations
 - **Real On-Chain Stellar Operations (Testnet Only):** User wallets are activated on the Stellar testnet during registration, and projects can mint real tokens. Stellar operations are asynchronous, with transaction hashes stored in the database.
 - **Hybrid Wallet Model:** Migrated to a single hybrid wallet per user, supporting fiatBalance (NGN) and cryptoBalances (JSON for USDC/XLM/tokens), each with a separate Stellar keypair.
