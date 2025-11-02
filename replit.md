@@ -46,6 +46,11 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 - **Typography:** Inter font family for readability in data-rich interfaces.
 - **Component Library:** Shadcn UI for accessible, pre-built components.
 - **Responsiveness:** Mobile-first approach with responsive grid layouts.
+- **Dashboard Experience:**
+  - Pre-funding welcome state with hero CTA for new users
+  - Consolidated Naira Balance tile (Fiat NGN + Blockchain NGNTS)
+  - Subtle XLM gas fees in top-right header with tooltip
+  - Fund Wallet dialog as primary entry point (NGN/USDC selection)
 
 ### Blockchain UI Components (Phase 2-A)
 - **On-Chain Verification Dashboard** (`/admin/onchain-verification`): Admin-only page showing blockchain sync status for all projects, including issuer/distribution accounts, trustline status, token minting status, and transaction hashes. Auto-refreshes every 30 seconds.

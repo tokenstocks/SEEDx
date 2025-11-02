@@ -74,11 +74,24 @@ You'll see 4 wallet cards showing:
 
 ### Step 5: Check User Dashboard
 Login as a regular user:
-- **NGNTS Balance Card** - Shows blockchain balance with "View on Explorer" link
-- XLM shows as "Gas Fees" (no deposit/withdraw buttons)
-- NGN & USDC have deposit/withdraw options
-- Clicking XLM deposit/withdraw shows error toast
-- NGNTS balance auto-refreshes every 30 seconds
+
+**If Wallet is Empty (New User):**
+- Welcome hero section with "Fund Wallet" CTA
+- Two feature cards explaining platform benefits
+- XLM gas fees displayed subtly in top-right header (hover for tooltip)
+
+**If Wallet is Funded:**
+- **Consolidated Naira Balance Tile** - Shows both:
+  - Fiat Naira (NGN) from database
+  - Blockchain Naira (NGNTS) from Stellar with "Verify" link
+  - Shared Deposit/Withdraw buttons
+- **USDC Wallet Tile** - Standard crypto wallet with Deposit/Withdraw
+- XLM gas fees in top-right header with tooltip
+
+**Fund Wallet Dialog:**
+- Step 1: Select currency (NGN or USDC) with visual cards
+- Step 2: Get payment instructions
+- Step 3: Confirm deposit with proof upload
 
 ### Step 6: Verify on Blockchain
 Click the Stellar Explorer link on Distribution wallet:
@@ -113,11 +126,18 @@ Click the Stellar Explorer link on Distribution wallet:
    - Loading states and helpful messages
    - Shows "trustline not established" or "account not activated" when needed
 
+5. **Dashboard UX Redesign** ✅
+   - **Pre-funding Welcome State**: Clean hero section with "Fund Wallet" CTA for new users
+   - **Consolidated Naira Balance**: Single tile showing both Fiat NGN and Blockchain NGNTS (eliminates confusion)
+   - **Subtle XLM Display**: Gas fees moved to top-right header with tooltip (no longer prominent)
+   - **Enhanced Fund Wallet Dialog**: Currency selection (NGN/USDC) as primary entry point
+   - Responsive 2-column layout for funded wallets
+
 ### ⏳ Remaining Tasks:
 1. **Investment Flow** - Update to use NGNTS balance for NGN investments
-2. **Testing** - End-to-end tests for deposit → approval → NGNTS credit → visible on dashboard
+2. **Testing** - End-to-end tests for complete user journey
 
-**Current Progress: 18/30 tasks (60%) - User-facing features complete!**
+**Current Progress: 21/30 tasks (70%) - Core UX complete!**
 
 ---
 
