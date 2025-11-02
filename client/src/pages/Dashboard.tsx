@@ -325,7 +325,7 @@ export default function Dashboard() {
     return null;
   }
 
-  const wallet = walletData ? (walletData as { wallet: any }).wallet : undefined;
+  const wallet = walletData as any;
   const cryptoBalances = wallet ? JSON.parse(wallet.cryptoBalances || "{}") : {};
   const ngntsBalance = ngntsData ? (ngntsData as any).balance || "0" : "0";
   const ngntsExplorerUrl = ngntsData ? (ngntsData as any).explorerUrl : "";

@@ -62,7 +62,7 @@ router.get("/", authenticate, async (req, res) => {
     // Add network information and exclude encrypted secrets
     const network = process.env.STELLAR_NETWORK || "testnet";
     
-    res.json({
+    const response = {
       id: userWallet.id,
       userId: userWallet.userId,
       fiatBalance: userWallet.fiatBalance,
@@ -72,7 +72,11 @@ router.get("/", authenticate, async (req, res) => {
       network,
       createdAt: userWallet.createdAt,
       updatedAt: userWallet.updatedAt,
-    });
+    };
+    
+    console.log("GET /api/wallets response for user", userId, "- fiatBalance:", userWallet.fiatBalance);
+    
+    res.json(response);
   } catch (error: any) {
     console.error("Get wallet error:", error);
     res.status(500).json({ error: "Failed to fetch wallet" });
