@@ -8,6 +8,49 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
+/**
+ * GET /api/users/me
+ * Get current user's profile data
+ */
+router.get("/me", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const userId = req.user.userId;
+
+    // Fetch user from database
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        phone: users.phone,
+        kycStatus: users.kycStatus,
+        kycDocuments: users.kycDocuments,
+        role: users.role,
+        totalInvestedNGN: users.totalInvestedNGN,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json(user);
+  } catch (error: any) {
+    console.error("Get user profile error:", error);
+    res.status(500).json({ error: "Failed to fetch user profile" });
+  }
+});
+
 // Configure multer for file uploads (store in memory)
 const upload = multer({
   storage: multer.memoryStorage(),

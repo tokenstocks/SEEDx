@@ -63,6 +63,11 @@ interface User {
   kycStatus: string;
   role: string;
   createdAt: string;
+  kycDocuments?: {
+    idCard?: string;
+    selfie?: string;
+    addressProof?: string;
+  };
 }
 
 interface Wallet {
@@ -890,6 +895,79 @@ export default function Admin() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Display KYC Documents for review */}
+              {approvalDialog?.type === 'kyc' && approvalDialog.item.kycDocuments && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <h4 className="font-semibold text-sm">Uploaded Documents</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {approvalDialog.item.kycDocuments.idCard && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">ID Card</Label>
+                        <a 
+                          href={approvalDialog.item.kycDocuments.idCard} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block"
+                          data-testid="link-id-card"
+                        >
+                          <img 
+                            src={approvalDialog.item.kycDocuments.idCard} 
+                            alt="ID Card" 
+                            className="w-full h-48 object-cover rounded-md border hover-elevate cursor-pointer"
+                            data-testid="img-id-card"
+                          />
+                        </a>
+                      </div>
+                    )}
+                    {approvalDialog.item.kycDocuments.selfie && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Selfie</Label>
+                        <a 
+                          href={approvalDialog.item.kycDocuments.selfie} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block"
+                          data-testid="link-selfie"
+                        >
+                          <img 
+                            src={approvalDialog.item.kycDocuments.selfie} 
+                            alt="Selfie" 
+                            className="w-full h-48 object-cover rounded-md border hover-elevate cursor-pointer"
+                            data-testid="img-selfie"
+                          />
+                        </a>
+                      </div>
+                    )}
+                    {approvalDialog.item.kycDocuments.addressProof && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Address Proof</Label>
+                        <a 
+                          href={approvalDialog.item.kycDocuments.addressProof} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block"
+                          data-testid="link-address-proof"
+                        >
+                          <img 
+                            src={approvalDialog.item.kycDocuments.addressProof} 
+                            alt="Address Proof" 
+                            className="w-full h-48 object-cover rounded-md border hover-elevate cursor-pointer"
+                            data-testid="img-address-proof"
+                          />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  {!approvalDialog.item.kycDocuments.idCard && 
+                   !approvalDialog.item.kycDocuments.selfie && 
+                   !approvalDialog.item.kycDocuments.addressProof && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No documents uploaded
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-4">
                 <Button
                   variant={action === 'approve' ? 'default' : 'outline'}
