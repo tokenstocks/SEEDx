@@ -1023,35 +1023,52 @@ router.post("/projects", authenticate, requireAdmin, upload.fields([
       });
     }
 
-    // Upload photo if provided
+    // Upload photo if provided (skip if RLS blocks it)
     let photoUrl: string | undefined;
+    const uploadWarnings: string[] = [];
+    
     if (files?.photo && files.photo.length > 0) {
-      const photo = files.photo[0];
-      const fileName = `${Date.now()}-${photo.originalname}`;
-      const path = `projects/${fileName}`;
-      photoUrl = await uploadFile("project-photos", path, photo.buffer, photo.mimetype);
-      console.log(`Uploaded project photo: ${photoUrl}`);
+      try {
+        const photo = files.photo[0];
+        const fileName = `${Date.now()}-${photo.originalname}`;
+        const path = `projects/${fileName}`;
+        photoUrl = await uploadFile("project-photos", path, photo.buffer, photo.mimetype);
+        console.log(`Uploaded project photo: ${photoUrl}`);
+      } catch (error: any) {
+        console.warn(`Photo upload failed: ${error.message}`);
+        uploadWarnings.push("Photo upload failed - Supabase Storage RLS may be blocking uploads. Please configure storage policies in Supabase Dashboard.");
+      }
     }
 
-    // Upload teaser document if provided
+    // Upload teaser document if provided (skip if RLS blocks it)
     let teaserDocUrl: string | undefined;
     if (files?.teaserDocument && files.teaserDocument.length > 0) {
-      const teaserDoc = files.teaserDocument[0];
-      const fileName = `${Date.now()}-teaser-${teaserDoc.originalname}`;
-      const path = `teasers/${fileName}`;
-      teaserDocUrl = await uploadFile("project-documents", path, teaserDoc.buffer, teaserDoc.mimetype);
-      console.log(`Uploaded teaser document: ${teaserDocUrl}`);
+      try {
+        const teaserDoc = files.teaserDocument[0];
+        const fileName = `${Date.now()}-teaser-${teaserDoc.originalname}`;
+        const path = `teasers/${fileName}`;
+        teaserDocUrl = await uploadFile("project-documents", path, teaserDoc.buffer, teaserDoc.mimetype);
+        console.log(`Uploaded teaser document: ${teaserDocUrl}`);
+      } catch (error: any) {
+        console.warn(`Teaser document upload failed: ${error.message}`);
+        uploadWarnings.push("Teaser document upload failed - Supabase Storage RLS may be blocking uploads.");
+      }
     }
 
-    // Upload additional documents if provided
+    // Upload additional documents if provided (skip if RLS blocks it)
     const documentUrls: string[] = [];
     if (files?.documents && files.documents.length > 0) {
       for (const doc of files.documents) {
-        const fileName = `${Date.now()}-${doc.originalname}`;
-        const path = `docs/${fileName}`;
-        const docUrl = await uploadFile("project-documents", path, doc.buffer, doc.mimetype);
-        documentUrls.push(docUrl);
-        console.log(`Uploaded document: ${docUrl}`);
+        try {
+          const fileName = `${Date.now()}-${doc.originalname}`;
+          const path = `docs/${fileName}`;
+          const docUrl = await uploadFile("project-documents", path, doc.buffer, doc.mimetype);
+          documentUrls.push(docUrl);
+          console.log(`Uploaded document: ${docUrl}`);
+        } catch (error: any) {
+          console.warn(`Document upload failed for ${doc.originalname}: ${error.message}`);
+          uploadWarnings.push(`Document ${doc.originalname} upload failed - Supabase Storage RLS may be blocking uploads.`);
+        }
       }
     }
 
@@ -1172,6 +1189,7 @@ router.post("/projects", authenticate, requireAdmin, upload.fields([
 
     res.json({
       message: "Project created successfully - token minting in progress",
+      warnings: uploadWarnings.length > 0 ? uploadWarnings : undefined,
       project: {
         id: project.id,
         name: project.name,
