@@ -651,41 +651,40 @@ router.put("/deposits/:id", authenticate, requireAdmin, async (req, res) => {
           })
           .where(eq(transactions.id, depositRequest.transactionId));
 
-        // Ensure wallet exists before updating - create if missing
-        const [existingWallet] = await tx
-          .select()
-          .from(wallets)
-          .where(
-            and(
-              eq(wallets.userId, depositRequest.userId),
-              eq(wallets.currency, depositRequest.currency)
-            )
-          )
-          .limit(1);
-
-        if (!existingWallet) {
-          // Create wallet if it doesn't exist
-          await tx
-            .insert(wallets)
-            .values({
-              userId: depositRequest.userId,
-              currency: depositRequest.currency,
-              balance: approvedAmount,
-            });
-        } else {
-          // Update existing wallet balance (atomic operation)
+        // Update wallet balance based on currency
+        // Hybrid wallet model: NGN uses fiatBalance, crypto uses cryptoBalances JSON
+        if (depositRequest.currency === "NGN") {
+          // Update fiat balance (atomic operation)
           await tx
             .update(wallets)
             .set({
-              balance: sql`${wallets.balance} + ${approvedAmount}`,
+              fiatBalance: sql`COALESCE(${wallets.fiatBalance}, 0) + ${approvedAmount}`,
               updatedAt: new Date(),
             })
-            .where(
-              and(
-                eq(wallets.userId, depositRequest.userId),
-                eq(wallets.currency, depositRequest.currency)
-              )
-            );
+            .where(eq(wallets.userId, depositRequest.userId));
+        } else {
+          // For crypto deposits (USDC, XLM), update cryptoBalances JSON atomically
+          // Use PostgreSQL JSONB functions for atomic updates
+          // Note: Currency is a validated enum (NGN, USDC, XLM), safe to use in SQL
+          const currencyKey = depositRequest.currency; // Validated enum value
+          await tx
+            .update(wallets)
+            .set({
+              cryptoBalances: sql.raw(`
+                jsonb_set(
+                  COALESCE(crypto_balances, '{}'::jsonb),
+                  ARRAY['${currencyKey}'],
+                  to_jsonb(
+                    COALESCE(
+                      (crypto_balances->>'${currencyKey}')::numeric,
+                      0
+                    ) + ${Number(approvedAmount)}
+                  )
+                )
+              `),
+              updatedAt: new Date(),
+            })
+            .where(eq(wallets.userId, depositRequest.userId));
         }
       });
 
@@ -908,34 +907,39 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
           .where(eq(transactions.id, withdrawalRequest.transactionId));
 
         // Refund the amount back to user's wallet (atomic operation)
-        const [wallet] = await tx
-          .select()
-          .from(wallets)
-          .where(
-            and(
-              eq(wallets.userId, withdrawalRequest.userId),
-              eq(wallets.currency, withdrawalRequest.currency)
-            )
-          )
-          .limit(1);
-
-        if (!wallet) {
-          throw new Error("Wallet not found - cannot refund");
+        // Hybrid wallet model: NGN uses fiatBalance, crypto uses cryptoBalances JSON
+        if (withdrawalRequest.currency === "NGN") {
+          // Refund to fiat balance
+          await tx
+            .update(wallets)
+            .set({
+              fiatBalance: sql`COALESCE(${wallets.fiatBalance}, 0) + ${refundAmount}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(wallets.userId, withdrawalRequest.userId));
+        } else {
+          // Refund to crypto balance using atomic JSONB update
+          // Note: Currency is a validated enum (NGN, USDC, XLM), safe to use in SQL
+          const currencyKey = withdrawalRequest.currency; // Validated enum value
+          await tx
+            .update(wallets)
+            .set({
+              cryptoBalances: sql.raw(`
+                jsonb_set(
+                  COALESCE(crypto_balances, '{}'::jsonb),
+                  ARRAY['${currencyKey}'],
+                  to_jsonb(
+                    COALESCE(
+                      (crypto_balances->>'${currencyKey}')::numeric,
+                      0
+                    ) + ${Number(refundAmount)}
+                  )
+                )
+              `),
+              updatedAt: new Date(),
+            })
+            .where(eq(wallets.userId, withdrawalRequest.userId));
         }
-
-        // Add the amount back to wallet
-        await tx
-          .update(wallets)
-          .set({
-            balance: sql`${wallets.balance} + ${refundAmount}`,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(wallets.userId, withdrawalRequest.userId),
-              eq(wallets.currency, withdrawalRequest.currency)
-            )
-          );
       });
 
       // TODO: Send email notification to user about rejected withdrawal
@@ -1245,8 +1249,9 @@ router.get("/my-wallet", authenticate, requireAdmin, async (req, res) => {
     let accountError: string | undefined;
 
     try {
-      const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
-      isActivated = true;
+      if (wallet.cryptoWalletPublicKey) {
+        const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
+        isActivated = true;
 
       // Parse balances
       for (const balance of account.balances) {
@@ -1258,6 +1263,7 @@ router.get("/my-wallet", authenticate, requireAdmin, async (req, res) => {
         ) {
           stellarBalance.USDC = parseFloat(balance.balance).toFixed(7);
         }
+      }
       }
     } catch (error: any) {
       if (error.response && error.response.status === 404) {
@@ -1307,6 +1313,10 @@ router.post("/my-wallet/fund-friendbot", authenticate, requireAdmin, async (req,
       return res.status(400).json({ 
         error: "Friendbot funding is only available on testnet" 
       });
+    }
+
+    if (!wallet.cryptoWalletPublicKey) {
+      return res.status(400).json({ error: "Admin wallet public key not found" });
     }
 
     // Call Friendbot
@@ -1373,7 +1383,7 @@ router.post("/wallets/:userId/activate", authenticate, requireAdmin, async (req,
 
     // Use the createAndFundAccount utility
     const { createAndFundAccount } = await import("../lib/stellarAccount");
-    const result = await createAndFundAccount(userWallet.cryptoWalletPublicKey, "2");
+    const result = await createAndFundAccount(userWallet.cryptoWalletPublicKey!, "2");
 
     if (!result.success) {
       return res.status(500).json({ 
@@ -1382,20 +1392,54 @@ router.post("/wallets/:userId/activate", authenticate, requireAdmin, async (req,
       });
     }
 
+    // After successful activation, sync XLM balance from Horizon API
+    let xlmBalance = "0";
+    try {
+      const horizonUrl = process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+      const server = new StellarSdk.Horizon.Server(horizonUrl);
+      const account = await server.loadAccount(userWallet.cryptoWalletPublicKey!);
+      
+      // Find XLM (native) balance
+      const nativeBalance = account.balances.find((b: any) => b.asset_type === "native");
+      if (nativeBalance) {
+        xlmBalance = nativeBalance.balance;
+      }
+
+      // Update cryptoBalances in database using atomic JSONB update
+      await db
+        .update(wallets)
+        .set({
+          cryptoBalances: sql.raw(`
+            jsonb_set(
+              COALESCE(crypto_balances, '{}'::jsonb),
+              ARRAY['XLM'],
+              to_jsonb('${xlmBalance}'::text)
+            )
+          `),
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.userId, userId));
+
+      console.log(`✅ User wallet activated and synced: ${user?.email} - XLM: ${xlmBalance} - TX: ${result.txHash}`);
+    } catch (error: any) {
+      console.error("⚠️ Failed to sync XLM balance after activation:", error.message);
+      // Don't fail the request - activation was successful
+    }
+
     if (result.alreadyExists) {
       return res.json({
         message: "Wallet is already activated on Stellar network",
         alreadyActivated: true,
         publicKey: userWallet.cryptoWalletPublicKey,
+        xlmBalance,
       });
     }
-
-    console.log(`✅ User wallet activated: ${user?.email} - TX: ${result.txHash}`);
 
     res.json({
       message: "Wallet activated successfully with 2 XLM",
       txHash: result.txHash,
       publicKey: userWallet.cryptoWalletPublicKey,
+      xlmBalance,
       alreadyActivated: false,
     });
   } catch (error: any) {

@@ -30,7 +30,9 @@ import {
   LogOut,
   Briefcase,
   Receipt,
-  FileCheck
+  FileCheck,
+  Copy,
+  ExternalLink
 } from "lucide-react";
 import { Link } from "wouter";
 import { WalletActivationStatus } from "@/components/WalletActivationStatus";
@@ -352,6 +354,92 @@ export default function Dashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Wallet Status Card */}
+        {wallet?.cryptoWalletPublicKey && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="w-5 h-5" />
+                Stellar Wallet Status
+              </CardTitle>
+              <CardDescription>
+                Your blockchain wallet information and activation status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Activation Status */}
+              <div>
+                <p className="text-sm font-medium mb-2">Status</p>
+                <WalletActivationStatus stellarPublicKey={wallet.cryptoWalletPublicKey} />
+              </div>
+
+              {/* Public Key */}
+              <div>
+                <p className="text-sm font-medium mb-2">Stellar Public Key</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 bg-muted rounded-md text-xs break-all font-mono" data-testid="text-stellar-key">
+                    {wallet.cryptoWalletPublicKey}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(wallet.cryptoWalletPublicKey);
+                      toast({
+                        title: "Copied!",
+                        description: "Public key copied to clipboard",
+                      });
+                    }}
+                    data-testid="button-copy-key"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Explorer Link */}
+              <div>
+                <p className="text-sm font-medium mb-2">Verify on Blockchain</p>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const horizonUrl = import.meta.env.VITE_STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+                    const isTestnet = horizonUrl.includes("testnet");
+                    const explorerUrl = isTestnet
+                      ? `https://stellar.expert/explorer/testnet/account/${wallet.cryptoWalletPublicKey}`
+                      : `https://stellar.expert/explorer/public/account/${wallet.cryptoWalletPublicKey}`;
+                    window.open(explorerUrl, "_blank");
+                  }}
+                  data-testid="button-view-explorer"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View on Stellar Explorer
+                </Button>
+              </div>
+
+              {/* Balances Summary */}
+              <div>
+                <p className="text-sm font-medium mb-2">Blockchain Balances</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground">XLM</p>
+                    <p className="text-lg font-semibold" data-testid="wallet-status-xlm">
+                      {cryptoBalances.XLM || "0.00"}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground">USDC</p>
+                    <p className="text-lg font-semibold" data-testid="wallet-status-usdc">
+                      {cryptoBalances.USDC || "0.00"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           {wallets.map((wallet) => (
             <Card key={wallet.currency}>
