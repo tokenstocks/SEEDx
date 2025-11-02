@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Keypair } from "stellar-sdk";
 import multer from "multer";
 import { db } from "../db";
+import { horizonServer, isTestnet } from "../lib/stellarConfig";
 import { 
   depositRequests, 
   withdrawalRequests,
@@ -1219,6 +1220,190 @@ router.put("/users/:id/suspend", authenticate, requireAdmin, async (req, res) =>
       return res.status(400).json({ error: "Invalid input", details: error.errors });
     }
     res.status(500).json({ error: "Failed to update user suspension status" });
+  }
+});
+
+// Get admin's own wallet information
+router.get("/my-wallet", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const adminUserId = (req.user as any).userId;
+
+    // Get admin wallet
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, adminUserId))
+      .limit(1);
+
+    if (!wallet) {
+      return res.status(404).json({ error: "Admin wallet not found" });
+    }
+
+    // Check Stellar account status
+    let stellarBalance: { XLM?: string; USDC?: string } = {};
+    let isActivated = false;
+    let accountError: string | undefined;
+
+    try {
+      const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
+      isActivated = true;
+
+      // Parse balances
+      for (const balance of account.balances) {
+        if (balance.asset_type === "native") {
+          stellarBalance.XLM = parseFloat(balance.balance).toFixed(7);
+        } else if (
+          balance.asset_type !== "liquidity_pool_shares" &&
+          balance.asset_code === "USDC"
+        ) {
+          stellarBalance.USDC = parseFloat(balance.balance).toFixed(7);
+        }
+      }
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        accountError = "Account not activated on Stellar network";
+      } else {
+        accountError = `Error loading account: ${error.message}`;
+      }
+    }
+
+    res.json({
+      wallet: {
+        id: wallet.id,
+        publicKey: wallet.cryptoWalletPublicKey,
+        fiatBalance: wallet.fiatBalance,
+        cryptoBalances: wallet.cryptoBalances,
+        stellarBalance,
+        isActivated,
+        accountError,
+        createdAt: wallet.createdAt,
+        updatedAt: wallet.updatedAt,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get admin wallet error:", error);
+    res.status(500).json({ error: "Failed to fetch admin wallet" });
+  }
+});
+
+// Fund admin wallet using Friendbot (testnet only)
+router.post("/my-wallet/fund-friendbot", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const adminUserId = (req.user as any).userId;
+
+    // Get admin wallet
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, adminUserId))
+      .limit(1);
+
+    if (!wallet) {
+      return res.status(404).json({ error: "Admin wallet not found" });
+    }
+
+    // Check if we're on testnet
+    if (!isTestnet) {
+      return res.status(400).json({ 
+        error: "Friendbot funding is only available on testnet" 
+      });
+    }
+
+    // Call Friendbot
+    console.log(`🤖 Funding admin wallet via Friendbot: ${wallet.cryptoWalletPublicKey.substring(0, 8)}...`);
+    const friendbotUrl = `https://friendbot.stellar.org?addr=${wallet.cryptoWalletPublicKey}`;
+    const friendbotResponse = await fetch(friendbotUrl);
+
+    if (!friendbotResponse.ok) {
+      throw new Error(`Friendbot request failed: ${friendbotResponse.statusText}`);
+    }
+
+    const friendbotData = await friendbotResponse.json();
+
+    console.log(`✅ Admin wallet funded successfully! TX: ${friendbotData.hash || "N/A"}`);
+
+    // Get updated balance
+    let newBalance = "0";
+    try {
+      const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
+      const nativeBalance = account.balances.find(b => b.asset_type === "native");
+      if (nativeBalance && nativeBalance.asset_type === "native") {
+        newBalance = parseFloat(nativeBalance.balance).toFixed(7);
+      }
+    } catch (error: any) {
+      console.error("Error fetching updated balance:", error.message);
+    }
+
+    res.json({
+      message: "Admin wallet funded successfully with 10,000 XLM",
+      txHash: friendbotData.hash,
+      newBalance,
+    });
+  } catch (error: any) {
+    console.error("Friendbot funding error:", error);
+    res.status(500).json({ 
+      error: "Failed to fund wallet with Friendbot",
+      details: error.message 
+    });
+  }
+});
+
+// Activate a user's wallet by sending XLM from admin wallet
+router.post("/wallets/:userId/activate", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Get user wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+
+    if (!userWallet) {
+      return res.status(404).json({ error: "User wallet not found" });
+    }
+
+    // Get user info for logging
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    // Use the createAndFundAccount utility
+    const { createAndFundAccount } = await import("../lib/stellarAccount");
+    const result = await createAndFundAccount(userWallet.cryptoWalletPublicKey, "2");
+
+    if (!result.success) {
+      return res.status(500).json({ 
+        error: "Failed to activate wallet",
+        details: result.error 
+      });
+    }
+
+    if (result.alreadyExists) {
+      return res.json({
+        message: "Wallet is already activated on Stellar network",
+        alreadyActivated: true,
+        publicKey: userWallet.cryptoWalletPublicKey,
+      });
+    }
+
+    console.log(`✅ User wallet activated: ${user?.email} - TX: ${result.txHash}`);
+
+    res.json({
+      message: "Wallet activated successfully with 2 XLM",
+      txHash: result.txHash,
+      publicKey: userWallet.cryptoWalletPublicKey,
+      alreadyActivated: false,
+    });
+  } catch (error: any) {
+    console.error("Wallet activation error:", error);
+    res.status(500).json({ 
+      error: "Failed to activate wallet",
+      details: error.message 
+    });
   }
 });
 

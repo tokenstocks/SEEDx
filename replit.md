@@ -55,6 +55,14 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 - **Investment Dialog** (Project Detail Page): Multi-currency investment form with real-time token calculation, validation, and transaction submission. Supports NGN (fiat), USDC, and XLM payments based on project configuration. Shows blockchain sync status warnings.
 - **Enhanced Portfolio Page**: Tabbed interface showing token holdings (consolidated by project with Stellar Explorer links) and investment history. Four summary cards: Total Invested, Portfolio Value, Gain/Loss, and Projects count.
 - **Database Transactions**: All database mutations wrapped in Drizzle transactions to ensure data integrity. CryptoBalances deep-cloned before mutation to ensure atomic updates. If Stellar transfer succeeds but database fails, detailed error logging enables manual reconciliation.
+- **Atomic totalInvestedNGN Updates**: KYC threshold tracking uses atomic SQL increment (`COALESCE(total_invested_ngn, 0) + amount`) to prevent race conditions on concurrent NGN investments.
+- **Trustline Uniqueness**: Database-level unique constraint on (userId, projectId) prevents duplicate trustline creation. API includes existence check before insert.
+
+### Admin Wallet Management (Phase 2-C)
+- **Admin Wallet Dashboard** (`/admin` → My Wallet tab): Displays admin's Stellar public key, XLM/USDC balances, and activation status. Includes "Copy" button for public key and link to Stellar Explorer.
+- **Friendbot Integration** (API: `POST /api/admin/my-wallet/fund-friendbot`): Testnet-only endpoint that funds admin wallet with 10,000 XLM using Stellar Friendbot. Returns transaction hash and updated balance.
+- **User Wallet Activation** (API: `POST /api/admin/wallets/:userId/activate`): Admin can activate any user's Stellar wallet by sending 2 XLM from the admin wallet. Uses `createAndFundAccount()` from `stellarAccount.ts`. Returns transaction hash or "already activated" message.
+- **Wallet Activation Controls**: Each wallet card in the admin Wallets tab shows an "Activate Wallet" button for easy one-click user wallet activation.
 
 ## External Dependencies
 

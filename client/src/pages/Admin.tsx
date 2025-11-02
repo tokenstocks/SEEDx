@@ -78,6 +78,161 @@ interface Wallet {
   updatedAt: string;
 }
 
+// Admin Wallet Card Component
+function AdminWalletCard() {
+  const { toast } = useToast();
+
+  const { data: adminWallet, isLoading, refetch } = useQuery({
+    queryKey: ['/api/admin/my-wallet'],
+  });
+
+  const fundWalletMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/admin/my-wallet/fund-friendbot');
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Wallet Funded Successfully",
+        description: `Your wallet now has ${data.newBalance} XLM. Transaction: ${data.txHash}`,
+      });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Funding Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>My Admin Wallet</CardTitle>
+          <CardDescription>Manage your admin Stellar wallet</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-10 w-40" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const wallet = (adminWallet as any)?.wallet;
+  const horizonUrl = import.meta.env.VITE_STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+  const isTestnet = horizonUrl.includes("testnet");
+  const explorerUrl = isTestnet
+    ? `https://stellar.expert/explorer/testnet/account/${wallet?.publicKey}`
+    : `https://stellar.expert/explorer/public/account/${wallet?.publicKey}`;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>My Admin Wallet</CardTitle>
+        <CardDescription>Manage your admin Stellar wallet for platform operations</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {/* Wallet Status */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Status:</span>
+            {wallet?.isActivated ? (
+              <Badge variant="default" className="bg-green-600" data-testid="wallet-status-activated">
+                Activated
+              </Badge>
+            ) : (
+              <Badge variant="secondary" data-testid="wallet-status-pending">
+                {wallet?.accountError || "Not Activated"}
+              </Badge>
+            )}
+          </div>
+
+          {/* Public Key */}
+          <div className="space-y-2">
+            <Label>Stellar Public Key</Label>
+            <div className="flex gap-2 items-center">
+              <Input
+                value={wallet?.publicKey || ""}
+                readOnly
+                className="font-mono text-xs"
+                data-testid="input-admin-public-key"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(wallet?.publicKey || "");
+                  toast({ title: "Copied to clipboard" });
+                }}
+                data-testid="button-copy-public-key"
+              >
+                Copy
+              </Button>
+            </div>
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline"
+              data-testid="link-stellar-explorer"
+            >
+              View on Stellar Explorer →
+            </a>
+          </div>
+
+          {/* Balances */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>XLM Balance</Label>
+              <p className="text-2xl font-bold" data-testid="text-xlm-balance">
+                {wallet?.stellarBalance?.XLM || "0"} XLM
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>USDC Balance</Label>
+              <p className="text-2xl font-bold" data-testid="text-usdc-balance">
+                {wallet?.stellarBalance?.USDC || "0"} USDC
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-3 pt-4 border-t">
+            {isTestnet && (
+              <Button
+                onClick={() => fundWalletMutation.mutate()}
+                disabled={fundWalletMutation.isPending}
+                data-testid="button-fund-friendbot"
+              >
+                {fundWalletMutation.isPending ? "Funding..." : "Fund with Friendbot (10,000 XLM)"}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              data-testid="button-refresh-balance"
+            >
+              Refresh Balance
+            </Button>
+          </div>
+
+          {!isTestnet && (
+            <p className="text-sm text-muted-foreground">
+              Note: Friendbot funding is only available on testnet.
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<any>(null);
@@ -270,6 +425,26 @@ export default function Admin() {
     },
   });
 
+  const activateWalletMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest('POST', `/api/admin/wallets/${userId}/activate`);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.alreadyActivated ? "Already Activated" : "Wallet Activated",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallets"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Activation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const suspendUserMutation = useMutation({
     mutationFn: async ({ id, isSuspended }: { id: string; isSuspended: boolean }) => {
       const res = await apiRequest("PUT", `/api/admin/users/${id}/suspend`, { isSuspended });
@@ -415,7 +590,8 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-6">
+          <TabsList className="grid w-full md:w-auto grid-cols-7">
+            <TabsTrigger value="admin-wallet" data-testid="tab-admin-wallet">My Wallet</TabsTrigger>
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
@@ -423,6 +599,11 @@ export default function Admin() {
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
             <TabsTrigger value="wallets" data-testid="tab-wallets">Wallets</TabsTrigger>
           </TabsList>
+
+          {/* Admin Wallet Tab */}
+          <TabsContent value="admin-wallet">
+            <AdminWalletCard />
+          </TabsContent>
 
           {/* Deposits Tab */}
           <TabsContent value="deposits">
@@ -658,9 +839,20 @@ export default function Admin() {
 
                           <div className="mt-4 pt-4 border-t">
                             <p className="text-xs text-muted-foreground mb-1">Stellar Public Key</p>
-                            <p className="text-xs font-mono break-all" data-testid={`stellar-key-${wallet.id}`}>
-                              {wallet.stellarPublicKey}
-                            </p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-xs font-mono break-all flex-1" data-testid={`stellar-key-${wallet.id}`}>
+                                {wallet.stellarPublicKey}
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => activateWalletMutation.mutate(wallet.userId)}
+                                disabled={activateWalletMutation.isPending}
+                                data-testid={`button-activate-wallet-${wallet.userId}`}
+                              >
+                                {activateWalletMutation.isPending ? "Activating..." : "Activate Wallet"}
+                              </Button>
+                            </div>
                           </div>
 
                           <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
