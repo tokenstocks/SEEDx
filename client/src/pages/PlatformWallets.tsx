@@ -20,11 +20,24 @@ interface PlatformWallet {
 export default function PlatformWallets() {
   const { toast } = useToast();
 
-  const { data: walletsData, isLoading } = useQuery<{ wallets: PlatformWallet[] }>({
+  const { data: walletsData, isLoading, error } = useQuery<{ wallets: PlatformWallet[] }>({
     queryKey: ["/api/admin/platform-wallets"],
   });
 
   const wallets = walletsData?.wallets || [];
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-lg font-medium text-destructive mb-2">Failed to load platform wallets</p>
+            <p className="text-muted-foreground">Please try refreshing the page</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -121,7 +134,7 @@ export default function PlatformWallets() {
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">XLM</label>
                     <p className="text-sm font-semibold" data-testid={`text-xlm-balance-${wallet.walletType}`}>
-                      {parseFloat(wallet.balanceXLM).toLocaleString(undefined, {
+                      {(Number(wallet.balanceXLM) || 0).toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 7,
                       })}
@@ -130,13 +143,13 @@ export default function PlatformWallets() {
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">NGNTS</label>
                     <p className="text-sm font-semibold" data-testid={`text-ngnts-balance-${wallet.walletType}`}>
-                      {parseFloat(wallet.balanceNGNTS).toLocaleString()}
+                      {(Number(wallet.balanceNGNTS) || 0).toLocaleString()}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">USDC</label>
                     <p className="text-sm font-semibold" data-testid={`text-usdc-balance-${wallet.walletType}`}>
-                      {parseFloat(wallet.balanceUSDC).toLocaleString()}
+                      {(Number(wallet.balanceUSDC) || 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
