@@ -306,12 +306,22 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Fetch NGNTS balance from Stellar blockchain
+  const { data: ngntsData, isLoading: isNgntsLoading } = useQuery({
+    queryKey: ["/api/wallets/ngnts-balance"],
+    enabled: !!user,
+    refetchInterval: 30000, // Refresh every 30 seconds to show live blockchain data
+  });
+
   if (!user) {
     return null;
   }
 
   const wallet = walletData ? (walletData as { wallet: any }).wallet : undefined;
   const cryptoBalances = wallet ? JSON.parse(wallet.cryptoBalances || "{}") : {};
+  const ngntsBalance = ngntsData ? (ngntsData as any).balance || "0" : "0";
+  const ngntsExplorerUrl = ngntsData ? (ngntsData as any).explorerUrl : "";
+  const ngntsMessage = ngntsData ? (ngntsData as any).message : null;
   
   // Active wallets with deposit/withdraw functionality
   const wallets = [
@@ -531,6 +541,61 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* NGNTS Balance Card - Blockchain-backed Naira */}
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold">NGNTS Balance</CardTitle>
+              <Badge variant="secondary" className="text-xs">Blockchain</Badge>
+            </div>
+            {ngntsExplorerUrl && (
+              <a 
+                href={ngntsExplorerUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                data-testid="link-ngnts-explorer"
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" />
+                View on Explorer
+              </a>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold" data-testid="balance-NGNTS">
+                {isNgntsLoading ? "..." : parseFloat(ngntsBalance).toLocaleString("en-NG", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 7,
+                })}
+              </span>
+              <span className="text-lg text-muted-foreground">NGNTS</span>
+            </div>
+            
+            <p className="text-xs text-muted-foreground mt-2">
+              Naira Token Stellar • 1 NGNTS = ₦1.00
+            </p>
+            
+            {ngntsMessage && (
+              <div className="mt-4 p-3 bg-muted rounded-md">
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Info className="w-3 h-3" />
+                  {ngntsMessage}
+                </p>
+              </div>
+            )}
+            
+            {!isNgntsLoading && parseFloat(ngntsBalance) > 0 && (
+              <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                <p className="text-xs font-medium text-primary flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  Your NGNTS tokens are stored on the Stellar blockchain and can be verified by anyone
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="mb-8">
           <CardHeader>
