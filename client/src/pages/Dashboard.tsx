@@ -337,6 +337,12 @@ export default function Dashboard() {
   const ngntsBalanceNum = parseFloat(ngntsBalance);
   const isWalletFunded = fiatBalance > 0 || usdcBalance > 0 || ngntsBalanceNum > 0;
   
+  // Debug logging
+  console.log("Dashboard - walletData:", walletData);
+  console.log("Dashboard - wallet:", wallet);
+  console.log("Dashboard - fiatBalance:", fiatBalance);
+  console.log("Dashboard - isWalletFunded:", isWalletFunded);
+  
   // XLM gas fees info
   const xlmBalance = cryptoBalances.XLM || "0.00";
   
