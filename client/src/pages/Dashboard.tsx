@@ -501,25 +501,6 @@ export default function Dashboard() {
                   View on Stellar Explorer
                 </Button>
               </div>
-
-              {/* Balances Summary */}
-              <div>
-                <p className="text-sm font-medium mb-2">Blockchain Balances</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="text-xs text-muted-foreground">XLM</p>
-                    <p className="text-lg font-semibold" data-testid="wallet-status-xlm">
-                      {cryptoBalances.XLM || "0.00"}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="text-xs text-muted-foreground">USDC</p>
-                    <p className="text-lg font-semibold" data-testid="wallet-status-usdc">
-                      {cryptoBalances.USDC || "0.00"}
-                    </p>
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
         )}
