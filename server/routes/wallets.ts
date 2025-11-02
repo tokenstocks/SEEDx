@@ -42,6 +42,11 @@ const upload = multer({
  */
 router.get("/", authenticate, async (req, res) => {
   try {
+    // Disable caching to ensure fresh balance data after deposits/withdrawals
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId as string;
 
@@ -533,6 +538,11 @@ router.post("/withdraw", authenticate, async (req, res) => {
  */
 router.get("/ngnts-balance", authenticate, async (req, res) => {
   try {
+    // Disable caching to ensure fresh blockchain data
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId as string;
 

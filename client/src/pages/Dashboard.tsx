@@ -308,6 +308,8 @@ export default function Dashboard() {
     queryKey: ["/api/wallets"],
     enabled: !!user,
     refetchInterval: 10000, // Refresh every 10 seconds to catch admin approvals
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0, // Always consider data stale, force refetch
   });
 
   // Fetch NGNTS balance from Stellar blockchain
@@ -315,6 +317,8 @@ export default function Dashboard() {
     queryKey: ["/api/wallets/ngnts-balance"],
     enabled: !!user,
     refetchInterval: 10000, // Refresh every 10 seconds to show live blockchain data
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 0, // Always consider data stale, force refetch
   });
 
   if (!user) {
