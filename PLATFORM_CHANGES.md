@@ -74,9 +74,11 @@ You'll see 4 wallet cards showing:
 
 ### Step 5: Check User Dashboard
 Login as a regular user:
+- **NGNTS Balance Card** - Shows blockchain balance with "View on Explorer" link
 - XLM shows as "Gas Fees" (no deposit/withdraw buttons)
 - NGN & USDC have deposit/withdraw options
 - Clicking XLM deposit/withdraw shows error toast
+- NGNTS balance auto-refreshes every 30 seconds
 
 ### Step 6: Verify on Blockchain
 Click the Stellar Explorer link on Distribution wallet:
@@ -104,12 +106,18 @@ Click the Stellar Explorer link on Distribution wallet:
    - Database balance updated after blockchain confirmation
    - Error logging for manual reconciliation if needed
 
-### ⏳ Remaining Tasks:
-1. **User Dashboard** - Show NGNTS balance from blockchain (not just database)
-2. **Investment Flow** - Update to use NGNTS balance for NGN investments
-3. **Testing** - End-to-end tests for deposit → approval → NGNTS credit flow
+4. **NGNTS Dashboard Display** ✅
+   - User dashboard shows NGNTS balance from blockchain
+   - Auto-refreshes every 30 seconds
+   - Link to Stellar Explorer for verification
+   - Loading states and helpful messages
+   - Shows "trustline not established" or "account not activated" when needed
 
-**Current Progress: 15/30 tasks (50%) - Core infrastructure complete!**
+### ⏳ Remaining Tasks:
+1. **Investment Flow** - Update to use NGNTS balance for NGN investments
+2. **Testing** - End-to-end tests for deposit → approval → NGNTS credit → visible on dashboard
+
+**Current Progress: 18/30 tasks (60%) - User-facing features complete!**
 
 ---
 
