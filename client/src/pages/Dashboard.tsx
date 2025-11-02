@@ -326,7 +326,7 @@ export default function Dashboard() {
   }
 
   const wallet = walletData as any;
-  const cryptoBalances = wallet ? JSON.parse(wallet.cryptoBalances || "{}") : {};
+  const cryptoBalances = wallet?.cryptoBalances || {};
   const ngntsBalance = ngntsData ? (ngntsData as any).balance || "0" : "0";
   const ngntsExplorerUrl = ngntsData ? (ngntsData as any).explorerUrl : "";
   const ngntsMessage = ngntsData ? (ngntsData as any).message : null;
@@ -336,12 +336,6 @@ export default function Dashboard() {
   const usdcBalance = parseFloat(cryptoBalances.USDC || "0");
   const ngntsBalanceNum = parseFloat(ngntsBalance);
   const isWalletFunded = fiatBalance > 0 || usdcBalance > 0 || ngntsBalanceNum > 0;
-  
-  // Debug logging
-  console.log("Dashboard - walletData:", walletData);
-  console.log("Dashboard - wallet:", wallet);
-  console.log("Dashboard - fiatBalance:", fiatBalance);
-  console.log("Dashboard - isWalletFunded:", isWalletFunded);
   
   // XLM gas fees info
   const xlmBalance = cryptoBalances.XLM || "0.00";
