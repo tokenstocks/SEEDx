@@ -66,15 +66,17 @@ const withdrawalSchema = z.object({
 
 type WithdrawalForm = z.infer<typeof withdrawalSchema>;
 
-const depositInitiateSchema = z.object({
-  currency: z.enum(["NGN", "USDC", "XLM"]),
+const depositAmountSchema = z.object({
+  desiredAmount: z.string().min(1, "Amount is required").refine((val) => parseFloat(val) >= 100, {
+    message: "Minimum deposit is 100 NGNTS",
+  }),
 });
 
 const depositConfirmSchema = z.object({
   amount: z.string().min(1, "Amount is required"),
 });
 
-type DepositInitiateForm = z.infer<typeof depositInitiateSchema>;
+type DepositAmountForm = z.infer<typeof depositAmountSchema>;
 type DepositConfirmForm = z.infer<typeof depositConfirmSchema>;
 
 export default function Dashboard() {
@@ -85,9 +87,12 @@ export default function Dashboard() {
   
   // Deposit dialog states
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
-  const [depositStep, setDepositStep] = useState<"select" | "instructions" | "confirm">("select");
+  const [depositStep, setDepositStep] = useState<"amount" | "instructions" | "confirm">("amount");
   const [depositInstructions, setDepositInstructions] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [desiredNgntsAmount, setDesiredNgntsAmount] = useState<number>(0);
+  const [totalNgnToDeposit, setTotalNgnToDeposit] = useState<number>(0);
+  const [calculatedFees, setCalculatedFees] = useState<number>(0);
   
   const { toast } = useToast();
 
@@ -104,10 +109,10 @@ export default function Dashboard() {
     },
   });
 
-  const depositInitiateForm = useForm<DepositInitiateForm>({
-    resolver: zodResolver(depositInitiateSchema),
+  const depositAmountForm = useForm<DepositAmountForm>({
+    resolver: zodResolver(depositAmountSchema),
     defaultValues: {
-      currency: "NGN",
+      desiredAmount: "",
     },
   });
 
@@ -119,7 +124,7 @@ export default function Dashboard() {
   });
 
   const initiateDepositMutation = useMutation({
-    mutationFn: async (data: DepositInitiateForm) => {
+    mutationFn: async (data: { currency: string; desiredAmount?: number }) => {
       const res = await apiRequest("POST", "/api/wallets/deposit/initiate", data);
       return await res.json();
     },
@@ -178,10 +183,10 @@ export default function Dashboard() {
         description: `Your deposit of ${data.depositRequest.amount} ${data.depositRequest.currency} has been submitted and is pending admin approval.`,
       });
       setDepositDialogOpen(false);
-      setDepositStep("select");
+      setDepositStep("amount");
       setDepositInstructions(null);
       setSelectedFile(null);
-      depositInitiateForm.reset();
+      depositAmountForm.reset();
       depositConfirmForm.reset();
     },
     onError: (error: any) => {
@@ -277,9 +282,8 @@ export default function Dashboard() {
     }
     
     setSelectedCurrency(currency);
-    depositInitiateForm.setValue("currency", currency as any);
     setDepositDialogOpen(true);
-    setDepositStep("select");
+    setDepositStep("amount");
     setDepositInstructions(null);
     setSelectedFile(null);
   };
@@ -288,8 +292,22 @@ export default function Dashboard() {
     withdrawalMutation.mutate(data);
   };
 
-  const onDepositInitiate = (data: DepositInitiateForm) => {
-    initiateDepositMutation.mutate(data);
+  const onDepositAmountSubmit = (data: DepositAmountForm) => {
+    const desired = parseFloat(data.desiredAmount);
+    setDesiredNgntsAmount(desired);
+    
+    // Calculate fees (10 NGN platform fee + 2 XLM gas ~= 20 NGN)
+    const fees = 30; // Simplified: 10 NGN platform + ~20 NGN gas
+    const total = desired + fees;
+    
+    setCalculatedFees(fees);
+    setTotalNgnToDeposit(total);
+    
+    // Get payment instructions with desired amount
+    initiateDepositMutation.mutate({ 
+      currency: selectedCurrency,
+      desiredAmount: desired 
+    });
   };
 
   const onDepositConfirm = (data: DepositConfirmForm) => {
@@ -506,50 +524,57 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Show welcome state if wallet is not funded, otherwise show wallet tiles */}
+        {/* Show welcome state if wallet is not funded, otherwise show balance cards */}
         {!isWalletFunded ? (
           /* Pre-funding Welcome State */
-          <Card className="mb-8 border-2">
-            <CardContent className="pt-12 pb-12">
+          <Card className="mb-8">
+            <CardContent className="pt-16 pb-16">
               <div className="max-w-2xl mx-auto text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Sparkles className="w-8 h-8 text-primary" />
+                <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-primary" />
                 </div>
                 
-                <h2 className="text-3xl font-bold mb-3" data-testid="welcome-title">
+                <h2 className="text-4xl font-bold mb-4" data-testid="welcome-title">
                   Welcome to TokenStocks
                 </h2>
                 
-                <p className="text-muted-foreground text-lg mb-8 max-w-lg mx-auto">
-                  Start your journey in tokenized agricultural investments. Fund your wallet to explore and invest in vetted farm projects.
+                <p className="text-muted-foreground text-lg mb-10 max-w-lg mx-auto">
+                  Invest in real agriculture through blockchain tokens. Start with as little as 100 NGNTS (₦100).
                 </p>
 
                 <Button 
                   size="lg" 
-                  className="gap-2"
+                  className="gap-2 h-12 px-8"
                   onClick={() => {
                     setDepositDialogOpen(true);
-                    setDepositStep("select");
+                    setDepositStep("amount");
                   }}
                   data-testid="button-fund-wallet"
                 >
                   <PlusCircle className="w-5 h-5" />
-                  Fund Wallet
+                  Fund Wallet with NGNTS
                 </Button>
 
-                <div className="mt-12 grid md:grid-cols-2 gap-4 text-left">
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <DollarSign className="w-5 h-5 text-primary mb-2" />
-                    <h3 className="font-semibold mb-1">Start with ₦100</h3>
+                <div className="mt-16 grid md:grid-cols-3 gap-6 text-left">
+                  <div className="p-6 bg-muted/30 rounded-xl">
+                    <CheckCircle className="w-6 h-6 text-primary mb-3" />
+                    <h3 className="font-semibold mb-2">Blockchain Verified</h3>
                     <p className="text-sm text-muted-foreground">
-                      Low minimum investment makes agricultural projects accessible to everyone
+                      Every NGNTS token is verifiable on Stellar blockchain
                     </p>
                   </div>
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <CheckCircle className="w-5 h-5 text-primary mb-2" />
-                    <h3 className="font-semibold mb-1">Blockchain Verified</h3>
+                  <div className="p-6 bg-muted/30 rounded-xl">
+                    <DollarSign className="w-6 h-6 text-primary mb-3" />
+                    <h3 className="font-semibold mb-2">Low Entry Point</h3>
                     <p className="text-sm text-muted-foreground">
-                      All investments are tokenized on Stellar and publicly verifiable
+                      Start investing in agriculture with just 100 NGNTS
+                    </p>
+                  </div>
+                  <div className="p-6 bg-muted/30 rounded-xl">
+                    <Wallet className="w-6 h-6 text-primary mb-3" />
+                    <h3 className="font-semibold mb-2">1:1 Pegged</h3>
+                    <p className="text-sm text-muted-foreground">
+                      1 NGNTS = ₦1.00 - Stable and transparent value
                     </p>
                   </div>
                 </div>
@@ -558,31 +583,16 @@ export default function Dashboard() {
           </Card>
         ) : (
           <>
-            {/* Funded State - Wallet Tiles */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Consolidated Naira Balance (NGN + NGNTS) */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm font-medium">Naira Balance</CardTitle>
-                    <Badge variant="secondary" className="text-xs">Fiat + Blockchain</Badge>
-                  </div>
-                  <Wallet className="w-4 h-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Fiat NGN */}
+            {/* Funded State - Primary NGNTS Balance */}
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              {/* NGNTS Balance - Primary Card (Takes 2 columns) */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Fiat Naira (NGN)</p>
-                      <div className="text-2xl font-bold" data-testid="balance-NGN">
-                        ₦{fiatBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                    
-                    {/* Blockchain NGNTS */}
-                    <div className="pt-3 border-t">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs text-muted-foreground">Blockchain Naira (NGNTS)</p>
+                      <CardTitle className="text-lg font-semibold mb-1">NGNTS Balance</CardTitle>
+                      <CardDescription className="flex items-center gap-2">
+                        Naira Token Stellar (1 NGNTS = ₦1.00)
                         {ngntsExplorerUrl && (
                           <a 
                             href={ngntsExplorerUrl} 
@@ -592,73 +602,82 @@ export default function Dashboard() {
                             className="text-xs text-primary hover:underline flex items-center gap-1"
                           >
                             <ExternalLink className="w-3 h-3" />
-                            Verify
+                            Verify on Stellar
                           </a>
                         )}
-                      </div>
-                      <div className="text-xl font-semibold" data-testid="balance-NGNTS">
-                        {isNgntsLoading ? "..." : parseFloat(ngntsBalance).toLocaleString("en-NG", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 7,
-                        })} NGNTS
-                      </div>
+                      </CardDescription>
                     </div>
+                    <Wallet className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-5xl font-bold mb-6" data-testid="balance-NGNTS">
+                    {isNgntsLoading ? (
+                      <span className="text-muted-foreground">...</span>
+                    ) : (
+                      <>
+                        {parseFloat(ngntsBalance).toLocaleString("en-NG", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        <span className="text-2xl text-muted-foreground ml-2">NGNTS</span>
+                      </>
+                    )}
                   </div>
                   
-                  <div className="flex gap-2 mt-6">
+                  <div className="flex gap-3">
                     <Button 
-                      size="sm" 
-                      className="flex-1" 
+                      size="lg" 
+                      className="flex-1 gap-2" 
                       onClick={() => handleDepositClick("NGN")}
-                      data-testid="button-deposit-NGN"
+                      data-testid="button-deposit-NGNTS"
                     >
-                      <ArrowDownLeft className="w-4 h-4 mr-1" />
-                      Deposit
+                      <ArrowDownLeft className="w-5 h-5" />
+                      Add Funds
                     </Button>
                     <Button 
-                      size="sm" 
+                      size="lg" 
                       variant="outline" 
-                      className="flex-1" 
+                      className="flex-1 gap-2" 
                       onClick={() => handleWithdrawClick("NGN")}
-                      data-testid="button-withdraw-NGN"
+                      data-testid="button-withdraw-NGNTS"
                     >
-                      <ArrowUpRight className="w-4 h-4 mr-1" />
+                      <ArrowUpRight className="w-5 h-5" />
                       Withdraw
                     </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* USDC Wallet */}
+              {/* USDC Balance - Secondary Card */}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">USDC Wallet</CardTitle>
-                  <Wallet className="w-4 h-4 text-muted-foreground" />
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">USDC</CardTitle>
+                  <CardDescription>USD Coin</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold mb-1" data-testid="balance-USDC">
+                  <div className="text-3xl font-bold mb-6" data-testid="balance-USDC">
                     ${usdcWallet.balance}
                   </div>
-                  <p className="text-xs text-muted-foreground">USD Coin (Stablecoin)</p>
                   
-                  <div className="flex gap-2 mt-6">
+                  <div className="space-y-2">
                     <Button 
                       size="sm" 
-                      className="flex-1" 
+                      className="w-full gap-2" 
                       onClick={() => handleDepositClick("USDC")}
                       data-testid="button-deposit-USDC"
                     >
-                      <ArrowDownLeft className="w-4 h-4 mr-1" />
+                      <ArrowDownLeft className="w-4 h-4" />
                       Deposit
                     </Button>
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="flex-1" 
+                      className="w-full gap-2" 
                       onClick={() => handleWithdrawClick("USDC")}
                       data-testid="button-withdraw-USDC"
                     >
-                      <ArrowUpRight className="w-4 h-4 mr-1" />
+                      <ArrowUpRight className="w-4 h-4" />
                       Withdraw
                     </Button>
                   </div>
@@ -915,61 +934,84 @@ export default function Dashboard() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {depositStep === "select" ? "Fund Wallet" : `Deposit ${selectedCurrency}`}
+              {depositStep === "amount" ? "Fund Wallet with NGNTS" : `Deposit NGNTS`}
             </DialogTitle>
             <DialogDescription>
-              {depositStep === "select" && "Choose a currency to fund your wallet"}
+              {depositStep === "amount" && "Enter the amount of NGNTS you want to receive"}
               {depositStep === "instructions" && "Follow the instructions to make your payment"}
               {depositStep === "confirm" && "Confirm your deposit with payment proof"}
             </DialogDescription>
           </DialogHeader>
 
-          {depositStep === "select" && (
-            <Form {...depositInitiateForm}>
-              <form onSubmit={depositInitiateForm.handleSubmit(onDepositInitiate)} className="space-y-4">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">Select Currency</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      type="button"
-                      variant={selectedCurrency === "NGN" ? "default" : "outline"}
-                      className="h-auto py-4 flex-col gap-2"
-                      onClick={() => {
-                        setSelectedCurrency("NGN");
-                        depositInitiateForm.setValue("currency", "NGN");
-                      }}
-                      data-testid="button-select-ngn"
-                    >
-                      <DollarSign className="w-6 h-6" />
-                      <div>
-                        <p className="font-semibold">Naira</p>
-                        <p className="text-xs opacity-80">NGN (Bank Transfer)</p>
-                      </div>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={selectedCurrency === "USDC" ? "default" : "outline"}
-                      className="h-auto py-4 flex-col gap-2"
-                      onClick={() => {
-                        setSelectedCurrency("USDC");
-                        depositInitiateForm.setValue("currency", "USDC");
-                      }}
-                      data-testid="button-select-usdc"
-                    >
-                      <DollarSign className="w-6 h-6" />
-                      <div>
-                        <p className="font-semibold">USDC</p>
-                        <p className="text-xs opacity-80">Stablecoin</p>
-                      </div>
-                    </Button>
-                  </div>
-                </div>
+          {depositStep === "amount" && (
+            <Form {...depositAmountForm}>
+              <form onSubmit={depositAmountForm.handleSubmit(onDepositAmountSubmit)} className="space-y-6">
+                <FormField
+                  control={depositAmountForm.control}
+                  name="desiredAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Desired NGNTS Amount</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="e.g., 1000" 
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              const value = parseFloat(e.target.value) || 0;
+                              if (value > 0) {
+                                const fees = 30;
+                                setCalculatedFees(fees);
+                                setTotalNgnToDeposit(value + fees);
+                                setDesiredNgntsAmount(value);
+                              }
+                            }}
+                            data-testid="input-desired-amount"
+                            className="text-2xl font-semibold h-16 pr-20"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                            NGNTS
+                          </span>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Click "Continue" to get payment instructions for {selectedCurrency} deposit.
-                  </p>
-                </div>
+                {desiredNgntsAmount > 0 && (
+                  <div className="space-y-4">
+                    <div className="bg-muted/50 rounded-lg p-6 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Est. Received</span>
+                        <span className="text-lg font-semibold">
+                          {desiredNgntsAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })} NGNTS
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Network Fee + Platform Fee</span>
+                        <span className="text-lg font-semibold text-primary">
+                          +{calculatedFees.toLocaleString("en-NG", { minimumFractionDigits: 2 })} NGN
+                        </span>
+                      </div>
+                      <div className="pt-3 border-t flex justify-between items-center">
+                        <span className="font-semibold">Total to Deposit</span>
+                        <span className="text-2xl font-bold">
+                          ₦{totalNgnToDeposit.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Note:</strong> You'll receive exactly {desiredNgntsAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })} NGNTS after depositing ₦{totalNgnToDeposit.toLocaleString("en-NG", { minimumFractionDigits: 2 })} NGN via bank transfer.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button 
@@ -984,7 +1026,7 @@ export default function Dashboard() {
                   <Button 
                     type="submit" 
                     className="flex-1"
-                    disabled={initiateDepositMutation.isPending}
+                    disabled={initiateDepositMutation.isPending || desiredNgntsAmount < 100}
                     data-testid="button-get-instructions"
                   >
                     {initiateDepositMutation.isPending ? "Loading..." : "Continue"}
@@ -1066,10 +1108,10 @@ export default function Dashboard() {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
-                    setDepositStep("select");
+                    setDepositStep("amount");
                     setDepositInstructions(null);
                   }}
-                  data-testid="button-back-to-select"
+                  data-testid="button-back-to-amount"
                 >
                   Back
                 </Button>
