@@ -307,13 +307,14 @@ export default function Dashboard() {
   const { data: walletData } = useQuery({
     queryKey: ["/api/wallets"],
     enabled: !!user,
+    refetchInterval: 10000, // Refresh every 10 seconds to catch admin approvals
   });
 
   // Fetch NGNTS balance from Stellar blockchain
   const { data: ngntsData, isLoading: isNgntsLoading } = useQuery({
     queryKey: ["/api/wallets/ngnts-balance"],
     enabled: !!user,
-    refetchInterval: 30000, // Refresh every 30 seconds to show live blockchain data
+    refetchInterval: 10000, // Refresh every 10 seconds to show live blockchain data
   });
 
   if (!user) {
