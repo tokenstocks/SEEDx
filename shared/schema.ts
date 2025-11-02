@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, uuid, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, uuid, boolean, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -32,6 +32,7 @@ export const users = pgTable("users", {
     selfie?: string;
     addressProof?: string;
   }>(),
+  totalInvestedNGN: decimal("total_invested_ngn", { precision: 18, scale: 2 }).notNull().default("0.00"),
   isSuspended: boolean("is_suspended").notNull().default(false),
   stellarPublicKey: text("stellar_public_key"),
   stellarSecretKeyEncrypted: text("stellar_secret_key_encrypted"),
@@ -188,6 +189,21 @@ export const projectTokenLedger = pgTable("project_token_ledger", {
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Trustlines table - tracks Stellar trustlines for project tokens
+export const trustlines = pgTable("trustlines", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  assetCode: text("asset_code").notNull(),
+  issuerPublicKey: text("issuer_public_key").notNull(),
+  status: text("status").notNull().default("pending"), // pending, active, failed
+  txHash: text("tx_hash"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint: one trustline per user per project
+  userProjectUnique: unique().on(table.userId, table.projectId),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({

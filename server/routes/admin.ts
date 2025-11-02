@@ -303,7 +303,7 @@ router.get("/wallets", authenticate, requireAdmin, async (req, res) => {
         userRole: users.role,
         fiatBalance: wallets.fiatBalance,
         cryptoBalances: wallets.cryptoBalances,
-        stellarPublicKey: wallets.stellarPublicKey,
+        stellarPublicKey: wallets.cryptoWalletPublicKey,
         createdAt: wallets.createdAt,
         updatedAt: wallets.updatedAt,
       })
@@ -1156,9 +1156,14 @@ router.post("/projects", authenticate, requireAdmin, upload.fields([
   } catch (error: any) {
     console.error("Create project error:", error);
     if (error.name === "ZodError") {
-      return res.status(400).json({ error: "Invalid input", details: error.errors });
+      console.error("Validation errors:", JSON.stringify(error.errors, null, 2));
+      const fieldErrors = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return res.status(400).json({ 
+        error: `Validation failed: ${fieldErrors}`,
+        details: error.errors 
+      });
     }
-    res.status(500).json({ error: "Failed to create project" });
+    res.status(500).json({ error: error.message || "Failed to create project" });
   }
 });
 

@@ -7,10 +7,11 @@ import {
   projectTokenBalances,
   projectTokenLedger,
   users,
+  trustlines,
   insertInvestmentSchema 
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { ensureTrustline, transferAsset, recordTransaction } from "../lib/stellarOps";
 import { decrypt } from "../lib/encryption";
 
@@ -80,16 +81,40 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       return;
     }
 
-    // Get user wallet
-    const [userWallet] = await db
-      .select()
+    // Get user wallet and KYC info
+    const [userData] = await db
+      .select({
+        wallet: wallets,
+        kycStatus: users.kycStatus,
+        totalInvestedNGN: users.totalInvestedNGN,
+      })
       .from(wallets)
+      .innerJoin(users, eq(wallets.userId, users.id))
       .where(eq(wallets.userId, userId))
       .limit(1);
 
-    if (!userWallet) {
+    if (!userData || !userData.wallet) {
       res.status(404).json({ error: "Wallet not found" });
       return;
+    }
+
+    const userWallet = userData.wallet;
+
+    // Check KYC threshold for NGN investments (5M NGN limit without KYC approval)
+    if (project.currency === "NGN") {
+      const currentTotalInvested = parseFloat(userData.totalInvestedNGN);
+      const newTotalInvested = currentTotalInvested + investmentAmount;
+      const KYC_THRESHOLD = 5000000; // 5 million NGN
+
+      if (newTotalInvested > KYC_THRESHOLD && userData.kycStatus !== "approved") {
+        res.status(403).json({ 
+          error: `NGN investment limit reached. You can invest up to ₦${KYC_THRESHOLD.toLocaleString()} without KYC approval. Current total: ₦${currentTotalInvested.toFixed(2)}. Please complete KYC verification to invest more.`,
+          kycRequired: true,
+          currentTotal: currentTotalInvested,
+          limit: KYC_THRESHOLD
+        });
+        return;
+      }
     }
 
     // Check balance based on project currency
@@ -179,6 +204,31 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
     // Step 3: Update database in a transaction
     try {
       await db.transaction(async (tx) => {
+        // Record trustline in database if new trustline was created (check for existing first to avoid duplicates)
+        if (trustlineTxHash && trustlineTxHash !== "EXISTING_TRUSTLINE") {
+          const [existingTrustline] = await tx
+            .select()
+            .from(trustlines)
+            .where(
+              and(
+                eq(trustlines.userId, userId),
+                eq(trustlines.projectId, projectId)
+              )
+            )
+            .limit(1);
+
+          if (!existingTrustline) {
+            await tx.insert(trustlines).values({
+              userId,
+              projectId,
+              assetCode: project.stellarAssetCode!,
+              issuerPublicKey: project.stellarIssuerPublicKey!,
+              status: "active",
+              txHash: trustlineTxHash,
+            });
+          }
+        }
+
         // Clone crypto balances to avoid reference issues
         const updatedCryptoBalances = JSON.parse(JSON.stringify(
           userWallet.cryptoBalances || {}
@@ -195,6 +245,15 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
               updatedAt: new Date() 
             })
             .where(eq(wallets.userId, userId));
+          
+          // Update user's total invested NGN atomically using SQL to prevent race conditions
+          await tx
+            .update(users)
+            .set({
+              totalInvestedNGN: sql`COALESCE(${users.totalInvestedNGN}, 0) + ${investmentAmount}`,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, userId));
         } else {
           // Deduct from crypto balance (USDC or XLM)
           const newCryptoBalance = (userBalance - investmentAmount).toFixed(7);
