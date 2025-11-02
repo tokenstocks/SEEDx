@@ -208,10 +208,12 @@ export async function creditNgntsDeposit(
     }
 
     // Step 2: Transfer NGNTS from Distribution wallet to user
+    // Stellar text memos are max 28 bytes, so use first 8 chars of transaction ID
+    const shortTxId = transactionId.substring(0, 8);
     const { txHash: transferTxHash } = await transferNgnts(
       userWallet.cryptoWalletPublicKey,
       amount,
-      `Deposit ${transactionId}`
+      `DEP-${shortTxId}` // e.g., "DEP-18fb693d" = 12 bytes (safe)
     );
 
     // Step 3: Update database balance
