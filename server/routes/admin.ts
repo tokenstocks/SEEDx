@@ -27,6 +27,7 @@ import { requireAdmin } from "../middleware/adminAuth";
 import { encrypt } from "../lib/encryption";
 import { uploadFile } from "../lib/supabase";
 import { createProjectToken } from "../lib/stellarToken";
+import { issueNGNTS, mintNGNTS } from "../lib/platformToken";
 
 const router = Router();
 
@@ -1565,6 +1566,138 @@ router.get("/platform-wallets", authenticate, requireAdmin, async (req, res) => 
     console.error("Get platform wallets error:", error);
     res.status(500).json({
       error: "Failed to fetch platform wallets",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/platform/issue-ngnts
+ * Issue NGNTS token from Treasury wallet and establish trustline with Distribution wallet
+ */
+router.post("/platform/issue-ngnts", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const result = await issueNGNTS();
+    
+    if (!result.success) {
+      return res.status(500).json({
+        error: "Failed to issue NGNTS",
+        details: result.error,
+      });
+    }
+
+    res.json({
+      message: "NGNTS token issued successfully",
+      trustlineTxHash: result.trustlineTxHash,
+      nextStep: "Mint initial NGNTS supply using POST /api/admin/platform/mint-ngnts",
+    });
+  } catch (error: any) {
+    console.error("NGNTS issuance error:", error);
+    res.status(500).json({
+      error: "Failed to issue NGNTS",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/platform/mint-ngnts
+ * Mint NGNTS tokens (send from Treasury to Distribution wallet)
+ */
+router.post("/platform/mint-ngnts", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    if (!amount || isNaN(parseFloat(amount))) {
+      return res.status(400).json({
+        error: "Invalid amount. Provide a valid number",
+      });
+    }
+
+    const result = await mintNGNTS(amount);
+    
+    if (!result.success) {
+      return res.status(500).json({
+        error: "Failed to mint NGNTS",
+        details: result.error,
+      });
+    }
+
+    res.json({
+      message: `Minted ${amount} NGNTS successfully`,
+      txHash: result.txHash,
+    });
+  } catch (error: any) {
+    console.error("NGNTS minting error:", error);
+    res.status(500).json({
+      error: "Failed to mint NGNTS",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/platform-wallets/:walletType/fund-friendbot
+ * Fund a platform wallet using Friendbot (testnet only)
+ */
+router.post("/platform-wallets/:walletType/fund-friendbot", authenticate, requireAdmin, async (req, res) => {
+  try {
+    if (!isTestnet) {
+      return res.status(400).json({
+        error: "Friendbot is only available on testnet",
+      });
+    }
+
+    const { walletType } = req.params;
+
+    // Get wallet from database
+    const [wallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, walletType as any));
+
+    if (!wallet) {
+      return res.status(404).json({
+        error: `Platform wallet '${walletType}' not found`,
+      });
+    }
+
+    // Fund with Friendbot
+    const friendbotUrl = `https://friendbot.stellar.org/?addr=${wallet.publicKey}`;
+    const response = await fetch(friendbotUrl);
+
+    if (!response.ok) {
+      throw new Error(`Friendbot request failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    // Fetch updated balance from Horizon
+    const account = await horizonServer.loadAccount(wallet.publicKey);
+    const nativeBalance = account.balances.find((b: any) => b.asset_type === 'native');
+    const xlmBalance = nativeBalance ? nativeBalance.balance : "0";
+
+    // Update balance in database
+    await db
+      .update(platformWallets)
+      .set({
+        balanceXLM: xlmBalance,
+        lastSyncedAt: new Date(),
+      })
+      .where(eq(platformWallets.id, wallet.id));
+
+    console.log(`✅ Funded ${walletType} wallet with Friendbot: ${xlmBalance} XLM`);
+
+    res.json({
+      message: `${walletType} wallet funded successfully`,
+      publicKey: wallet.publicKey,
+      xlmBalance,
+      txHash: result.hash,
+    });
+  } catch (error: any) {
+    console.error("Friendbot funding error:", error);
+    res.status(500).json({
+      error: "Failed to fund wallet with Friendbot",
       details: error.message,
     });
   }
