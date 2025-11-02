@@ -43,7 +43,6 @@ export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
   const [, setLocation] = useLocation();
   const { toast} = useToast();
-  const [user, setUser] = useState<any>(null);
   const [investDialogOpen, setInvestDialogOpen] = useState(false);
   const [investmentAmount, setInvestmentAmount] = useState("");
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -52,15 +51,33 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
     
-    if (!token || !userData) {
+    if (!token) {
       setLocation("/login");
       return;
     }
-
-    setUser(JSON.parse(userData));
   }, [setLocation]);
+
+  // Fetch user data from API with auto-refetch
+  const { data: user } = useQuery<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    kycStatus: string;
+    role: string;
+    totalInvestedNGN: string;
+  }>({
+    queryKey: ["/api/users/me"],
+    refetchInterval: 10000, // Refetch every 10 seconds to catch KYC updates
+  });
+
+  // Sync user data to localStorage when it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  }, [user]);
 
   const { data: project, isLoading } = useQuery<Project>({
     queryKey: ["/api/projects", params?.id],

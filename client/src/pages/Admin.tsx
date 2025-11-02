@@ -368,6 +368,8 @@ export default function Admin() {
       toast({ title: "Success", description: "KYC request processed successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
+      // Invalidate user profile queries so frontend updates
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
       setApprovalDialog(null);
       resetForm();
     },
