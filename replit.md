@@ -34,6 +34,12 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 - **Security Hardening:** Encrypted Stellar secrets are no longer exposed via API.
 - **Admin Dashboard APIs:** Comprehensive APIs for dashboard metrics, user management (including KYC approval/rejection), transaction management, and project updates, all secured with admin-role middleware.
 - **Setup Verification Endpoints:** Admin-only endpoints (`/api/setup/*`) to verify database schema, wallet configurations, platform wallets, and Stellar network settings.
+- **Platform Wallet Architecture (Phase 3):** 4-wallet system for fully on-chain operations:
+  - **Operations Wallet** (`GDM44U...IGOD`): 10,000 XLM - Activates new user Stellar accounts (sends 2 XLM)
+  - **Treasury Wallet** (`GAIGB7...JRGW`): 10,000 XLM - Issues NGNTS and project tokens (highest security, issuer account)
+  - **Distribution Wallet** (`GB4OJG...2UUS`): 10,000 XLM + 100M NGNTS - Daily token operations and user crediting
+  - **Liquidity Pool Wallet** (`GD7QTC...ORY6`): Unfunded - Reserved for secondary market buybacks
+- **NGNTS Token Issued:** Naira Token Stellar (NGNTS) issued from Treasury wallet with AuthRevocable flag. 100M initial supply minted to Distribution wallet. Verifiable on Stellar Explorer: [NGNTS Asset](https://stellar.expert/explorer/testnet/asset/NGNTS-GAIGB7IDJAUYW4NSVANXXMYT7BCIPKSBBKULKEUU77BR4TH2NOFYJRGW)
 
 ### UI/UX Decisions
 - **Color Scheme:** Professional, modern fintech aesthetic inspired by platforms like Coinbase and Stripe.

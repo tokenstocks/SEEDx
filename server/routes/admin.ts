@@ -1663,6 +1663,85 @@ router.post("/platform/mint-ngnts", authenticate, requireAdmin, async (req, res)
 });
 
 /**
+ * POST /api/admin/platform-wallets/:walletType/sync-balance
+ * Sync wallet balances from Stellar Horizon to database
+ */
+router.post("/platform-wallets/:walletType/sync-balance", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { walletType } = req.params;
+    
+    const validTypes = ["operations", "treasury", "distribution", "liquidity_pool"];
+    if (!validTypes.includes(walletType)) {
+      return res.status(400).json({
+        error: `Invalid wallet type. Must be one of: ${validTypes.join(", ")}`,
+      });
+    }
+
+    // Get wallet from database
+    const [wallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, walletType as any));
+
+    if (!wallet) {
+      return res.status(404).json({
+        error: `${walletType} wallet not found`,
+      });
+    }
+
+    // Fetch account from Horizon
+    const account = await horizonServer.loadAccount(wallet.publicKey);
+    
+    // Get Treasury public key for NGNTS asset
+    const [treasuryWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "treasury"));
+
+    // Extract balances
+    let xlmBalance = "0";
+    let ngntsBalance = "0";
+    let usdcBalance = "0";
+
+    for (const balance of account.balances) {
+      if (balance.asset_type === "native") {
+        xlmBalance = balance.balance;
+      } else if (balance.asset_code === "NGNTS" && treasuryWallet && balance.asset_issuer === treasuryWallet.publicKey) {
+        ngntsBalance = balance.balance;
+      } else if (balance.asset_code === "USDC") {
+        usdcBalance = balance.balance;
+      }
+    }
+
+    // Update database
+    await db
+      .update(platformWallets)
+      .set({
+        balanceXLM: xlmBalance,
+        balanceNGNTS: ngntsBalance,
+        balanceUSDC: usdcBalance,
+        lastSyncedAt: new Date(),
+      })
+      .where(eq(platformWallets.id, wallet.id));
+
+    res.json({
+      message: `${walletType} wallet synced successfully`,
+      balances: {
+        XLM: xlmBalance,
+        NGNTS: ngntsBalance,
+        USDC: usdcBalance,
+      },
+    });
+  } catch (error: any) {
+    console.error("Wallet sync error:", error);
+    res.status(500).json({
+      error: "Failed to sync wallet balance",
+      details: error.message,
+    });
+  }
+});
+
+/**
  * POST /api/admin/platform-wallets/:walletType/fund-friendbot
  * Fund a platform wallet using Friendbot (testnet only)
  */
