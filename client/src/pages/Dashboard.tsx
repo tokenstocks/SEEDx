@@ -81,7 +81,6 @@ type DepositConfirmForm = z.infer<typeof depositConfirmSchema>;
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<any>(null);
   const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("NGN");
   
@@ -95,6 +94,36 @@ export default function Dashboard() {
   const [calculatedFees, setCalculatedFees] = useState<number>(0);
   
   const { toast } = useToast();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+      setLocation("/login");
+      return;
+    }
+  }, [setLocation]);
+
+  // Fetch user data from API with auto-refetch
+  const { data: user } = useQuery<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    kycStatus: string;
+    role: string;
+    totalInvestedNGN: string;
+  }>({
+    queryKey: ["/api/users/me"],
+    refetchInterval: 10000, // Refetch every 10 seconds to catch KYC updates
+  });
+
+  // Sync user data to localStorage when it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  }, [user]);
 
   const form = useForm<WithdrawalForm>({
     resolver: zodResolver(withdrawalSchema),
@@ -235,18 +264,6 @@ export default function Dashboard() {
       });
     },
   });
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-    
-    if (!token || !userData) {
-      setLocation("/login");
-      return;
-    }
-
-    setUser(JSON.parse(userData));
-  }, [setLocation]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");

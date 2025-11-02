@@ -289,7 +289,7 @@ export default function Admin() {
     setUser(parsedUser);
   }, [setLocation, toast]);
 
-  const { data: metrics } = useQuery({
+  const { data: metrics } = useQuery<{ metrics: DashboardMetrics }>({
     queryKey: ["/api/admin/dashboard"],
     enabled: !!user,
   });

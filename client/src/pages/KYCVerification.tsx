@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,6 @@ import { Link } from "wouter";
 export default function KYCVerification() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
   const [idCard, setIdCard] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
@@ -20,15 +20,33 @@ export default function KYCVerification() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
     
-    if (!token || !userData) {
+    if (!token) {
       setLocation("/login");
       return;
     }
-
-    setUser(JSON.parse(userData));
   }, [setLocation]);
+
+  // Fetch user data from API with auto-refetch
+  const { data: user } = useQuery<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    kycStatus: string;
+    role: string;
+    totalInvestedNGN: string;
+  }>({
+    queryKey: ["/api/users/me"],
+    refetchInterval: 10000, // Refetch every 10 seconds to catch KYC updates
+  });
+
+  // Sync user data to localStorage when it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,10 +83,7 @@ export default function KYCVerification() {
 
       const data = await response.json();
       
-      // Update user data in localStorage
-      const updatedUser = { ...user, kycStatus: "submitted" };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      // Note: User data will be automatically refetched by useQuery
 
       toast({
         title: "KYC documents uploaded!",
