@@ -9,11 +9,13 @@ import {
   initiateDepositSchema,
   confirmDepositSchema,
   initiateWithdrawalSchema,
+  platformWallets,
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { uploadFile } from "../lib/supabase";
 import { generateBankReference, generateStellarMemo } from "../lib/referenceGenerator";
 import { authenticate } from "../middleware/auth";
+import * as StellarSdk from "stellar-sdk";
 
 const router = Router();
 
@@ -522,6 +524,108 @@ router.post("/withdraw", authenticate, async (req, res) => {
     }
     
     res.status(500).json({ error: "Failed to process withdrawal request" });
+  }
+});
+
+/**
+ * GET /api/wallets/ngnts-balance
+ * Get user's NGNTS balance from Stellar blockchain
+ */
+router.get("/ngnts-balance", authenticate, async (req, res) => {
+  try {
+    // @ts-ignore - userId is added by auth middleware
+    const userId = req.userId as string;
+
+    // Get user's wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId));
+
+    if (!userWallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    // Get Treasury wallet to identify NGNTS issuer
+    const [treasuryWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "treasury"));
+
+    if (!treasuryWallet) {
+      return res.status(500).json({ error: "Treasury wallet not configured" });
+    }
+
+    // Query Horizon API for account balances
+    const horizonUrl = process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+    const horizonServer = new StellarSdk.Horizon.Server(horizonUrl);
+    const network = process.env.STELLAR_NETWORK || "testnet";
+
+    try {
+      const account = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey);
+      
+      // Find NGNTS balance
+      const ngntsBalance = account.balances.find(
+        (balance) => {
+          if (balance.asset_type === "liquidity_pool_shares") {
+            return false;
+          }
+          return (
+            balance.asset_type !== "native" &&
+            balance.asset_code === "NGNTS" &&
+            balance.asset_issuer === treasuryWallet.publicKey
+          );
+        }
+      );
+
+      if (ngntsBalance && ngntsBalance.asset_type !== "native" && ngntsBalance.asset_type !== "liquidity_pool_shares") {
+        // Account has NGNTS
+        return res.json({
+          balance: ngntsBalance.balance,
+          assetCode: "NGNTS",
+          assetIssuer: treasuryWallet.publicKey,
+          userPublicKey: userWallet.cryptoWalletPublicKey,
+          network,
+          explorerUrl: network === "testnet" 
+            ? `https://stellar.expert/explorer/testnet/account/${userWallet.cryptoWalletPublicKey}`
+            : `https://stellar.expert/explorer/public/account/${userWallet.cryptoWalletPublicKey}`,
+        });
+      } else {
+        // No NGNTS trustline yet
+        return res.json({
+          balance: "0",
+          assetCode: "NGNTS",
+          assetIssuer: treasuryWallet.publicKey,
+          userPublicKey: userWallet.cryptoWalletPublicKey,
+          network,
+          hasTrustline: false,
+          message: "No NGNTS trustline established yet. Make your first NGN deposit to receive NGNTS.",
+          explorerUrl: network === "testnet" 
+            ? `https://stellar.expert/explorer/testnet/account/${userWallet.cryptoWalletPublicKey}`
+            : `https://stellar.expert/explorer/public/account/${userWallet.cryptoWalletPublicKey}`,
+        });
+      }
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        // Account not activated on-chain yet
+        return res.json({
+          balance: "0",
+          assetCode: "NGNTS",
+          assetIssuer: treasuryWallet.publicKey,
+          userPublicKey: userWallet.cryptoWalletPublicKey,
+          network,
+          accountActivated: false,
+          message: "Stellar account not activated yet. Your account will be activated when you make your first deposit.",
+          explorerUrl: network === "testnet" 
+            ? `https://stellar.expert/explorer/testnet/account/${userWallet.cryptoWalletPublicKey}`
+            : `https://stellar.expert/explorer/public/account/${userWallet.cryptoWalletPublicKey}`,
+        });
+      }
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Get NGNTS balance error:", error);
+    res.status(500).json({ error: "Failed to fetch NGNTS balance from blockchain" });
   }
 });
 
