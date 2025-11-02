@@ -16,6 +16,8 @@ export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "app
 export const destinationTypeEnum = pgEnum("destination_type", ["bank_account", "crypto_wallet"]);
 export const projectStatusEnum = pgEnum("project_status", ["draft", "active", "funded", "completed", "cancelled"]);
 export const tokenLedgerActionEnum = pgEnum("token_ledger_action", ["create", "mint", "transfer", "burn", "redemption"]);
+export const platformWalletTypeEnum = pgEnum("platform_wallet_type", ["operations", "treasury", "distribution", "liquidity_pool"]);
+export const secondaryMarketStatusEnum = pgEnum("secondary_market_status", ["pending", "countered", "accepted", "rejected", "completed", "cancelled"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -204,6 +206,65 @@ export const trustlines = pgTable("trustlines", {
   // Unique constraint: one trustline per user per project
   userProjectUnique: unique().on(table.userId, table.projectId),
 }));
+
+// Platform wallets table - 4 wallets for platform operations
+export const platformWallets = pgTable("platform_wallets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletType: platformWalletTypeEnum("wallet_type").notNull().unique(),
+  publicKey: text("public_key").notNull().unique(),
+  encryptedSecretKey: text("encrypted_secret_key").notNull(),
+  description: text("description"),
+  balanceXLM: decimal("balance_xlm", { precision: 18, scale: 7 }).notNull().default("0.0000000"),
+  balanceNGNTS: decimal("balance_ngnts", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  balanceUSDC: decimal("balance_usdc", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Exchange rates table - XLM/NGN conversion rates
+export const exchangeRates = pgTable("exchange_rates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  xlmUsd: decimal("xlm_usd", { precision: 18, scale: 8 }).notNull(),
+  usdNgn: decimal("usd_ngn", { precision: 18, scale: 2 }).notNull(),
+  xlmNgn: decimal("xlm_ngn", { precision: 18, scale: 2 }).notNull(), // Calculated: xlmUsd * usdNgn
+  isStale: boolean("is_stale").notNull().default(false),
+  manualOverrideEnabled: boolean("manual_override_enabled").notNull().default(false),
+  manualXlmNgn: decimal("manual_xlm_ngn", { precision: 18, scale: 2 }),
+  lastFetchedAt: timestamp("last_fetched_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Platform settings table - Fee configuration
+export const platformSettings = pgTable("platform_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  description: text("description"),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Secondary market orders table - Liquidity pool token buyback
+export const secondaryMarketOrders = pgTable("secondary_market_orders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  tokenSymbol: text("token_symbol").notNull(),
+  tokensAmount: decimal("tokens_amount", { precision: 18, scale: 2 }).notNull(),
+  askingPriceNGNTS: decimal("asking_price_ngnts", { precision: 18, scale: 2 }).notNull(),
+  adminCounterOffer: decimal("admin_counter_offer", { precision: 18, scale: 2 }),
+  status: secondaryMarketStatusEnum("status").notNull().default("pending"),
+  reason: text("reason"),
+  adminNotes: text("admin_notes"),
+  lpTransactionHash: text("lp_transaction_hash"),
+  processedBy: uuid("processed_by").references(() => users.id),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -427,6 +488,60 @@ export const suspendUserSchema = z.object({
   reason: z.string().optional(),
 });
 
+export const insertPlatformWalletSchema = createInsertSchema(platformWallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExchangeRateSchema = createInsertSchema(exchangeRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlatformSettingSchema = createInsertSchema(platformSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePlatformSettingsSchema = z.object({
+  depositFeePercent: z.number().min(0).max(10).optional(),
+  investmentFeePercent: z.number().min(0).max(10).optional(),
+  withdrawalFeePercent: z.number().min(0).max(10).optional(),
+  xlmMarkupMultiplier: z.number().min(1).max(20).optional(),
+  minDepositNGN: z.number().min(0).optional(),
+  minWithdrawalNGN: z.number().min(0).optional(),
+});
+
+export const updateExchangeRateSchema = z.object({
+  manualOverrideEnabled: z.boolean(),
+  manualXlmNgn: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal").optional(),
+});
+
+export const insertSecondaryMarketOrderSchema = createInsertSchema(secondaryMarketOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  processedAt: true,
+  status: true,
+});
+
+export const createSecondaryMarketOrderSchema = z.object({
+  projectId: z.string().uuid(),
+  tokenSymbol: z.string().min(1),
+  tokensAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  askingPriceNGNTS: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  reason: z.string().optional(),
+});
+
+export const processSecondaryMarketOrderSchema = z.object({
+  action: z.enum(["accept", "reject", "counter"]),
+  counterOffer: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal").optional(),
+  adminNotes: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -458,3 +573,15 @@ export type ProjectTokenLedger = typeof projectTokenLedger.$inferSelect;
 export type InsertProjectTokenLedger = z.infer<typeof insertProjectTokenLedgerSchema>;
 export type CreateProject = z.infer<typeof createProjectSchema>;
 export type SuspendUser = z.infer<typeof suspendUserSchema>;
+export type PlatformWallet = typeof platformWallets.$inferSelect;
+export type InsertPlatformWallet = z.infer<typeof insertPlatformWalletSchema>;
+export type ExchangeRate = typeof exchangeRates.$inferSelect;
+export type InsertExchangeRate = z.infer<typeof insertExchangeRateSchema>;
+export type UpdateExchangeRate = z.infer<typeof updateExchangeRateSchema>;
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
+export type UpdatePlatformSettings = z.infer<typeof updatePlatformSettingsSchema>;
+export type SecondaryMarketOrder = typeof secondaryMarketOrders.$inferSelect;
+export type InsertSecondaryMarketOrder = z.infer<typeof insertSecondaryMarketOrderSchema>;
+export type CreateSecondaryMarketOrder = z.infer<typeof createSecondaryMarketOrderSchema>;
+export type ProcessSecondaryMarketOrder = z.infer<typeof processSecondaryMarketOrderSchema>;

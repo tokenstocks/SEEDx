@@ -13,6 +13,7 @@ import {
   investments,
   projectUpdates,
   projectTokenLedger,
+  platformWallets,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
@@ -1447,6 +1448,124 @@ router.post("/wallets/:userId/activate", authenticate, requireAdmin, async (req,
     res.status(500).json({ 
       error: "Failed to activate wallet",
       details: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/admin/platform-wallets/initialize
+ * Initialize all 4 platform wallets (Operations, Treasury, Distribution, Liquidity Pool)
+ * Admin only - should only be called once during platform setup
+ */
+router.post("/platform-wallets/initialize", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Check if wallets already exist
+    const existingWallets = await db.select().from(platformWallets);
+    if (existingWallets.length > 0) {
+      return res.status(400).json({
+        error: "Platform wallets already initialized",
+        existingWallets: existingWallets.map(w => ({
+          type: w.walletType,
+          publicKey: w.publicKey,
+        })),
+      });
+    }
+
+    // Define the 4 wallet types with descriptions
+    const walletTypes = [
+      {
+        type: "operations" as const,
+        description: "Operations wallet for activating new user Stellar accounts (sends 2 XLM)",
+      },
+      {
+        type: "treasury" as const,
+        description: "Treasury wallet for issuing NGNTS and project tokens (highest security)",
+      },
+      {
+        type: "distribution" as const,
+        description: "Distribution wallet for daily token operations and user crediting",
+      },
+      {
+        type: "liquidity_pool" as const,
+        description: "Liquidity Pool wallet for secondary market buybacks from investors",
+      },
+    ];
+
+    const createdWallets = [];
+
+    // Generate and store all 4 wallets
+    for (const walletConfig of walletTypes) {
+      // Generate Stellar keypair
+      const keypair = Keypair.random();
+      const publicKey = keypair.publicKey();
+      const secretKey = keypair.secret();
+
+      // Encrypt secret key
+      const encryptedSecretKey = encrypt(secretKey);
+
+      // Insert into database
+      const [newWallet] = await db
+        .insert(platformWallets)
+        .values({
+          walletType: walletConfig.type,
+          publicKey,
+          encryptedSecretKey,
+          description: walletConfig.description,
+        })
+        .returning();
+
+      createdWallets.push({
+        type: newWallet.walletType,
+        publicKey: newWallet.publicKey,
+        description: newWallet.description,
+      });
+
+      console.log(`✅ Created ${walletConfig.type} wallet: ${publicKey}`);
+    }
+
+    res.json({
+      message: "Platform wallets initialized successfully",
+      wallets: createdWallets,
+      nextSteps: [
+        "1. Fund Operations wallet with Friendbot (testnet only)",
+        "2. Issue NGNTS token from Treasury wallet",
+        "3. Establish trustline from Distribution to Treasury",
+        "4. Fund Liquidity Pool wallet for buybacks",
+      ],
+    });
+  } catch (error: any) {
+    console.error("Platform wallet initialization error:", error);
+    res.status(500).json({
+      error: "Failed to initialize platform wallets",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/admin/platform-wallets
+ * Get all platform wallets with their balances
+ */
+router.get("/platform-wallets", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const wallets = await db.select({
+      id: platformWallets.id,
+      walletType: platformWallets.walletType,
+      publicKey: platformWallets.publicKey,
+      description: platformWallets.description,
+      balanceXLM: platformWallets.balanceXLM,
+      balanceNGNTS: platformWallets.balanceNGNTS,
+      balanceUSDC: platformWallets.balanceUSDC,
+      lastSyncedAt: platformWallets.lastSyncedAt,
+      createdAt: platformWallets.createdAt,
+    }).from(platformWallets);
+
+    res.json({ wallets });
+  } catch (error: any) {
+    console.error("Get platform wallets error:", error);
+    res.status(500).json({
+      error: "Failed to fetch platform wallets",
+      details: error.message,
     });
   }
 });
