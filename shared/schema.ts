@@ -330,6 +330,20 @@ export const treasuryPoolTransactions = pgTable("treasury_pool_transactions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Treasury pool snapshots table - Periodic balance tracking for time-series charts
+export const treasuryPoolSnapshots = pgTable("treasury_pool_snapshots", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  balance: decimal("balance", { precision: 30, scale: 2 }).notNull(),
+  asOfDate: timestamp("as_of_date", { withTimezone: true }).notNull().defaultNow(),
+  sourceHash: text("source_hash"),
+  metadata: jsonb("metadata").$type<{
+    transactionCount?: number;
+    lastTxId?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Redemption requests table - Token buyback with hybrid funding logic
 export const redemptionRequests = pgTable("redemption_requests", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -337,6 +351,7 @@ export const redemptionRequests = pgTable("redemption_requests", {
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   tokensAmount: decimal("tokens_amount", { precision: 30, scale: 8 }).notNull(),
   navSnapshot: decimal("nav_snapshot", { precision: 30, scale: 8 }).notNull(),
+  navAtRequest: decimal("nav_at_request", { precision: 30, scale: 8 }),
   redemptionValueNgnts: decimal("redemption_value_ngnts", { precision: 30, scale: 2 }).notNull(),
   fundingPlan: jsonb("funding_plan").$type<{
     projectCashflow?: string;
@@ -724,6 +739,11 @@ export const insertTreasuryPoolTransactionSchema = createInsertSchema(treasuryPo
   createdAt: true,
 });
 
+export const insertTreasuryPoolSnapshotSchema = createInsertSchema(treasuryPoolSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertRedemptionRequestSchema = createInsertSchema(redemptionRequests).omit({
   id: true,
   createdAt: true,
@@ -798,6 +818,8 @@ export type CreateProjectCashflow = z.infer<typeof createProjectCashflowSchema>;
 export type VerifyProjectCashflow = z.infer<typeof verifyProjectCashflowSchema>;
 export type TreasuryPoolTransaction = typeof treasuryPoolTransactions.$inferSelect;
 export type InsertTreasuryPoolTransaction = z.infer<typeof insertTreasuryPoolTransactionSchema>;
+export type TreasuryPoolSnapshot = typeof treasuryPoolSnapshots.$inferSelect;
+export type InsertTreasuryPoolSnapshot = z.infer<typeof insertTreasuryPoolSnapshotSchema>;
 export type RedemptionRequest = typeof redemptionRequests.$inferSelect;
 export type InsertRedemptionRequest = z.infer<typeof insertRedemptionRequestSchema>;
 export type CreateRedemptionRequest = z.infer<typeof createRedemptionRequestSchema>;
