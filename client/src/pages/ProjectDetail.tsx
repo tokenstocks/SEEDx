@@ -7,11 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink, History } from "lucide-react";
 import { Link } from "wouter";
+import type { NavEntry } from "@/types/phase4";
 
 interface Project {
   id: string;
@@ -48,6 +51,8 @@ export default function ProjectDetail() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [navAmount, setNavAmount] = useState("");
+  const [navNotes, setNavNotes] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -150,6 +155,34 @@ export default function ProjectDetail() {
       toast({
         title: "Upload failed",
         description: error.message || "Failed to upload document",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: navHistory } = useQuery<{ history: NavEntry[] }>({
+    queryKey: ["/api/admin/projects", params?.id, "nav"],
+    enabled: !!params?.id && user?.role === "admin",
+  });
+
+  const createNavMutation = useMutation({
+    mutationFn: async (data: { navPerToken: string; notes?: string }) => {
+      const res = await apiRequest("POST", `/api/admin/projects/${params?.id}/nav`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "NAV updated successfully",
+        description: "New NAV entry has been created and superseded previous entry",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/projects", params?.id, "nav"] });
+      setNavAmount("");
+      setNavNotes("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "NAV update failed",
+        description: error.message || "Failed to create NAV entry",
         variant: "destructive",
       });
     },
@@ -272,7 +305,16 @@ export default function ProjectDetail() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <Tabs defaultValue="overview" className="space-y-6">
+          {user?.role === "admin" && (
+            <TabsList>
+              <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+              <TabsTrigger value="nav" data-testid="tab-nav">NAV Management</TabsTrigger>
+            </TabsList>
+          )}
+
+          <TabsContent value="overview">
+            <div className="grid md:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             <Card>
@@ -537,6 +579,115 @@ export default function ProjectDetail() {
             )}
           </div>
         </div>
+          </TabsContent>
+
+          {/* NAV Management Tab (Admin Only) */}
+          {user?.role === "admin" && (
+            <TabsContent value="nav">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Update NAV (Net Asset Value)</CardTitle>
+                    <CardDescription>
+                      Create a new NAV entry. This will supersede the previous entry.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="navAmount">NAV per Token (₦)</Label>
+                        <Input
+                          id="navAmount"
+                          type="number"
+                          step="0.01"
+                          placeholder="1.50"
+                          value={navAmount}
+                          onChange={(e) => setNavAmount(e.target.value)}
+                          data-testid="input-nav-amount"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Current market value of one project token in Naira
+                        </p>
+                      </div>
+                      <div>
+                        <Label htmlFor="navNotes">Notes (Optional)</Label>
+                        <Textarea
+                          id="navNotes"
+                          placeholder="Notes about this NAV update..."
+                          value={navNotes}
+                          onChange={(e) => setNavNotes(e.target.value)}
+                          data-testid="input-nav-notes"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => createNavMutation.mutate({ navPerToken: navAmount, notes: navNotes || undefined })}
+                        disabled={!navAmount || createNavMutation.isPending}
+                        data-testid="button-update-nav"
+                      >
+                        {createNavMutation.isPending ? "Updating NAV..." : "Update NAV"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="w-5 h-5" />
+                      NAV History
+                    </CardTitle>
+                    <CardDescription>
+                      Historical NAV entries for this project
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {navHistory && navHistory.history.length > 0 ? (
+                      <div className="space-y-3">
+                        {navHistory.history.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className={`p-4 border rounded-lg ${entry.isSuperseded ? 'opacity-50' : ''}`}
+                            data-testid={`nav-entry-${entry.id}`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xl font-bold">
+                                    ₦{parseFloat(entry.navPerToken).toFixed(2)}
+                                  </span>
+                                  {!entry.isSuperseded && (
+                                    <Badge variant="default">Current</Badge>
+                                  )}
+                                  {entry.isSuperseded && (
+                                    <Badge variant="secondary">Superseded</Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Updated {new Date(entry.effectiveDate).toLocaleString()}
+                                </p>
+                                {entry.notes && (
+                                  <p className="text-sm mt-2">{entry.notes}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <History className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No NAV history</h3>
+                        <p className="text-muted-foreground">
+                          Create the first NAV entry for this project
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
+        </Tabs>
 
         {/* Upload Document Dialog */}
         <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>

@@ -1,13 +1,19 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins, RefreshCw, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Link } from "wouter";
+import type { RedemptionRequest } from "@/types/phase4";
 
 interface Investment {
   id: string;
@@ -41,6 +47,10 @@ interface Portfolio {
 export default function Portfolio() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<any>(null);
+  const [redemptionDialogOpen, setRedemptionDialogOpen] = useState(false);
+  const [selectedHolding, setSelectedHolding] = useState<TokenHolding | null>(null);
+  const [tokensToRedeem, setTokensToRedeem] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -73,6 +83,80 @@ export default function Portfolio() {
     queryKey: ["/api/investments/stats"],
     enabled: !!user,
   });
+
+  const { data: redemptions, isLoading: redemptionsLoading } = useQuery<{ redemptions: RedemptionRequest[] }>({
+    queryKey: ["/api/investments/redemptions/list"],
+    enabled: !!user,
+  });
+
+  const createRedemptionMutation = useMutation({
+    mutationFn: async (data: { projectId: string; tokensAmount: string }) => {
+      return await apiRequest("POST", "/api/investments/redemptions/create", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Redemption Request Submitted",
+        description: "Your redemption request has been submitted and is pending admin review.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/investments/redemptions/list"] });
+      setRedemptionDialogOpen(false);
+      setSelectedHolding(null);
+      setTokensToRedeem("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Redemption Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRedeemClick = (holding: TokenHolding) => {
+    setSelectedHolding(holding);
+    setRedemptionDialogOpen(true);
+  };
+
+  const handleRedemptionSubmit = () => {
+    if (!selectedHolding || !tokensToRedeem) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a valid token amount to redeem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const amount = parseFloat(tokensToRedeem);
+    if (isNaN(amount) || amount <= 0 || amount > parseFloat(selectedHolding.tokenAmount)) {
+      toast({
+        title: "Invalid Amount",
+        description: `Please enter an amount between 0 and ${selectedHolding.tokenAmount} tokens.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createRedemptionMutation.mutate({
+      projectId: selectedHolding.projectId,
+      tokensAmount: tokensToRedeem,
+    });
+  };
+
+  const getRedemptionStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="w-3 h-3" />Pending</Badge>;
+      case "processing":
+        return <Badge variant="default" className="flex items-center gap-1"><RefreshCw className="w-3 h-3" />Processing</Badge>;
+      case "completed":
+        return <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" />Completed</Badge>;
+      case "rejected":
+        return <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="w-3 h-3" />Rejected</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
 
   const formatCurrency = (amount: string, currency: string = "NGN") => {
     const symbol = currency === "NGN" ? "₦" : currency === "USDC" ? "$" : "";
@@ -181,11 +265,12 @@ export default function Portfolio() {
           </Card>
         </div>
 
-        {/* Token Holdings & Investment History */}
+        {/* Token Holdings, Investment History & Redemptions */}
         <Tabs defaultValue="holdings" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
             <TabsTrigger value="holdings" data-testid="tab-holdings">Token Holdings</TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history">Investment History</TabsTrigger>
+            <TabsTrigger value="redemptions" data-testid="tab-redemptions">Redemptions</TabsTrigger>
           </TabsList>
 
           {/* Token Holdings Tab */}
@@ -248,13 +333,23 @@ export default function Portfolio() {
                               )}
                             </div>
                           </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="font-semibold">
-                              {formatCurrency(currentValue.toFixed(2))}
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <div className="text-right">
+                              <div className="font-semibold">
+                                {formatCurrency(currentValue.toFixed(2))}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                @ {formatCurrency(holding.pricePerToken)}/token
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              @ {formatCurrency(holding.pricePerToken)}/token
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRedeemClick(holding)}
+                              data-testid={`button-redeem-${holding.projectId}`}
+                            >
+                              Redeem
+                            </Button>
                           </div>
                         </div>
                       );
@@ -344,7 +439,159 @@ export default function Portfolio() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Redemptions Tab */}
+          <TabsContent value="redemptions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Redemption History</CardTitle>
+                <CardDescription>
+                  Track your token redemption requests and their status
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {redemptionsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-1/4" />
+                        </div>
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : redemptions && redemptions.redemptions.length > 0 ? (
+                  <div className="space-y-3">
+                    {redemptions.redemptions.map((redemption) => (
+                      <div
+                        key={redemption.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                        data-testid={`redemption-${redemption.id}`}
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
+                            <RefreshCw className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium">{redemption.projectName || `Project ${redemption.projectId.slice(0, 8)}...`}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {parseFloat(redemption.tokensAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} tokens → {formatCurrency(redemption.redemptionValueNgnts)} NGNTS
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Requested: {new Date(redemption.createdAt).toLocaleDateString()}
+                            </p>
+                            {redemption.adminNotes && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Note: {redemption.adminNotes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {getRedemptionStatusBadge(redemption.status)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <RefreshCw className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No redemption requests yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      You can redeem your project tokens for NGNTS anytime from the Token Holdings tab
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Redemption Dialog */}
+        <Dialog open={redemptionDialogOpen} onOpenChange={setRedemptionDialogOpen}>
+          <DialogContent data-testid="dialog-redemption">
+            <DialogHeader>
+              <DialogTitle>Redeem Tokens</DialogTitle>
+              <DialogDescription>
+                Submit a request to sell your tokens back to the platform for NGNTS
+              </DialogDescription>
+            </DialogHeader>
+            {selectedHolding && (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Project</Label>
+                  <p className="font-semibold">{selectedHolding.projectName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Available to Redeem</Label>
+                  <p className="font-semibold">
+                    {parseFloat(selectedHolding.tokenAmount).toLocaleString(undefined, { maximumFractionDigits: 7 })} {selectedHolding.tokenSymbol}
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="tokensToRedeem">Tokens to Redeem</Label>
+                  <Input
+                    id="tokensToRedeem"
+                    type="number"
+                    step="0.0001"
+                    placeholder="Enter amount"
+                    value={tokensToRedeem}
+                    onChange={(e) => setTokensToRedeem(e.target.value)}
+                    data-testid="input-tokens-to-redeem"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTokensToRedeem(selectedHolding.tokenAmount)}
+                    className="mt-1 text-xs"
+                    data-testid="button-redeem-max"
+                  >
+                    Redeem All
+                  </Button>
+                </div>
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-1">Estimated Value</div>
+                  <div className="text-lg font-semibold">
+                    {tokensToRedeem && !isNaN(parseFloat(tokensToRedeem))
+                      ? formatCurrency((parseFloat(tokensToRedeem) * parseFloat(selectedHolding.pricePerToken)).toFixed(2))
+                      : formatCurrency("0.00")} NGNTS
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Based on current NAV of {formatCurrency(selectedHolding.pricePerToken)}/token
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>• Your redemption request will be reviewed by an admin</p>
+                  <p>• NAV is locked at request time to prevent manipulation</p>
+                  <p>• Funds are transferred from project cashflow, treasury, or LP pool based on availability</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRedemptionDialogOpen(false);
+                  setSelectedHolding(null);
+                  setTokensToRedeem("");
+                }}
+                data-testid="button-cancel-redemption"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRedemptionSubmit}
+                disabled={createRedemptionMutation.isPending}
+                data-testid="button-submit-redemption"
+              >
+                {createRedemptionMutation.isPending ? "Submitting..." : "Submit Request"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

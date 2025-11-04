@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield } from "lucide-react";
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 import PlatformWallets from "@/pages/PlatformWallets";
@@ -629,6 +629,65 @@ export default function Admin() {
         {/* Blockchain Activity Feed */}
         <div className="mb-8">
           <BlockchainActivityFeed limit={5} />
+        </div>
+
+        {/* Phase 4-C: Regenerative Capital System */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">Regenerative Capital Management</h2>
+          <div className="grid md:grid-cols-4 gap-4">
+            <Link href="/admin/redemptions">
+              <Card className="hover-elevate cursor-pointer" data-testid="card-redemptions">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5" />
+                    Redemptions
+                  </CardTitle>
+                  <CardDescription>
+                    Review token redemption requests
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/admin/treasury">
+              <Card className="hover-elevate cursor-pointer" data-testid="card-treasury">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Treasury Pool
+                  </CardTitle>
+                  <CardDescription>
+                    Monitor treasury health & reconciliation
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/admin/cashflows">
+              <Card className="hover-elevate cursor-pointer" data-testid="card-cashflows">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Cashflows
+                  </CardTitle>
+                  <CardDescription>
+                    Verify project revenue cashflows
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/admin/audit">
+              <Card className="hover-elevate cursor-pointer" data-testid="card-audit">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Audit Logs
+                  </CardTitle>
+                  <CardDescription>
+                    View compliance audit trail
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          </div>
         </div>
 
         {/* Tabs for Different Actions */}

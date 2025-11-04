@@ -18,6 +18,10 @@ import Transactions from "@/pages/Transactions";
 import Admin from "@/pages/Admin";
 import OnChainVerification from "@/pages/OnChainVerification";
 import StorageSetup from "@/pages/StorageSetup";
+import AdminRedemptions from "@/pages/AdminRedemptions";
+import AdminTreasury from "@/pages/AdminTreasury";
+import AdminCashflows from "@/pages/AdminCashflows";
+import AdminAudit from "@/pages/AdminAudit";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -36,6 +40,10 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/admin/onchain-verification" component={OnChainVerification} />
       <Route path="/admin/storage-setup" component={StorageSetup} />
+      <Route path="/admin/redemptions" component={AdminRedemptions} />
+      <Route path="/admin/treasury" component={AdminTreasury} />
+      <Route path="/admin/cashflows" component={AdminCashflows} />
+      <Route path="/admin/audit" component={AdminAudit} />
       <Route path="/about" component={About} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route component={NotFound} />

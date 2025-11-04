@@ -1,0 +1,79 @@
+We’ve completed Phase 4-B backend implementation for the regenerative capital system. 
+Now build the Phase 4-C frontend layer to match all new backend features and APIs.
+
+Goal:
+Add investor and admin GUIs for redemption management, treasury tracking, NAV updates, and audit visibility — fully wired to existing REST endpoints.
+
+Stack:
+Next.js + TypeScript + Tailwind + shadcn/ui + Recharts
+API endpoints already exist under /api/admin/* and /api/investments/*
+
+Scope of Work:
+
+1️⃣ Investor Redemption Interface
+- Location: /portfolio
+- Show all project tokens held, current NAV, and NGNTS equivalent value.
+- “Redeem” button → opens modal to enter quantity and confirm sale.
+- Call POST /api/investments/redemptions/create
+- Show status list of redemption requests (pending, processing, completed, rejected) from GET /api/investments/redemptions/list
+
+2️⃣ Admin Redemption Management
+- New route: /admin/redemptions
+- Table of pending redemptions with:
+  • investor name
+  • project token
+  • amount
+  • NAV at request
+  • estimated payout (tokens × navAtRequest)
+  • funding source used (project / treasury / LP)
+  • status
+- Approve/Reject buttons → call PUT /api/admin/redemptions/:id/process
+- Include toast notifications and state refresh on action.
+
+3️⃣ Treasury Dashboard
+- New route: /admin/treasury
+- Fetch from GET /api/admin/treasury/summary and /api/admin/treasury/reconcile
+- Display:
+  • virtual balance
+  • inflow/outflow counts
+  • chart of treasury_pool_snapshots over time (Recharts LineChart)
+  • last reconciliation status
+  • “Run Reconciliation” button
+
+4️⃣ NAV Management
+- Extend /admin/projects/:id
+- Add “NAV” tab showing:
+  • current NAV
+  • NAV history table (superseded entries)
+  • Form to submit new NAV (POST /api/admin/projects/:id/nav)
+  • Auto-refresh list after submission
+  • Apply auditActionWithState middleware logs.
+
+5️⃣ Cashflow Management
+- Route: /admin/cashflows
+- List of project_cashflows with status (recorded / verified / tokenized)
+- Show columns: project name, revenue amount, recordedAt, verifiedBy, verifiedAt
+- “Verify” button → updates verification via PUT /api/admin/cashflows/:id/verify
+
+6️⃣ Audit Log Viewer
+- Route: /admin/audit
+- Table for audit_admin_actions
+- Columns: timestamp, admin, action, target, metadata
+- Add filters: by action type, by admin, by date range.
+
+UI/UX Requirements:
+- Use shadcn/ui components with consistent theme.
+- Use Card and Tabs components for modular pages.
+- Include loading states, error toasts, and empty states.
+- Code should be fully typed and maintainable (no any).
+
+Deliverables:
+✅ New pages/components in /app/admin/*
+✅ API integration with existing endpoints
+✅ Type-safe interfaces for all responses
+✅ Basic tests for key components
+✅ Update replit.md documentation
+
+Objective:
+Complete visual + functional parity with the Phase 4-B backend so that the regenerative capital system is fully operational from the admin and investor UI.
+
