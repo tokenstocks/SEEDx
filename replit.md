@@ -21,6 +21,60 @@ The platform uses a React and TypeScript frontend with Vite, Wouter, and TanStac
 - **Admin Dashboards:** Dedicated APIs and UI for metrics, user/KYC management, transactions, project updates, wallet management (funding, activation), and monitoring blockchain sync status and activities.
 - **UI/UX:** Professional, modern fintech aesthetic using Inter font, Shadcn UI components, and a mobile-first responsive design with intuitive dashboards and investment dialogs.
 
+### Phase 4 Refinements (Production-Ready Optimizations)
+
+**1. NAV Archiving System:**
+- Added `isSuperseded` boolean to `project_nav_history` (default: false)
+- Created `server/lib/navValidation.ts` with transaction-based superseding
+- Enforces exactly 1 active NAV per project via `createNavEntryWithSupersede()`
+- Helper functions: `getCurrentNav()`, `getNavHistory()`
+
+**2. Cashflow Allocation Configuration:**
+- Default ratios in `platform_settings`: 30% project, 50% treasury, 20% LP
+- Created `server/lib/platformSettings.ts` with hardened validation
+- `parseValidFloat()` checks `Number.isFinite()` to prevent NaN propagation
+- Validates total sums to 1.0 (±0.001 tolerance), falls back to defaults on invalid config
+
+**3. Redemption Funding Priority:**
+- Priority order: `["project", "treasury", "liquidity_pool"]`
+- Type-safe parsing with `RedemptionFundingSource[]` type
+- Fallback to defaults on JSON parse errors
+
+**4. Treasury Virtual Balance Tracking:**
+- Endpoint: `GET /api/admin/treasury/summary` (admin-only)
+- Computes virtual balance via aggregate SQL: inflow (+), others (-)
+- Returns: `virtualBalance`, `totalTransactions`, `transactionBreakdown` by type
+
+**Phase 4 Micro-Optimizations (Trust, Observability, Resilience):**
+
+**1. Treasury Pool Snapshots:**
+- Table: `treasury_pool_snapshots` with columns: id, balance, asOfDate, sourceHash, metadata
+- Supports time-series charts and audit rollback
+- Periodic persistence of computed virtual balance
+
+**2. Redemption NAV Locking:**
+- Added `navAtRequest` field to `redemption_requests` table
+- Captures NAV at redemption request time to prevent retroactive manipulation
+- Protects investors during admin review period
+
+**3. Cashflow Verification Audit:**
+- Fields `verifiedBy` and `verifiedAt` in `project_cashflows` table
+- Tracks which admin verified each cashflow entry
+- Complete audit trail for compliance
+
+**4. Treasury Reconciliation Endpoint:**
+- Endpoint: `GET /api/admin/treasury/reconcile` (admin-only, cron-safe)
+- Compares computed balance vs latest snapshot
+- Flags discrepancies > $0.01
+- Returns detailed reconciliation report with recommendations
+
+**5. Event-Driven Audit Middleware:**
+- Created `server/middleware/auditMiddleware.ts`
+- `auditAction(action)` - Simple pre-operation logging
+- `auditActionWithState(action, fetchStateBefore)` - Captures before/after state
+- Auto-logs to `audit_admin_actions` table without blocking requests
+- Ready to apply to NAV/cashflow endpoints for automated compliance logging
+
 ## External Dependencies
 
 ### Third-Party Services
