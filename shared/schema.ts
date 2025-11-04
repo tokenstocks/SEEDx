@@ -424,22 +424,14 @@ export const initiateWithdrawalSchema = z.object({
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
   currency: z.enum(["NGN", "USDC", "XLM"]),
   destinationType: z.enum(["bank_account", "crypto_wallet"]),
-  bankDetails: z.object({
-    accountName: z.string().min(1),
-    accountNumber: z.string().min(1),
-    bankName: z.string().min(1),
-  }).optional(),
   cryptoAddress: z.string().optional(),
 }).refine((data) => {
-  if (data.destinationType === "bank_account") {
-    return !!data.bankDetails;
-  }
   if (data.destinationType === "crypto_wallet") {
     return !!data.cryptoAddress;
   }
-  return false;
+  return true;
 }, {
-  message: "Bank details required for bank withdrawals, crypto address required for crypto withdrawals"
+  message: "Crypto address required for crypto withdrawals"
 });
 
 export const approveWithdrawalSchema = z.object({

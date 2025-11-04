@@ -387,7 +387,39 @@ router.post("/withdraw", authenticate, async (req, res) => {
 
     // Use database transaction for atomic operations with row-level locking
     const result = await db.transaction(async (tx) => {
-      // 1. Get user's hybrid wallet with row-level lock to prevent concurrent withdrawals
+      // 1. Get user with KYC and bank details status
+      const [user] = await tx
+        .select({
+          id: users.id,
+          kycStatus: users.kycStatus,
+          bankDetails: users.bankDetails,
+          bankDetailsStatus: users.bankDetailsStatus,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // 2. Validate KYC status
+      if (user.kycStatus !== "approved") {
+        throw new Error("KYC verification required. Please complete KYC before making withdrawals.");
+      }
+
+      // 3. For NGN bank withdrawals, validate bank details
+      if (body.destinationType === "bank_account") {
+        if (user.bankDetailsStatus !== "approved") {
+          throw new Error("Bank account verification required. Please submit and get your bank details approved before making withdrawals.");
+        }
+        
+        if (!user.bankDetails || !user.bankDetails.accountName || !user.bankDetails.accountNumberEncrypted) {
+          throw new Error("Bank details not found. Please submit your bank account details first.");
+        }
+      }
+
+      // 4. Get user's hybrid wallet with row-level lock to prevent concurrent withdrawals
       // SELECT ... FOR UPDATE ensures no other transaction can modify this wallet until we commit
       const [wallet] = await tx
         .select()
@@ -479,7 +511,7 @@ router.post("/withdraw", authenticate, async (req, res) => {
         throw new Error("Insufficient balance or concurrent modification detected");
       }
 
-      // 6. Create withdrawal request
+      // 6. Create withdrawal request (use profile bank details for bank withdrawals)
       const [withdrawalRequest] = await tx
         .insert(withdrawalRequests)
         .values({
@@ -488,7 +520,7 @@ router.post("/withdraw", authenticate, async (req, res) => {
           amount: body.amount,
           currency: body.currency,
           destinationType: body.destinationType,
-          bankDetails: body.bankDetails || null,
+          bankDetails: body.destinationType === "bank_account" ? user.bankDetails : null,
           cryptoAddress: body.cryptoAddress || null,
           status: "pending",
         })

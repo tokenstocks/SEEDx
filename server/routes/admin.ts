@@ -28,6 +28,7 @@ import { encrypt } from "../lib/encryption";
 import { uploadFile } from "../lib/supabase";
 import { createProjectToken } from "../lib/stellarToken";
 import { issueNGNTS, mintNGNTS } from "../lib/platformToken";
+import { burnNgnts } from "../lib/ngntsOps";
 
 const router = Router();
 
@@ -933,6 +934,28 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
         });
       }
 
+      // For NGN bank withdrawals, burn NGNTS on-chain before approval
+      let burnTxHash: string | undefined;
+      if (withdrawalRequest.currency === "NGN" && withdrawalRequest.destinationType === "bank_account") {
+        try {
+          console.log(`[Withdrawal] Burning ${processedAmount} NGNTS for withdrawal ${id}`);
+          const burnResult = await burnNgnts(
+            withdrawalRequest.userId,
+            processedAmount,
+            withdrawalRequest.transactionId
+          );
+          burnTxHash = burnResult.burnTxHash;
+          console.log(`[Withdrawal] NGNTS burned successfully: ${burnTxHash}`);
+        } catch (burnError: any) {
+          console.error(`[Withdrawal] NGNTS burn failed:`, burnError);
+          return res.status(500).json({
+            error: "Failed to burn NGNTS on blockchain",
+            details: burnError.message,
+            note: "Withdrawal cancelled. User's balance has not been deducted.",
+          });
+        }
+      }
+
       // Use database transaction for atomicity
       await db.transaction(async (tx) => {
         // Update withdrawal request status
@@ -947,12 +970,16 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
           })
           .where(eq(withdrawalRequests.id, id));
 
-        // Update transaction status
+        // Update transaction status - include burn transaction hash if applicable
         await tx
           .update(transactions)
           .set({
             status: "completed",
             amount: processedAmount,
+            reference: burnTxHash || transaction.reference,
+            notes: burnTxHash 
+              ? `Withdrawal approved - NGNTS burned on-chain: ${burnTxHash}` 
+              : transaction.notes,
             updatedAt: new Date(),
           })
           .where(eq(transactions.id, withdrawalRequest.transactionId));
@@ -963,13 +990,20 @@ router.put("/withdrawals/:id", authenticate, requireAdmin, async (req, res) => {
 
       console.log(`Withdrawal approved: ${id} - Admin should process ${processedAmount} ${withdrawalRequest.currency} to user ${withdrawalRequest.userId}`);
       console.log(`Destination: ${withdrawalRequest.destinationType === "bank_account" ? JSON.stringify(withdrawalRequest.bankDetails) : withdrawalRequest.cryptoAddress}`);
+      if (burnTxHash) {
+        console.log(`NGNTS Burn Transaction: ${burnTxHash}`);
+      }
 
       res.json({
         message: "Withdrawal approved successfully",
         withdrawalId: id,
         processedAmount,
         status: "approved",
-        note: "Please process the external transfer (bank/crypto) manually",
+        burnTxHash,
+        bankDetails: withdrawalRequest.destinationType === "bank_account" ? withdrawalRequest.bankDetails : undefined,
+        note: withdrawalRequest.destinationType === "bank_account" 
+          ? "NGNTS burned on-chain. Please process the bank transfer manually using the bank details provided." 
+          : "Please process the crypto transfer manually",
       });
     } else {
       // Reject withdrawal - refund the amount back to wallet

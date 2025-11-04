@@ -249,3 +249,118 @@ export async function creditNgntsDeposit(
     throw error;
   }
 }
+
+/**
+ * Burn NGNTS from user wallet (for NGN withdrawals)
+ * This function:
+ * 1. Sends NGNTS from user's wallet back to Treasury (issuer)
+ * 2. This effectively burns the tokens (sending to issuer removes from circulation)
+ * 3. Updates database balances
+ * 
+ * Important: In Stellar, sending tokens back to the issuer burns them
+ */
+export async function burnNgnts(
+  userId: string,
+  amount: string,
+  transactionId: string
+): Promise<{
+  burnTxHash: string;
+  amount: string;
+}> {
+  try {
+    console.log(`[NGNTS] Burn withdrawal - User: ${userId}, Amount: ${amount}`);
+
+    // Get user's wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+
+    if (!userWallet || !userWallet.cryptoWalletPublicKey || !userWallet.cryptoWalletSecretEncrypted) {
+      throw new Error("User wallet not found or not configured");
+    }
+
+    // Get Treasury wallet (NGNTS issuer - sending back here burns the tokens)
+    const [treasuryWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "treasury"))
+      .limit(1);
+
+    if (!treasuryWallet) {
+      throw new Error("Treasury wallet not found");
+    }
+
+    // Decrypt user's wallet secret
+    const userSecret = decrypt(userWallet.cryptoWalletSecretEncrypted);
+    const userKeypair = Keypair.fromSecret(userSecret);
+
+    // Create NGNTS asset (issued by Treasury)
+    const ngntsAsset = new Asset("NGNTS", treasuryWallet.publicKey);
+
+    // Load user's account
+    const userAccount = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey);
+
+    // Build burn transaction (send NGNTS back to issuer = burn)
+    // Stellar text memos are max 28 bytes, so use first 8 chars of transaction ID
+    const shortTxId = transactionId.substring(0, 8);
+    const transaction = new TransactionBuilder(userAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: isTestnet ? Networks.TESTNET : Networks.PUBLIC,
+    })
+      .addOperation(
+        Operation.payment({
+          destination: treasuryWallet.publicKey, // Send to issuer = burn
+          asset: ngntsAsset,
+          amount: amount,
+        })
+      )
+      .addMemo(Memo.text(`WTH-${shortTxId}`)) // e.g., "WTH-18fb693d" = 12 bytes (safe)
+      .setTimeout(30)
+      .build();
+
+    transaction.sign(userKeypair);
+
+    // Submit transaction
+    const result = await horizonServer.submitTransaction(transaction);
+
+    console.log(`[NGNTS] Burn successful: ${result.hash}`);
+
+    // Update database balance (deduct NGNTS)
+    const currencyKey = "NGNTS";
+    await db
+      .update(wallets)
+      .set({
+        cryptoBalances: sql.raw(`
+          jsonb_set(
+            COALESCE(crypto_balances, '{}'::jsonb),
+            ARRAY['${currencyKey}'],
+            to_jsonb(
+              COALESCE(
+                (crypto_balances->>'${currencyKey}')::numeric,
+                0
+              ) - ${Number(amount)}
+            )
+          )
+        `),
+        updatedAt: new Date(),
+      })
+      .where(eq(wallets.userId, userId));
+
+    console.log(`[NGNTS] Balance updated after burn`);
+
+    return {
+      burnTxHash: result.hash,
+      amount,
+    };
+  } catch (error: any) {
+    console.error("[NGNTS] Burn failed:", error);
+    
+    if (error.response && error.response.data) {
+      console.error("[NGNTS] Error details:", JSON.stringify(error.response.data, null, 2));
+    }
+    
+    throw new Error(`Failed to burn NGNTS: ${error.message}`);
+  }
+}
