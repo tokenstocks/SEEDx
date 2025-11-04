@@ -1953,7 +1953,7 @@ router.post("/platform-wallets/:walletType/fund-friendbot", authenticate, requir
 // Phase 4: Treasury Pool Summary - Virtual balance tracking
 router.get("/treasury/summary", authenticate, requireAdmin, async (req, res) => {
   try {
-    const { rows } = await db.execute(sql`
+    const result = await db.execute(sql`
       SELECT
         COALESCE(SUM(
           CASE
@@ -1969,7 +1969,8 @@ router.get("/treasury/summary", authenticate, requireAdmin, async (req, res) => 
         COUNT(CASE WHEN tx_type = 'replenish' THEN 1 END) as replenish_count,
         COUNT(CASE WHEN tx_type = 'fee' THEN 1 END) as fee_count
       FROM treasury_pool_transactions
-    `) as { rows: any[] };
+    `);
+    const rows = result.rows as any[];
 
     const defaultSummary = {
       virtual_balance: "0.00",
@@ -2007,7 +2008,7 @@ router.get("/treasury/summary", authenticate, requireAdmin, async (req, res) => 
 router.get("/treasury/reconcile", authenticate, requireAdmin, async (req, res) => {
   try {
     // Step 1: Compute current virtual balance from transactions
-    const { rows: balanceRows } = await db.execute(sql`
+    const balanceResult = await db.execute(sql`
       SELECT
         COALESCE(SUM(
           CASE
@@ -2018,7 +2019,8 @@ router.get("/treasury/reconcile", authenticate, requireAdmin, async (req, res) =
         ), 0) as computed_balance,
         COUNT(*) as total_tx_count
       FROM treasury_pool_transactions
-    `) as { rows: any[] };
+    `);
+    const balanceRows = balanceResult.rows as any[];
 
     const computedBalance = balanceRows[0]?.computed_balance || "0.00";
     const totalTxCount = parseInt(balanceRows[0]?.total_tx_count as string) || 0;
