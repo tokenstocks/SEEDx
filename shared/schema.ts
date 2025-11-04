@@ -296,6 +296,7 @@ export const projectNavHistory = pgTable("project_nav_history", {
   effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull().defaultNow(),
   updatedBy: uuid("updated_by").references(() => users.id),
   notes: text("notes"),
+  isSuperseded: boolean("is_superseded").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

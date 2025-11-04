@@ -1949,4 +1949,57 @@ router.post("/platform-wallets/:walletType/fund-friendbot", authenticate, requir
   }
 });
 
+// Phase 4: Treasury Pool Summary - Virtual balance tracking
+router.get("/treasury/summary", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(
+          CASE
+            WHEN tx_type IN ('inflow') THEN amount_ngnts
+            WHEN tx_type IN ('allocation', 'buyback', 'replenish', 'fee') THEN -amount_ngnts
+            ELSE 0
+          END
+        ), 0) as virtual_balance,
+        COUNT(*) as total_transactions,
+        COUNT(CASE WHEN tx_type = 'inflow' THEN 1 END) as inflow_count,
+        COUNT(CASE WHEN tx_type = 'allocation' THEN 1 END) as allocation_count,
+        COUNT(CASE WHEN tx_type = 'buyback' THEN 1 END) as buyback_count,
+        COUNT(CASE WHEN tx_type = 'replenish' THEN 1 END) as replenish_count,
+        COUNT(CASE WHEN tx_type = 'fee' THEN 1 END) as fee_count
+      FROM treasury_pool_transactions
+    `) as { rows: any[] };
+
+    const defaultSummary = {
+      virtual_balance: "0.00",
+      total_transactions: "0",
+      inflow_count: "0",
+      allocation_count: "0",
+      buyback_count: "0",
+      replenish_count: "0",
+      fee_count: "0",
+    };
+
+    const summary = rows[0] ?? defaultSummary;
+
+    res.json({
+      virtualBalance: summary.virtual_balance || "0.00",
+      totalTransactions: parseInt(summary.total_transactions as string) || 0,
+      transactionBreakdown: {
+        inflow: parseInt(summary.inflow_count as string) || 0,
+        allocation: parseInt(summary.allocation_count as string) || 0,
+        buyback: parseInt(summary.buyback_count as string) || 0,
+        replenish: parseInt(summary.replenish_count as string) || 0,
+        fee: parseInt(summary.fee_count as string) || 0,
+      },
+    });
+  } catch (error: any) {
+    console.error("Treasury summary error:", error);
+    res.status(500).json({
+      error: "Failed to fetch treasury summary",
+      details: error.message,
+    });
+  }
+});
+
 export default router;
