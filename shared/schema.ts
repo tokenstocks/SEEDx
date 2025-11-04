@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, uuid, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, jsonb, uuid, boolean, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -17,8 +17,12 @@ export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["pending", "app
 export const destinationTypeEnum = pgEnum("destination_type", ["bank_account", "crypto_wallet"]);
 export const projectStatusEnum = pgEnum("project_status", ["draft", "active", "funded", "completed", "cancelled"]);
 export const tokenLedgerActionEnum = pgEnum("token_ledger_action", ["create", "mint", "transfer", "burn", "redemption"]);
-export const platformWalletTypeEnum = pgEnum("platform_wallet_type", ["operations", "treasury", "distribution", "liquidity_pool"]);
+export const platformWalletTypeEnum = pgEnum("platform_wallet_type", ["operations", "treasury", "distribution", "liquidity_pool", "treasury_pool"]);
 export const secondaryMarketStatusEnum = pgEnum("secondary_market_status", ["pending", "countered", "accepted", "rejected", "completed", "cancelled"]);
+export const navSourceEnum = pgEnum("nav_source", ["manual", "formula", "audited"]);
+export const cashflowStatusEnum = pgEnum("cashflow_status", ["recorded", "verified", "tokenized"]);
+export const treasuryTxTypeEnum = pgEnum("treasury_tx_type", ["inflow", "allocation", "buyback", "replenish", "fee"]);
+export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "processing", "completed", "rejected"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -219,7 +223,7 @@ export const trustlines = pgTable("trustlines", {
   userProjectUnique: unique().on(table.userId, table.projectId),
 }));
 
-// Platform wallets table - 4 wallets for platform operations
+// Platform wallets table - 5 wallets for platform operations (including treasury_pool)
 export const platformWallets = pgTable("platform_wallets", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   walletType: platformWalletTypeEnum("wallet_type").notNull().unique(),
@@ -230,6 +234,9 @@ export const platformWallets = pgTable("platform_wallets", {
   balanceNGNTS: decimal("balance_ngnts", { precision: 18, scale: 2 }).notNull().default("0.00"),
   balanceUSDC: decimal("balance_usdc", { precision: 18, scale: 2 }).notNull().default("0.00"),
   lastSyncedAt: timestamp("last_synced_at"),
+  // Phase 4: Regenerative Capital Architecture
+  walletRole: varchar("wallet_role", { length: 32 }),
+  minReserveThreshold: decimal("min_reserve_threshold", { precision: 30, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -276,6 +283,89 @@ export const secondaryMarketOrders = pgTable("secondary_market_orders", {
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Phase 4: Regenerative Capital Architecture Tables
+
+// Project NAV history table - Track token appreciation over time
+export const projectNavHistory = pgTable("project_nav_history", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  navPerToken: decimal("nav_per_token", { precision: 30, scale: 8 }).notNull(),
+  source: navSourceEnum("source").notNull(),
+  effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Project cashflows table - Record real-world project revenue
+export const projectCashflows = pgTable("project_cashflows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  amountNgnts: decimal("amount_ngnts", { precision: 30, scale: 2 }).notNull(),
+  source: varchar("source", { length: 128 }),
+  sourceDocumentUrl: text("source_document_url"),
+  verifiedBy: uuid("verified_by").references(() => users.id),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  status: cashflowStatusEnum("status").notNull().default("recorded"),
+  chainTxHash: text("chain_tx_hash"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Treasury pool transactions table - Audit trail for regenerative capital flows
+export const treasuryPoolTransactions = pgTable("treasury_pool_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: treasuryTxTypeEnum("type").notNull(),
+  amountNgnts: decimal("amount_ngnts", { precision: 30, scale: 2 }).notNull(),
+  sourceProjectId: uuid("source_project_id").references(() => projects.id),
+  destinationWallet: varchar("destination_wallet", { length: 64 }),
+  relatedTxHash: text("related_tx_hash"),
+  metadata: jsonb("metadata").$type<{
+    fundingPlan?: any;
+    notes?: string;
+    [key: string]: any;
+  }>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Redemption requests table - Token buyback with hybrid funding logic
+export const redemptionRequests = pgTable("redemption_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  tokensAmount: decimal("tokens_amount", { precision: 30, scale: 8 }).notNull(),
+  navSnapshot: decimal("nav_snapshot", { precision: 30, scale: 8 }).notNull(),
+  redemptionValueNgnts: decimal("redemption_value_ngnts", { precision: 30, scale: 2 }).notNull(),
+  fundingPlan: jsonb("funding_plan").$type<{
+    projectCashflow?: string;
+    treasuryPool?: string;
+    liquidityPool?: string;
+  }>().default(sql`'{}'::jsonb`),
+  txHashes: jsonb("tx_hashes").$type<string[]>().default(sql`'[]'::jsonb`),
+  status: redemptionStatusEnum("status").notNull().default("pending"),
+  adminNotes: text("admin_notes"),
+  processedBy: uuid("processed_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+});
+
+// Audit admin actions table - Complete admin action logging
+export const auditAdminActions = pgTable("audit_admin_actions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: uuid("admin_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 128 }).notNull(),
+  target: jsonb("target").$type<{
+    type?: string;
+    id?: string;
+    [key: string]: any;
+  }>(),
+  details: jsonb("details").$type<{
+    before?: any;
+    after?: any;
+    [key: string]: any;
+  }>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Relations
@@ -345,6 +435,57 @@ export const projectTokenLedgerRelations = relations(projectTokenLedger, ({ one 
   }),
   user: one(users, {
     fields: [projectTokenLedger.userId],
+    references: [users.id],
+  }),
+}));
+
+export const projectNavHistoryRelations = relations(projectNavHistory, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectNavHistory.projectId],
+    references: [projects.id],
+  }),
+  updatedBy: one(users, {
+    fields: [projectNavHistory.updatedBy],
+    references: [users.id],
+  }),
+}));
+
+export const projectCashflowsRelations = relations(projectCashflows, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectCashflows.projectId],
+    references: [projects.id],
+  }),
+  verifiedBy: one(users, {
+    fields: [projectCashflows.verifiedBy],
+    references: [users.id],
+  }),
+}));
+
+export const treasuryPoolTransactionsRelations = relations(treasuryPoolTransactions, ({ one }) => ({
+  sourceProject: one(projects, {
+    fields: [treasuryPoolTransactions.sourceProjectId],
+    references: [projects.id],
+  }),
+}));
+
+export const redemptionRequestsRelations = relations(redemptionRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [redemptionRequests.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [redemptionRequests.projectId],
+    references: [projects.id],
+  }),
+  processedBy: one(users, {
+    fields: [redemptionRequests.processedBy],
+    references: [users.id],
+  }),
+}));
+
+export const auditAdminActionsRelations = relations(auditAdminActions, ({ one }) => ({
+  admin: one(users, {
+    fields: [auditAdminActions.adminId],
     references: [users.id],
   }),
 }));
@@ -546,6 +687,64 @@ export const processSecondaryMarketOrderSchema = z.object({
   adminNotes: z.string().optional(),
 });
 
+// Phase 4: Regenerative Capital Architecture Schemas
+export const insertProjectNavHistorySchema = createInsertSchema(projectNavHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const createProjectNavHistorySchema = z.object({
+  projectId: z.string().uuid(),
+  navPerToken: z.string().regex(/^\d+(\.\d{1,8})?$/, "NAV must be a valid decimal with up to 8 decimals"),
+  source: z.enum(["manual", "formula", "audited"]),
+  notes: z.string().optional(),
+});
+
+export const insertProjectCashflowSchema = createInsertSchema(projectCashflows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const createProjectCashflowSchema = z.object({
+  projectId: z.string().uuid(),
+  amountNgnts: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  source: z.string().max(128).optional(),
+  sourceDocumentUrl: z.string().url().optional(),
+  notes: z.string().optional(),
+});
+
+export const verifyProjectCashflowSchema = z.object({
+  status: z.enum(["verified", "tokenized"]),
+  chainTxHash: z.string().optional(),
+});
+
+export const insertTreasuryPoolTransactionSchema = createInsertSchema(treasuryPoolTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRedemptionRequestSchema = createInsertSchema(redemptionRequests).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+  status: true,
+});
+
+export const createRedemptionRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  tokensAmount: z.string().regex(/^\d+(\.\d{1,8})?$/, "Tokens must be a valid decimal with up to 8 decimals"),
+});
+
+export const processRedemptionRequestSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  adminNotes: z.string().optional(),
+});
+
+export const insertAuditAdminActionSchema = createInsertSchema(auditAdminActions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -589,3 +788,18 @@ export type SecondaryMarketOrder = typeof secondaryMarketOrders.$inferSelect;
 export type InsertSecondaryMarketOrder = z.infer<typeof insertSecondaryMarketOrderSchema>;
 export type CreateSecondaryMarketOrder = z.infer<typeof createSecondaryMarketOrderSchema>;
 export type ProcessSecondaryMarketOrder = z.infer<typeof processSecondaryMarketOrderSchema>;
+export type ProjectNavHistory = typeof projectNavHistory.$inferSelect;
+export type InsertProjectNavHistory = z.infer<typeof insertProjectNavHistorySchema>;
+export type CreateProjectNavHistory = z.infer<typeof createProjectNavHistorySchema>;
+export type ProjectCashflow = typeof projectCashflows.$inferSelect;
+export type InsertProjectCashflow = z.infer<typeof insertProjectCashflowSchema>;
+export type CreateProjectCashflow = z.infer<typeof createProjectCashflowSchema>;
+export type VerifyProjectCashflow = z.infer<typeof verifyProjectCashflowSchema>;
+export type TreasuryPoolTransaction = typeof treasuryPoolTransactions.$inferSelect;
+export type InsertTreasuryPoolTransaction = z.infer<typeof insertTreasuryPoolTransactionSchema>;
+export type RedemptionRequest = typeof redemptionRequests.$inferSelect;
+export type InsertRedemptionRequest = z.infer<typeof insertRedemptionRequestSchema>;
+export type CreateRedemptionRequest = z.infer<typeof createRedemptionRequestSchema>;
+export type ProcessRedemptionRequest = z.infer<typeof processRedemptionRequestSchema>;
+export type AuditAdminAction = typeof auditAdminActions.$inferSelect;
+export type InsertAuditAdminAction = z.infer<typeof insertAuditAdminActionSchema>;
