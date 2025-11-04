@@ -9,9 +9,13 @@ import { decrypt } from "./encryption";
 import { db } from "../db";
 import { platformWallets, wallets } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
+import { createAndFundAccount } from "./stellarAccount";
 
 /**
  * Ensure user has NGNTS trustline established
+ * This function:
+ * 1. Activates user's Stellar account if not already activated
+ * 2. Creates NGNTS trustline if not already exists
  */
 export async function ensureNgntsTrustline(
   userPublicKey: string,
@@ -19,8 +23,31 @@ export async function ensureNgntsTrustline(
   treasuryPublicKey: string
 ): Promise<string | null> {
   try {
-    // Check if trustline already exists on blockchain
-    const account = await horizonServer.loadAccount(userPublicKey);
+    // Step 1: Ensure account is activated on Stellar blockchain
+    let account;
+    try {
+      account = await horizonServer.loadAccount(userPublicKey);
+      console.log(`[NGNTS] User account already activated: ${userPublicKey.substring(0, 8)}...`);
+    } catch (loadError: any) {
+      // Account doesn't exist - need to activate it first
+      if (loadError.response?.status === 404) {
+        console.log(`[NGNTS] User account not activated. Activating: ${userPublicKey.substring(0, 8)}...`);
+        const activationResult = await createAndFundAccount(userPublicKey, "2");
+        
+        if (!activationResult.success) {
+          throw new Error(`Failed to activate user account: ${activationResult.error}`);
+        }
+        
+        console.log(`[NGNTS] User account activated: ${activationResult.txHash || 'already exists'}`);
+        
+        // Load the newly activated account
+        account = await horizonServer.loadAccount(userPublicKey);
+      } else {
+        throw loadError;
+      }
+    }
+
+    // Step 2: Check if trustline already exists
     const ngntsBalance = account.balances.find(
       (balance) => {
         if (balance.asset_type === "liquidity_pool_shares") {
@@ -31,12 +58,12 @@ export async function ensureNgntsTrustline(
     );
 
     if (ngntsBalance !== undefined) {
-      console.log(`[NGNTS] Trustline already exists for ${userPublicKey}`);
+      console.log(`[NGNTS] Trustline already exists for ${userPublicKey.substring(0, 8)}...`);
       return null; // Trustline exists
     }
 
-    // Create trustline
-    console.log(`[NGNTS] Creating trustline for ${userPublicKey}`);
+    // Step 3: Create trustline
+    console.log(`[NGNTS] Creating trustline for ${userPublicKey.substring(0, 8)}...`);
 
     const userSecret = decrypt(userSecretEncrypted);
     const userKeypair = Keypair.fromSecret(userSecret);
@@ -300,7 +327,17 @@ export async function burnNgnts(
     const ngntsAsset = new Asset("NGNTS", treasuryWallet.publicKey);
 
     // Load user's account
-    const userAccount = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey);
+    console.log(`[NGNTS] Loading user account: ${userWallet.cryptoWalletPublicKey}`);
+    let userAccount;
+    try {
+      userAccount = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey);
+    } catch (loadError: any) {
+      console.error(`[NGNTS] Failed to load user account from Horizon:`, loadError);
+      if (loadError.response?.status === 404) {
+        throw new Error(`User's Stellar wallet is not activated on the blockchain. The wallet needs to be funded with at least 1 XLM before it can send transactions. Public key: ${userWallet.cryptoWalletPublicKey}`);
+      }
+      throw loadError;
+    }
 
     // Build burn transaction (send NGNTS back to issuer = burn)
     // Stellar text memos are max 28 bytes, so use first 8 chars of transaction ID
