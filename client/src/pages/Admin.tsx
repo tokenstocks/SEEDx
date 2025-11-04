@@ -68,6 +68,14 @@ interface User {
     selfie?: string;
     addressProof?: string;
   };
+  bankDetailsStatus?: string;
+  bankDetails?: {
+    accountName?: string;
+    accountNumber?: string;
+    bankName?: string;
+    bankCode?: string;
+    verificationDocument?: string;
+  };
 }
 
 interface Wallet {
@@ -244,7 +252,7 @@ export default function Admin() {
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
   const [approvalDialog, setApprovalDialog] = useState<{
-    type: 'deposit' | 'withdrawal' | 'kyc';
+    type: 'deposit' | 'withdrawal' | 'kyc' | 'bank_details';
     item: any;
   } | null>(null);
   const [action, setAction] = useState<'approve' | 'reject'>('approve');
@@ -369,6 +377,28 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
       // Invalidate user profile queries so frontend updates
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      setApprovalDialog(null);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const processBankDetailsMutation = useMutation({
+    mutationFn: async ({ id, action }: any) => {
+      const res = await apiRequest("PUT", `/api/admin/users/${id}/bank-details`, {
+        action,
+      });
+      return await res.json();
+    },
+    onSuccess: (data: any, variables: any) => {
+      toast({ 
+        title: "Success", 
+        description: `Bank details ${variables.action}d successfully` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
       setApprovalDialog(null);
       resetForm();
@@ -515,6 +545,11 @@ export default function Admin() {
         id: approvalDialog.item.id,
         action,
         adminNotes,
+      });
+    } else if (approvalDialog.type === 'bank_details') {
+      processBankDetailsMutation.mutate({
+        id: approvalDialog.item.id,
+        action,
       });
     }
   };
@@ -771,9 +806,17 @@ export default function Admin() {
                           <div className="flex-1">
                             <h4 className="font-semibold">{u.firstName} {u.lastName}</h4>
                             <p className="text-sm text-muted-foreground">{u.email}</p>
-                            <div className="flex gap-2 mt-1">
+                            <div className="flex flex-wrap gap-2 mt-1">
                               <Badge variant="outline">{u.role}</Badge>
                               <Badge variant={u.kycStatus === 'approved' ? 'default' : 'secondary'}>{u.kycStatus}</Badge>
+                              {u.bankDetailsStatus && u.bankDetailsStatus !== 'not_submitted' && (
+                                <Badge 
+                                  variant={u.bankDetailsStatus === 'approved' ? 'default' : 'secondary'}
+                                  data-testid={`badge-bank-status-${u.id}`}
+                                >
+                                  Bank: {u.bankDetailsStatus}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           {u.role !== 'admin' && (
@@ -786,6 +829,24 @@ export default function Admin() {
                                   data-testid={`button-review-kyc-${u.id}`}
                                 >
                                   Review KYC
+                                </Button>
+                              )}
+                              {u.bankDetailsStatus === 'pending' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => setApprovalDialog({ 
+                                    type: 'bank_details', 
+                                    item: { 
+                                      id: u.id, 
+                                      firstName: u.firstName, 
+                                      lastName: u.lastName, 
+                                      bankDetails: u.bankDetails 
+                                    } 
+                                  })}
+                                  data-testid={`button-review-bank-${u.id}`}
+                                >
+                                  Review Bank Details
                                 </Button>
                               )}
                               <Button
@@ -901,14 +962,82 @@ export default function Admin() {
         <Dialog open={!!approvalDialog} onOpenChange={() => { setApprovalDialog(null); resetForm(); }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Review {approvalDialog?.type === 'deposit' ? 'Deposit' : approvalDialog?.type === 'withdrawal' ? 'Withdrawal' : 'KYC'} Request</DialogTitle>
+              <DialogTitle>
+                Review {approvalDialog?.type === 'deposit' ? 'Deposit' : 
+                        approvalDialog?.type === 'withdrawal' ? 'Withdrawal' : 
+                        approvalDialog?.type === 'bank_details' ? 'Bank Details' : 
+                        'KYC'} Request
+              </DialogTitle>
               <DialogDescription>
                 {approvalDialog?.type === 'deposit' && `Approve or reject deposit request for ${formatCurrency(approvalDialog.item.amount)}`}
                 {approvalDialog?.type === 'withdrawal' && `Approve or reject withdrawal request for ${formatCurrency(approvalDialog.item.amount)}`}
                 {approvalDialog?.type === 'kyc' && `Approve or reject KYC for ${approvalDialog.item.firstName} ${approvalDialog.item.lastName}`}
+                {approvalDialog?.type === 'bank_details' && `Approve or reject bank details for ${approvalDialog.item.firstName} ${approvalDialog.item.lastName}`}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Display Bank Details for review */}
+              {approvalDialog?.type === 'bank_details' && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <h4 className="font-semibold text-sm">Bank Details Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">User's Registered Name</Label>
+                      <p className="text-sm font-medium">
+                        {approvalDialog.item.firstName} {approvalDialog.item.lastName}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Account Name</Label>
+                      <p className="text-sm font-medium" data-testid="text-bank-account-name">
+                        {approvalDialog.item.bankDetails?.accountName || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Account Number</Label>
+                      <p className="text-sm font-medium font-mono" data-testid="text-bank-account-number">
+                        {approvalDialog.item.bankDetails?.accountNumber 
+                          ? `****${approvalDialog.item.bankDetails.accountNumber.slice(-4)}`
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Bank Name</Label>
+                      <p className="text-sm font-medium" data-testid="text-bank-name">
+                        {approvalDialog.item.bankDetails?.bankName || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Bank Code</Label>
+                      <p className="text-sm font-medium">
+                        {approvalDialog.item.bankDetails?.bankCode || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Verification Document</Label>
+                      {approvalDialog.item.bankDetails?.verificationDocument ? (
+                        <a 
+                          href={approvalDialog.item.bankDetails.verificationDocument} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block mt-1"
+                          data-testid="link-bank-verification-doc"
+                        >
+                          <img 
+                            src={approvalDialog.item.bankDetails.verificationDocument} 
+                            alt="Bank Verification Document" 
+                            className="w-full h-48 object-cover rounded-md border hover-elevate cursor-pointer"
+                            data-testid="img-bank-verification-doc"
+                          />
+                        </a>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mt-1">No document uploaded</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Display KYC Documents for review */}
               {approvalDialog?.type === 'kyc' && approvalDialog.item.kycDocuments && (
                 <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
@@ -1034,10 +1163,10 @@ export default function Admin() {
               <Button
                 className="w-full"
                 onClick={handleProcess}
-                disabled={processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending}
+                disabled={processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending || processBankDetailsMutation.isPending}
                 data-testid="button-confirm"
               >
-                {processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending
+                {processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending || processBankDetailsMutation.isPending
                   ? "Processing..."
                   : `Confirm ${action === 'approve' ? 'Approval' : 'Rejection'}`}
               </Button>
