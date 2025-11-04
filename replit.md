@@ -75,6 +75,65 @@ The platform uses a React and TypeScript frontend with Vite, Wouter, and TanStac
 - Auto-logs to `audit_admin_actions` table without blocking requests
 - Ready to apply to NAV/cashflow endpoints for automated compliance logging
 
+### Phase 4-B: Hybrid Redemption & Funding Flow (Production-Ready)
+
+**Complete redemption system enabling users to sell project tokens back to platform for NGNTS, with hybrid funding priority and blockchain integration.**
+
+**1. Redemption Helper Library (`server/lib/redemptionOps.ts`):**
+- `determineFundingSource()` - Implements hybrid funding priority: project cashflow → treasury pool → liquidity pool
+- Respects LP minimum reserve threshold (10,000 NGNTS by default)
+- `validateUserTokenBalance()` - Validates user has sufficient project tokens
+- `calculateRedemptionValue()` - Calculates NGNTS value based on tokens × NAV
+- Defensive programming with NaN checks and type safety
+
+**2. User-Facing Redemption API:**
+- **Endpoint:** `POST /api/investments/redemptions/create` (authenticated users)
+- User submits project ID and token amount to redeem
+- Captures `navAtRequest` for NAV locking (prevents retroactive manipulation during admin review)
+- Validates sufficient token balance before creating request
+- Creates `redemption_requests` record with status `pending`
+- Zod schema validation for request/response
+
+**3. Admin Redemption Management:**
+- **GET /api/admin/redemptions/pending** - Fetches all pending redemption requests with user/project details
+- **PUT /api/admin/redemptions/:id/process** - Admin approves/rejects redemption
+- Integrated `auditActionWithState` middleware for full compliance logging
+- Captures before-state for audit trail
+
+**4. Stellar Blockchain Operations (`server/lib/stellarOps.ts`):**
+- `burnProjectToken()` - Burns project tokens by sending to issuer (removes from circulation)
+- `transferNgntsFromPlatformWallet()` - Transfers NGNTS from distribution/treasury_pool/liquidity_pool to user
+- Atomic database balance updates
+- Comprehensive error handling with detailed logging
+
+**5. Redemption Processing Flow (Critical Order for Safety):**
+1. Determine funding source via hybrid priority
+2. **Transfer NGNTS FIRST** (protects user funds - if this fails, user keeps tokens)
+3. **Burn project tokens SECOND** (if this fails after transfer, user got paid but kept tokens - manually resolvable)
+4. Update `redemption_requests` with transaction hashes and funding plan
+5. Mark status as `completed`
+6. Audit log with before/after state
+
+**6. Safety Guarantees:**
+- **Transfer fails:** User keeps tokens, no NGNTS transferred (safe)
+- **Burn fails after transfer:** User received NGNTS but kept tokens (marked as `processing` for manual resolution)
+- **Previous vulnerability fixed:** Originally burned tokens first - if transfer failed, user lost tokens without payment (unrecoverable)
+- Manual resolution path: Admin notes stored for partial failures with transaction hashes
+
+**7. Hybrid Funding Priority Logic:**
+- **Priority 1 - Project Cashflow:** Use project-specific cashflow balances first (distribution wallet)
+- **Priority 2 - Treasury Pool:** Use platform treasury if project balance insufficient
+- **Priority 3 - Liquidity Pool:** Use LP as last resort, respecting minimum reserve threshold
+- Configurable via `platform_settings` table with type-safe parsing
+
+**8. Production Readiness:**
+- NAV locking prevents price manipulation during review
+- Audit trail for compliance (before/after state capture)
+- Atomic operations with proper error handling
+- Type-safe validation with Zod schemas
+- Comprehensive logging for debugging
+- Manual resolution checklist for partial failures
+
 ## External Dependencies
 
 ### Third-Party Services
