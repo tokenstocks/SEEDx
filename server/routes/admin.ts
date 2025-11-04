@@ -14,6 +14,7 @@ import {
   projectUpdates,
   projectTokenLedger,
   platformWallets,
+  treasuryPoolSnapshots,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
@@ -1997,6 +1998,64 @@ router.get("/treasury/summary", authenticate, requireAdmin, async (req, res) => 
     console.error("Treasury summary error:", error);
     res.status(500).json({
       error: "Failed to fetch treasury summary",
+      details: error.message,
+    });
+  }
+});
+
+// Phase 4: Treasury Reconciliation - Automated balance verification
+router.get("/treasury/reconcile", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Step 1: Compute current virtual balance from transactions
+    const { rows: balanceRows } = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(
+          CASE
+            WHEN tx_type IN ('inflow') THEN amount_ngnts
+            WHEN tx_type IN ('allocation', 'buyback', 'replenish', 'fee') THEN -amount_ngnts
+            ELSE 0
+          END
+        ), 0) as computed_balance,
+        COUNT(*) as total_tx_count
+      FROM treasury_pool_transactions
+    `) as { rows: any[] };
+
+    const computedBalance = balanceRows[0]?.computed_balance || "0.00";
+    const totalTxCount = parseInt(balanceRows[0]?.total_tx_count as string) || 0;
+
+    // Step 2: Get the latest snapshot (if any)
+    const [latestSnapshot] = await db
+      .select()
+      .from(treasuryPoolSnapshots)
+      .orderBy(desc(treasuryPoolSnapshots.asOfDate))
+      .limit(1);
+
+    // Step 3: Compare balances and flag mismatches
+    const computedFloat = parseFloat(computedBalance);
+    const snapshotFloat = latestSnapshot ? parseFloat(latestSnapshot.balance) : null;
+    const discrepancy = snapshotFloat !== null ? computedFloat - snapshotFloat : null;
+    const hasDiscrepancy = discrepancy !== null && Math.abs(discrepancy) > 0.01;
+
+    res.json({
+      status: hasDiscrepancy ? "mismatch" : "ok",
+      computedBalance,
+      totalTransactions: totalTxCount,
+      latestSnapshot: latestSnapshot ? {
+        balance: latestSnapshot.balance,
+        asOfDate: latestSnapshot.asOfDate,
+        metadata: latestSnapshot.metadata,
+      } : null,
+      discrepancy: discrepancy !== null ? discrepancy.toFixed(2) : null,
+      recommendation: hasDiscrepancy 
+        ? "Investigate transactions since last snapshot or create new snapshot to sync"
+        : latestSnapshot 
+        ? "Balance matches latest snapshot" 
+        : "No snapshots exist yet. Consider creating one.",
+    });
+  } catch (error: any) {
+    console.error("Treasury reconciliation error:", error);
+    res.status(500).json({
+      error: "Failed to reconcile treasury balance",
       details: error.message,
     });
   }
