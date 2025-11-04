@@ -1,0 +1,121 @@
+We are implementing Phase 4 — Regenerative Capital Architecture — for TokenStocks.
+This includes Treasury Pool tracking, Project Cashflows, NAV history, and Redemption Requests for buybacks.
+All tables must integrate cleanly with the existing Drizzle ORM + PostgreSQL setup.
+
+🧱 Task:
+Create database migrations and Drizzle models for the following tables:
+
+project_nav_history
+
+project_cashflows
+
+treasury_pool_transactions
+
+redemption_requests
+
+audit_admin_actions
+
+And extend platform_wallets with new columns:
+
+wallet_role ENUM(‘operations’, ‘treasury’, ‘distribution’, ‘liquidity_pool’, ‘treasury_pool’)
+
+min_reserve_threshold numeric(30,2) (optional safety buffer)
+
+💾 Model definitions (Drizzle / TypeScript)
+
+// db/schema/project_nav_history.ts
+export const projectNavHistory = pgTable('project_nav_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  navPerToken: numeric('nav_per_token', { precision: 30, scale: 8 }).notNull(),
+  source: varchar('source', { length: 32 }).notNull(), // 'manual' | 'formula' | 'audited'
+  effectiveAt: timestamp('effective_at', { withTimezone: true }).defaultNow(),
+  updatedBy: uuid('updated_by').references(() => users.id),
+  notes: text('notes'),
+});
+
+// db/schema/project_cashflows.ts
+export const projectCashflows = pgTable('project_cashflows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  amountNgnts: numeric('amount_ngnts', { precision: 30, scale: 2 }).notNull(),
+  source: varchar('source', { length: 128 }),
+  sourceDocumentUrl: text('source_document_url'),
+  verifiedBy: uuid('verified_by').references(() => users.id),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  status: varchar('status', { length: 16 }).default('recorded'), // recorded|verified|tokenized
+  chainTxHash: text('chain_tx_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// db/schema/treasury_pool_transactions.ts
+export const treasuryPoolTransactions = pgTable('treasury_pool_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  type: varchar('type', { length: 32 }).notNull(), // inflow|allocation|buyback|replenish|fee
+  amountNgnts: numeric('amount_ngnts', { precision: 30, scale: 2 }).notNull(),
+  sourceProjectId: uuid('source_project_id').references(() => projects.id),
+  destinationWallet: varchar('destination_wallet', { length: 64 }),
+  relatedTxHash: text('related_tx_hash'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// db/schema/redemption_requests.ts
+export const redemptionRequests = pgTable('redemption_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  projectId: uuid('project_id').references(() => projects.id),
+  tokensAmount: numeric('tokens_amount', { precision: 30, scale: 8 }).notNull(),
+  navSnapshot: numeric('nav_snapshot', { precision: 30, scale: 8 }).notNull(),
+  redemptionValueNgnts: numeric('redemption_value_ngnts', { precision: 30, scale: 2 }).notNull(),
+  fundingPlan: jsonb('funding_plan').default(sql`'{}'::jsonb`),
+  txHashes: jsonb('tx_hashes').default(sql`'[]'::jsonb`),
+  status: varchar('status', { length: 32 }).default('pending'), // pending/processing/completed/rejected
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+});
+
+// db/schema/audit_admin_actions.ts
+export const auditAdminActions = pgTable('audit_admin_actions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: uuid('admin_id').references(() => users.id),
+  action: varchar('action', { length: 128 }),
+  target: jsonb('target'),
+  details: jsonb('details'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// Extend platform_wallets
+minReserveThreshold: numeric('min_reserve_threshold', { precision: 30, scale: 2 }),
+walletRole: varchar('wallet_role', { length: 32 }),
+
+
+✅ Acceptance Criteria
+
+All migrations run without error on the existing PostgreSQL instance.
+
+All new tables appear in Supabase dashboard.
+
+Drizzle schemas compile with tsc and export correctly.
+
+No existing user, project, or wallet data is lost.
+
+New walletRole fields populated with defaults:
+
+LP → 'liquidity_pool'
+
+Admin → 'operations'
+
+Treasury → 'treasury_pool'
+
+Verified via GET /api/setup/verify-database endpoint.
+
+🛠️ Technical Notes
+
+Use consistent naming and schema folder pattern already in the repo.
+
+Use pgTable from Drizzle; ensure JSONB default values are properly set using sql.
+
+Ensure backward compatibility with existing wallet records (add defaults).
+
+Write reversible migration (so test rollback works).

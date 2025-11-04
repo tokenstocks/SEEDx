@@ -1,0 +1,75 @@
+You are the lead developer of the TokenStocks platform.  
+Provide a **complete, structured, and human-readable technical overview** of the current codebase and all implemented workflows.
+
+Your output must be organized as follows:
+
+## 1. Project Overview
+Summarize in 5–10 lines what TokenStocks currently does, which tech stack it uses, and what the high-level user journey is (user registration → wallet activation → deposit → invest → withdraw).
+
+## 2. Backend Architecture
+- Describe the backend framework (Node.js/Express + TypeScript + Drizzle ORM or others).  
+- List all API modules and what they handle (auth, wallets, deposits, withdrawals, projects, investments, setup, blockchain).  
+- Explain how JWT auth, admin roles, and encryption work.  
+- Mention any middlewares and utilities (stellarConfig, encryption helpers, verification endpoints).
+
+## 3. Database Schema
+List all current database tables and their purposes.  
+For each table, list the key columns, relationships, and any constraints.  
+Highlight where wallet balances, transactions, projects, and users intersect.  
+If any tables are still placeholders or incomplete, indicate that.
+
+## 4. Frontend Architecture
+Describe the structure of the React/Vite/TypeScript frontend.  
+Include:  
+- How routing is handled (Wouter or similar)  
+- Which pages and components currently exist  
+- How state is managed (TanStack Query or context)  
+- Which UI flows are implemented (registration, KYC, dashboard, admin panel, etc.)  
+- Any missing UI features related to blockchain transparency or NGNTS conversion.
+
+## 5. Blockchain Integration (Current State)
+Explain exactly what blockchain functionality is live right now:  
+- Which Stellar network is connected (testnet or mainnet)  
+- What happens on project creation  
+- How user wallets are created and funded  
+- Whether token minting, transfers, and trustlines are active  
+- How transaction hashes are stored and verified
+
+## 6. Platform Wallets
+List all existing platform wallets (Operations, Treasury, Distribution, Liquidity Pool, Admin if still present).  
+For each, include:  
+- Public key  
+- Function/purpose in the system  
+- Whether funded/active on Stellar testnet  
+- Which modules reference it in the code.
+
+## 7. Active Workflows
+Document all implemented end-to-end workflows, step by step:
+1. User registration & wallet activation  
+2. Deposit request and admin approval  
+3. Project creation & token minting  
+4. User investment flow  
+5. Withdrawal flow (if implemented)  
+6. Any admin verification or setup checks  
+
+Include: where database and blockchain intersect in each flow.
+
+## 8. Pending or Placeholder Features
+List any features mentioned in code comments or TODOs that are not yet complete (e.g., NGNTS issuance, secondary market, liquidity management, NAV calculation, cashflow tracking).
+
+## 9. Security & Configuration
+Summarize how secrets (Stellar keys, JWT secrets) are handled.  
+Mention any environment variables, encryption standards (AES-256-CBC, bcrypt), and whether sensitive keys are excluded from responses.
+
+## 10. Known Limitations
+List all limitations you are aware of (from comments or architecture notes).  
+Examples: missing rate limiting, async operations without retries, testnet-only, lack of job queues, etc.
+
+## 11. System Health Summary
+Provide a concise checklist of what’s verified working (✅) vs pending (⚠️).
+
+## 12. Context for Architect (GPT-5 Strategist)
+End by summarizing your *own understanding* of what the TokenStocks platform is ultimately building toward — the **fully on-chain NGNTS-based regenerative capital model** — and how far the current codebase is from that goal.
+
+Use clear markdown headings, lists, and indentation.
+Be exhaustive but readable — this is a systems audit, not a marketing brief.

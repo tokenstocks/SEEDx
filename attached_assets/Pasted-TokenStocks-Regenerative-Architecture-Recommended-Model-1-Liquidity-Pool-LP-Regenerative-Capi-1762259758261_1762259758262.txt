@@ -1,0 +1,108 @@
+TokenStocks Regenerative Architecture (Recommended Model)
+1. Liquidity Pool (LP) = Regenerative Capital Base
+
+Funded by grants, CSR, patient capital.
+
+Non-return-seeking (or low-return, e.g. 3–5% per annum).
+
+Role: Seed new projects + provide emergency liquidity.
+
+When used, it must be replenished from project cashflows and token buybacks.
+
+2. Project Wallet = Operating Entity
+
+Receives NGNTS investments.
+
+Uses funds for production (e.g. farm inputs, operations).
+
+Generates cashflow from product sales.
+
+Periodically sends a portion of profit → Treasury Pool.
+
+This is your Reflow Mechanism — where on-chain value comes back into the ecosystem.
+
+3. Treasury Pool (New Wallet Type) 🏦
+
+Receives:
+
+Project cashflow allocations (profit shares)
+
+LP repayments
+
+Platform fees
+
+Uses:
+
+To top up LP wallet (recycle capital)
+
+To fund new projects
+
+To pay out performance bonuses (optional in TKX later)
+
+This treasury acts as the bridge between real-world revenue and token liquidity.
+
+4. Investor Exit Path
+
+Let’s look at your earlier concern:
+
+“Investors want to redeem or sell, but project can’t yet buy back, and LP shouldn’t cover all of it.”
+
+✅ Solution: Hybrid buyback model with phased funding sources
+
+Step 1: Investor initiates “Sell” (Secondary Market)
+
+LP evaluates the request (e.g. 100 tokens @ 10 NGNTS each = 1,000 NGNTS).
+
+System checks liquidity sources in this priority order:
+
+Priority	Source	Description	Example
+1	Project Cashflow Wallet	If project has partial liquidity	Use recent sales proceeds (e.g. 400 NGNTS)
+2	Treasury Pool	Use ecosystem revenue (reflows)	Add 400 NGNTS
+3	LP Wallet	Use patient capital if shortfall remains	Cover last 200 NGNTS
+Total Paid Out:			1,000 NGNTS
+
+After the buyback:
+
+Tokens are burned or returned to Project Wallet.
+
+The same 1,000 NGNTS can later flow back to Treasury → LP → new projects.
+
+Thus, your capital never truly “leaves” — it just rotates.
+
+🔁 The Regenerative Loop (Lifecycle Summary)
+
+LP Wallet funds Project A (10M NGNTS).
+
+Project A produces crops, sells goods → generates 12M NGN cash.
+
+5M NGN used for operations; 7M NGN sent back to Treasury Pool (on-chain NGNTS).
+
+Treasury Pool:
+
+2M NGNTS → LP replenishment
+
+3M NGNTS → New Project B funding
+
+2M NGNTS → Token buybacks for AGRO2025 investors
+
+Each round regenerates the same pool of capital, compounding social impact.
+
+🪙 Accounting for Appreciation
+
+In your model:
+
+Token value grows based on project NAV, not speculative market movement.
+
+Appreciation is realized when:
+
+The project pays out cashflow (dividends), or
+
+Tokens are redeemed/bought back at higher rates.
+
+Therefore:
+
+On-chain price (NGNTS/token) remains dynamic via Treasury & LP valuations.
+
+ROI is recorded when redemption occurs, not continuously marked-to-market.
+
+This is standard for impact investment tokens and private RWA markets.
