@@ -413,3 +413,244 @@ export async function getAssetBalance(
     return "0";
   }
 }
+
+/**
+ * Burn project tokens by sending them back to the issuer
+ * In Stellar, sending tokens back to the issuer removes them from circulation (burns them)
+ * 
+ * @param userId - User ID whose tokens will be burned
+ * @param assetCode - Project token asset code (e.g., "CORN2025")
+ * @param issuerPublicKey - Project token issuer's public key
+ * @param amount - Amount of tokens to burn
+ * @param memo - Optional memo for the transaction
+ * @returns Transaction hash
+ */
+export async function burnProjectToken(
+  userId: string,
+  assetCode: string,
+  issuerPublicKey: string,
+  amount: string,
+  memo?: string
+): Promise<string> {
+  try {
+    console.log(`🔥 Burning ${amount} ${assetCode} tokens for user ${userId}`);
+
+    // Get user's wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+
+    if (!userWallet || !userWallet.cryptoWalletPublicKey || !userWallet.cryptoWalletSecretEncrypted) {
+      throw new Error("User wallet not found or not configured");
+    }
+
+    // Decrypt user's secret key
+    const userSecret = decrypt(userWallet.cryptoWalletSecretEncrypted);
+    const userKeypair = StellarSdk.Keypair.fromSecret(userSecret);
+
+    // Create asset
+    const projectAsset = new StellarSdk.Asset(assetCode, issuerPublicKey);
+
+    // Load user's account
+    const userAccount = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey);
+
+    // Build burn transaction (send tokens back to issuer)
+    const txBuilder = new StellarSdk.TransactionBuilder(userAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.payment({
+          destination: issuerPublicKey, // Send to issuer = burn
+          asset: projectAsset,
+          amount: amount,
+        })
+      )
+      .setTimeout(30);
+
+    // Add memo if provided
+    if (memo) {
+      txBuilder.addMemo(StellarSdk.Memo.text(memo.substring(0, 28))); // Max 28 bytes
+    }
+
+    const transaction = txBuilder.build();
+    transaction.sign(userKeypair);
+
+    // Submit transaction
+    const result = await horizonServer.submitTransaction(transaction);
+
+    console.log(`   ✅ Tokens burned successfully! TX: ${result.hash}`);
+
+    // Update database balance
+    await db
+      .update(wallets)
+      .set({
+        cryptoBalances: sql.raw(`
+          jsonb_set(
+            COALESCE(crypto_balances, '{}'::jsonb),
+            ARRAY['${assetCode}'],
+            to_jsonb(
+              GREATEST(
+                COALESCE(
+                  (crypto_balances->>'${assetCode}')::numeric,
+                  0
+                ) - ${Number(amount)},
+                0
+              )
+            )
+          )
+        `),
+        updatedAt: new Date(),
+      })
+      .where(eq(wallets.userId, userId));
+
+    console.log(`   ✅ Database balance updated after burn`);
+
+    return result.hash;
+  } catch (error: any) {
+    console.error("❌ Error burning project tokens:", error);
+
+    if (error.response && error.response.data) {
+      console.error("   Stellar error details:", JSON.stringify(error.response.data, null, 2));
+    }
+
+    throw new Error(`Failed to burn project tokens: ${error.message}`);
+  }
+}
+
+/**
+ * Transfer NGNTS from a platform wallet to a user
+ * Supports any platform wallet type (distribution, treasury_pool, liquidity_pool)
+ * 
+ * @param fromWalletType - Platform wallet type to transfer from
+ * @param toUserId - Recipient user ID
+ * @param amount - Amount of NGNTS to transfer
+ * @param memo - Optional memo for the transaction
+ * @returns Transaction hash
+ */
+export async function transferNgntsFromPlatformWallet(
+  fromWalletType: "distribution" | "treasury_pool" | "liquidity_pool",
+  toUserId: string,
+  amount: string,
+  memo?: string
+): Promise<string> {
+  try {
+    console.log(`💸 Transferring ${amount} NGNTS from ${fromWalletType} wallet to user ${toUserId}`);
+
+    // Get the platform wallet to transfer from
+    const { platformWallets } = await import("@shared/schema");
+    const [fromWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, fromWalletType))
+      .limit(1);
+
+    if (!fromWallet) {
+      throw new Error(`${fromWalletType} wallet not found`);
+    }
+
+    // Get Treasury wallet (NGNTS issuer)
+    const [treasuryWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "treasury"))
+      .limit(1);
+
+    if (!treasuryWallet) {
+      throw new Error("Treasury wallet not found");
+    }
+
+    // Get user's wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, toUserId))
+      .limit(1);
+
+    if (!userWallet || !userWallet.cryptoWalletPublicKey) {
+      throw new Error("User wallet not found or not configured");
+    }
+
+    // Decrypt platform wallet secret
+    const fromSecret = decrypt(fromWallet.encryptedSecretKey);
+    const fromKeypair = StellarSdk.Keypair.fromSecret(fromSecret);
+
+    // Create NGNTS asset
+    const ngntsAsset = new StellarSdk.Asset("NGNTS", treasuryWallet.publicKey);
+
+    // Load platform wallet account
+    const fromAccount = await horizonServer.loadAccount(fromWallet.publicKey);
+
+    // Build payment transaction
+    const txBuilder = new StellarSdk.TransactionBuilder(fromAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.payment({
+          destination: userWallet.cryptoWalletPublicKey,
+          asset: ngntsAsset,
+          amount: amount,
+        })
+      )
+      .setTimeout(30);
+
+    // Add memo if provided
+    if (memo) {
+      txBuilder.addMemo(StellarSdk.Memo.text(memo.substring(0, 28))); // Max 28 bytes
+    }
+
+    const transaction = txBuilder.build();
+    transaction.sign(fromKeypair);
+
+    // Submit transaction
+    const result = await horizonServer.submitTransaction(transaction);
+
+    console.log(`   ✅ NGNTS transferred successfully! TX: ${result.hash}`);
+
+    // Update database balances
+    // Deduct from platform wallet
+    await db
+      .update(platformWallets)
+      .set({
+        balanceNGNTS: sql`${platformWallets.balanceNGNTS} - ${amount}`,
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(platformWallets.id, fromWallet.id));
+
+    // Credit to user wallet
+    await db
+      .update(wallets)
+      .set({
+        cryptoBalances: sql.raw(`
+          jsonb_set(
+            COALESCE(crypto_balances, '{}'::jsonb),
+            ARRAY['NGNTS'],
+            to_jsonb(
+              COALESCE(
+                (crypto_balances->>'NGNTS')::numeric,
+                0
+              ) + ${Number(amount)}
+            )
+          )
+        `),
+        updatedAt: new Date(),
+      })
+      .where(eq(wallets.userId, toUserId));
+
+    console.log(`   ✅ Database balances updated`);
+
+    return result.hash;
+  } catch (error: any) {
+    console.error("❌ Error transferring NGNTS from platform wallet:", error);
+
+    if (error.response && error.response.data) {
+      console.error("   Stellar error details:", JSON.stringify(error.response.data, null, 2));
+    }
+
+    throw new Error(`Failed to transfer NGNTS from ${fromWalletType}: ${error.message}`);
+  }
+}

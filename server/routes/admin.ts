@@ -15,12 +15,14 @@ import {
   projectTokenLedger,
   platformWallets,
   treasuryPoolSnapshots,
+  redemptionRequests,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
   insertProjectUpdateSchema,
   createProjectSchema,
   suspendUserSchema,
+  processRedemptionRequestSchema,
 } from "@shared/schema";
 import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
@@ -30,6 +32,9 @@ import { uploadFile } from "../lib/supabase";
 import { createProjectToken } from "../lib/stellarToken";
 import { issueNGNTS, mintNGNTS } from "../lib/platformToken";
 import { burnNgnts } from "../lib/ngntsOps";
+import { determineFundingSource } from "../lib/redemptionOps";
+import { auditActionWithState } from "../middleware/auditMiddleware";
+import { burnProjectToken, transferNgntsFromPlatformWallet } from "../lib/stellarOps";
 
 const router = Router();
 
@@ -2062,5 +2067,259 @@ router.get("/treasury/reconcile", authenticate, requireAdmin, async (req, res) =
     });
   }
 });
+
+// ========================================
+// Phase 4-B: Redemption Management
+// ========================================
+
+/**
+ * GET /api/admin/redemptions/pending
+ * Fetch all pending redemption requests for admin review
+ */
+router.get("/redemptions/pending", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Get all pending redemption requests with user and project details
+    const pendingRedemptions = await db
+      .select({
+        id: redemptionRequests.id,
+        userId: redemptionRequests.userId,
+        projectId: redemptionRequests.projectId,
+        tokensAmount: redemptionRequests.tokensAmount,
+        navSnapshot: redemptionRequests.navSnapshot,
+        navAtRequest: redemptionRequests.navAtRequest,
+        redemptionValueNgnts: redemptionRequests.redemptionValueNgnts,
+        status: redemptionRequests.status,
+        createdAt: redemptionRequests.createdAt,
+        userEmail: users.email,
+        userFullName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+        projectName: projects.name,
+        projectTokenSymbol: projects.tokenSymbol,
+      })
+      .from(redemptionRequests)
+      .innerJoin(users, eq(redemptionRequests.userId, users.id))
+      .innerJoin(projects, eq(redemptionRequests.projectId, projects.id))
+      .where(eq(redemptionRequests.status, "pending"))
+      .orderBy(desc(redemptionRequests.createdAt));
+
+    res.json({
+      redemptions: pendingRedemptions,
+      count: pendingRedemptions.length,
+    });
+  } catch (error: any) {
+    console.error("Error fetching pending redemptions:", error);
+    res.status(500).json({ error: "Failed to fetch pending redemptions" });
+  }
+});
+
+/**
+ * PUT /api/admin/redemptions/:id/process
+ * Process a redemption request (approve or reject)
+ * 
+ * Flow for approval:
+ * 1. Determine funding source (project → treasury → LP) based on priority
+ * 2. Burn project tokens on Stellar
+ * 3. Transfer NGNTS from selected wallet to user
+ * 4. Update redemption_requests status to COMPLETED
+ * 5. Record transaction hash and funding plan
+ * 6. Audit log the action
+ */
+router.put(
+  "/redemptions/:id/process",
+  authenticate,
+  requireAdmin,
+  auditActionWithState("redemption:process", async (req) => {
+    const redemption = await db.query.redemptionRequests.findFirst({
+      where: eq(redemptionRequests.id, req.params.id),
+    });
+    return { redemptionBefore: redemption };
+  }),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.userId!;
+
+      // Validate input
+      const validation = processRedemptionRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        res.status(400).json({
+          error: "Invalid request data",
+          details: validation.error.errors,
+        });
+        return;
+      }
+
+      const { action, adminNotes } = validation.data;
+
+      // Get redemption request
+      const [redemption] = await db
+        .select()
+        .from(redemptionRequests)
+        .where(eq(redemptionRequests.id, id))
+        .limit(1);
+
+      if (!redemption) {
+        res.status(404).json({ error: "Redemption request not found" });
+        return;
+      }
+
+      if (redemption.status !== "pending") {
+        res.status(400).json({
+          error: `Redemption already ${redemption.status}`,
+        });
+        return;
+      }
+
+      // Handle rejection
+      if (action === "reject") {
+        const [updatedRedemption] = await db
+          .update(redemptionRequests)
+          .set({
+            status: "rejected",
+            adminNotes,
+            processedBy: adminId,
+            processedAt: new Date(),
+          })
+          .where(eq(redemptionRequests.id, id))
+          .returning();
+
+        console.log(`❌ Redemption ${id} rejected by admin ${adminId}`);
+
+        res.json({
+          message: "Redemption request rejected",
+          redemption: updatedRedemption,
+        });
+        return;
+      }
+
+      // Handle approval - requires hybrid funding logic
+      const projectId = redemption.projectId;
+      const redemptionValue = redemption.redemptionValueNgnts;
+
+      // Step 1: Determine funding source
+      const fundingPlan = await determineFundingSource(projectId, redemptionValue);
+
+      if (!fundingPlan.success) {
+        res.status(400).json({
+          error: fundingPlan.error || "Unable to determine funding source",
+        });
+        return;
+      }
+
+      console.log(
+        `💰 Funding source determined for redemption ${id}: ${fundingPlan.source} (${redemptionValue} NGNTS)`
+      );
+
+      // Get project details for token burning
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project || !project.tokenSymbol || !project.tokenIssuerPublicKey) {
+        res.status(400).json({
+          error: "Project token information not found",
+        });
+        return;
+      }
+
+      // Map funding source to wallet type
+      let walletType: "distribution" | "treasury_pool" | "liquidity_pool";
+      if (fundingPlan.source === "project") {
+        walletType = "distribution"; // Project cashflow uses distribution wallet
+      } else if (fundingPlan.source === "treasury") {
+        walletType = "treasury_pool";
+      } else {
+        walletType = "liquidity_pool";
+      }
+
+      // Step 2: Transfer NGNTS from funding wallet to user FIRST
+      // CRITICAL: Transfer must succeed before burning tokens to protect user funds
+      let transferTxHash: string;
+      try {
+        transferTxHash = await transferNgntsFromPlatformWallet(
+          walletType,
+          redemption.userId,
+          redemptionValue,
+          `REDEEM-${id.substring(0, 8)}`
+        );
+        console.log(`✅ NGNTS transferred: ${transferTxHash}`);
+      } catch (error: any) {
+        console.error(`Failed to transfer NGNTS: ${error.message}`);
+        res.status(500).json({
+          error: `Failed to transfer NGNTS on blockchain: ${error.message}`,
+        });
+        return;
+      }
+
+      // Step 3: Burn project tokens on Stellar AFTER successful transfer
+      // This order protects users - if burn fails, they got NGNTS but kept tokens (can be resolved manually)
+      // If we burned first and transfer failed, they'd lose tokens without payment (unrecoverable)
+      let burnTxHash: string;
+      try {
+        burnTxHash = await burnProjectToken(
+          redemption.userId,
+          project.tokenSymbol,
+          project.tokenIssuerPublicKey,
+          redemption.tokensAmount,
+          `REDEEM-${id.substring(0, 8)}`
+        );
+        console.log(`✅ Tokens burned: ${burnTxHash}`);
+      } catch (error: any) {
+        console.error(`⚠️ WARNING: NGNTS transferred but token burn failed: ${error.message}`);
+        // NGNTS was already transferred - mark as processing for manual resolution
+        await db
+          .update(redemptionRequests)
+          .set({
+            status: "processing",
+            adminNotes: `MANUAL ACTION REQUIRED: NGNTS transferred (${transferTxHash}) but token burn failed. User received ${redemptionValue} NGNTS but tokens not burned yet. Error: ${error.message}`,
+            processedBy: adminId,
+            processedAt: new Date(),
+            txHashes: [transferTxHash],
+          })
+          .where(eq(redemptionRequests.id, id));
+
+        res.status(500).json({
+          error: "NGNTS transferred successfully, but token burn failed. Marked for manual resolution.",
+          transferTxHash,
+          details: error.message,
+        });
+        return;
+      }
+
+      // Step 4: Update redemption request to COMPLETED
+      const [updatedRedemption] = await db
+        .update(redemptionRequests)
+        .set({
+          status: "completed",
+          fundingPlan: fundingPlan.fundingBreakdown,
+          txHashes: [burnTxHash, transferTxHash],
+          adminNotes,
+          processedBy: adminId,
+          processedAt: new Date(),
+        })
+        .where(eq(redemptionRequests.id, id))
+        .returning();
+
+      console.log(`✅ Redemption ${id} completed successfully`);
+      console.log(`  - Burn TX: ${burnTxHash}`);
+      console.log(`  - Transfer TX: ${transferTxHash}`);
+      console.log(`  - Funding source: ${fundingPlan.source}`);
+
+      res.json({
+        message: "Redemption processed successfully",
+        redemption: updatedRedemption,
+        fundingSource: fundingPlan.source,
+        txHashes: {
+          burn: burnTxHash,
+          transfer: transferTxHash,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error processing redemption:", error);
+      res.status(500).json({ error: "Failed to process redemption request" });
+    }
+  }
+);
 
 export default router;

@@ -8,12 +8,17 @@ import {
   projectTokenLedger,
   users,
   trustlines,
-  insertInvestmentSchema 
+  insertInvestmentSchema,
+  redemptionRequests,
+  projectNavHistory,
+  createRedemptionRequestSchema
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { ensureTrustline, transferAsset, recordTransaction } from "../lib/stellarOps";
 import { decrypt } from "../lib/encryption";
+import { validateUserTokenBalance, calculateRedemptionValue } from "../lib/redemptionOps";
+import { getCurrentNav } from "../lib/navValidation";
 
 const router = Router();
 
@@ -487,6 +492,109 @@ router.get("/stats", authMiddleware, async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Error fetching investment stats:", error);
     res.status(500).json({ error: "Failed to fetch investment statistics" });
+  }
+});
+
+/**
+ * POST /api/investments/redemptions/create
+ * Create a redemption request to sell project tokens back for NGNTS
+ * Protected route - requires authentication
+ * 
+ * Flow:
+ * 1. User submits project tokens to sell
+ * 2. System captures current NAV (navAtRequest) for NAV locking
+ * 3. Calculates redemption value in NGNTS
+ * 4. Creates redemption_requests record with status PENDING
+ * 5. Admin reviews and processes request later
+ */
+router.post("/redemptions/create", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId!;
+    
+    // Validate input with Zod schema
+    const validation = createRedemptionRequestSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({ 
+        error: "Invalid request data",
+        details: validation.error.errors 
+      });
+      return;
+    }
+
+    const { projectId, tokensAmount } = validation.data;
+
+    // Get project details
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    // Validate user has sufficient tokens
+    const tokenValidation = await validateUserTokenBalance(userId, projectId, tokensAmount);
+    if (!tokenValidation.valid) {
+      res.status(400).json({ 
+        error: tokenValidation.error,
+        availableBalance: tokenValidation.actualBalance 
+      });
+      return;
+    }
+
+    // Get current NAV for the project (NAV locking)
+    const currentNav = await getCurrentNav(projectId);
+    if (!currentNav) {
+      res.status(400).json({ 
+        error: "No NAV available for this project. NAV must be set before redemptions can be processed." 
+      });
+      return;
+    }
+
+    const navPerToken = currentNav.navPerToken;
+
+    // Calculate redemption value in NGNTS
+    const redemptionValueNgnts = calculateRedemptionValue(tokensAmount, navPerToken);
+
+    if (parseFloat(redemptionValueNgnts) <= 0) {
+      res.status(400).json({ error: "Invalid redemption value calculated" });
+      return;
+    }
+
+    // Create redemption request with NAV locking
+    const [redemptionRequest] = await db
+      .insert(redemptionRequests)
+      .values({
+        userId,
+        projectId,
+        tokensAmount,
+        navSnapshot: navPerToken, // Current NAV for reference
+        navAtRequest: navPerToken, // NAV locked at request time - prevents retroactive manipulation
+        redemptionValueNgnts,
+        status: "pending",
+      })
+      .returning();
+
+    console.log(`✅ Redemption request created: ${redemptionRequest.id} for ${tokensAmount} tokens (${redemptionValueNgnts} NGNTS)`);
+
+    res.status(201).json({
+      message: "Redemption request submitted successfully",
+      redemptionRequest: {
+        id: redemptionRequest.id,
+        projectId: redemptionRequest.projectId,
+        tokensAmount: redemptionRequest.tokensAmount,
+        navAtRequest: redemptionRequest.navAtRequest,
+        redemptionValueNgnts: redemptionRequest.redemptionValueNgnts,
+        status: redemptionRequest.status,
+        createdAt: redemptionRequest.createdAt,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error creating redemption request:", error);
+    res.status(500).json({ error: "Failed to create redemption request" });
   }
 });
 

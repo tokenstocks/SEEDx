@@ -1,0 +1,45 @@
+Replit Agent:
+
+We have completed the TokenStocks Phase 4 database schema, NAV, cashflow, Treasury Pool, and audit systems. Your task is to implement **Phase 4-B: Hybrid Redemption & Funding Flow**. 
+
+Requirements:
+
+1. **Redemption Request API**
+   - POST /api/redemptions/create: User submits project tokens to sell.
+   - Capture `navAtRequest` (NAV at time of request) and create a `redemption_requests` record with status `PENDING`.
+   - Validate user has sufficient project tokens.
+
+2. **Admin Review & Approval**
+   - GET /api/admin/redemptions/pending: Fetch all pending requests.
+   - PUT /api/admin/redemptions/:id/process: Process a request.
+     - Determine funding source by priority: `project_cashflow` → `treasury_pool` → `liquidity_pool`.
+     - If insufficient funds in all wallets, reject request.
+
+3. **Redemption Execution**
+   - Burn the project tokens on Stellar.
+   - Transfer NGNTS to user from selected wallet.
+   - Record Stellar transaction hash (`executedTxHash`) in DB.
+   - Update `redemption_requests` status → `COMPLETED`.
+   - Update treasury and LP balances as needed.
+   - Notify user with blockchain transaction details.
+
+4. **Hybrid Funding Logic**
+   - Check project cashflow wallet first.
+   - Then Treasury Pool, then Liquidity Pool (only if above `minReserveThreshold`).
+   - Ensure atomic DB + Stellar operation; rollback on failure.
+
+5. **Audit & Compliance**
+   - Log all admin actions via `auditActionWithState`.
+   - Include funding source, NAV, wallet balances, admin ID, and request details.
+
+6. **Edge Cases**
+   - Insufficient funds: reject with proper error.
+   - Concurrent redemptions: prevent race conditions.
+   - NAV locking: use `navAtRequest` for redemption value.
+
+7. **Type Safety & Validation**
+   - Zod schemas for all API inputs/outputs.
+   - Decimal precision for NAV and NGNTS transfers.
+   - Defensive defaults for missing configs.
+
+Deliverable: Full backend implementation of Phase 4-B APIs, Stellar operations, and DB updates. Ensure unit tests cover funding priority logic, NAV locking, and successful token redemption flow.

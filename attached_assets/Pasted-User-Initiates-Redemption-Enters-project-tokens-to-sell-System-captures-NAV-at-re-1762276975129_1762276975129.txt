@@ -1,0 +1,51 @@
+User → Initiates Redemption
+ └─> Enters project tokens to sell
+      └─> System captures NAV at request (navAtRequest)
+           └─> Creates redemption_requests record (status: PENDING)
+                │
+                ▼
+           Admin Dashboard / Approval Queue
+                │
+        Admin Reviews Pending Requests
+                │
+                ▼
+         Determine Funding Source
+        ┌───────────────┬───────────────┬───────────────┐
+        │ Project Cashflow Wallet ≥ Required? │
+        └───────────────┴───────────────┴───────────────┘
+                  │ Yes → Use Project Cashflow
+                  │ No  → Check Treasury Pool
+                  │      │
+                  │      └─ Treasury Pool ≥ Required? 
+                  │           │ Yes → Use Treasury Pool
+                  │           │ No  → Check Liquidity Pool
+                  │                │ Liquidity Pool ≥ Required & above minReserveThreshold? 
+                  │                │      │ Yes → Use LP
+                  │                │      │ No  → Insufficient funds → Reject
+                  │
+                  ▼
+        Execute Redemption
+ ┌───────────────────────────────┐
+ │ Burn Project Tokens (Stellar) │
+ │ Transfer NGNTS to User        │
+ │ Record executedTxHash          │
+ └───────────────────────────────┘
+                  │
+                  ▼
+         Update System Records
+ ┌───────────────┬───────────────┬───────────────┐
+ │ Update project_cashflows.reservedForRedemption  │
+ │ Update treasury_pool_transactions (if used)    │
+ │ Update LP wallet balance (if used)             │
+ │ Update redemption_requests status → COMPLETED  │
+ │ Send investor notification / blockchain link  │
+ └───────────────┴───────────────┴───────────────┘
+                  │
+                  ▼
+        Audit Logging
+ ┌───────────────────────────────┐
+ │ Admin action logged via       │
+ │ auditActionWithState()        │
+ │ Includes wallet balances,     │
+ │ NAV, funding source, admin ID │
+ └───────────────────────────────┘
