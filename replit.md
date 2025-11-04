@@ -97,6 +97,68 @@ User Request → Admin Review → NGNTS Burn (on-chain) → DB Update → Manual
 - If admin rejects withdrawal, amount is refunded to user's `cryptoBalances.NGNTS` (no burn occurs)
 - Status set to `rejected`, transaction marked as `failed`
 
+### Phase 4: Regenerative Capital Architecture (Schema Complete)
+**Status:** Database schema implemented and verified. API routes and UI pending.
+
+**Design Philosophy:** Multi-pool regenerative capital system where project cashflows → Treasury Pool → replenish LP → fund new projects, creating a sustainable investment cycle. NAV-based pricing enables token appreciation based on real-world project performance.
+
+**Database Schema (5 New Tables):**
+1. **project_nav_history** (8 columns):
+   - Tracks Net Asset Value (NAV) per token over time for each project
+   - Fields: `navPerToken` (numeric 30,8), `source` (manual/formula/audited), `notes`, `updatedBy`
+   - NAV determines current token price and reflects project performance
+
+2. **project_cashflows** (10 columns):
+   - Records project revenue cashflows that flow into Treasury Pool
+   - Fields: `amountNgnts` (numeric 30,2), `source`, `sourceDocumentUrl`, `status` (recorded/verified/tokenized), `verifiedBy`, `chainTxHash`
+   - Verification workflow: recorded → verified (admin) → tokenized (blockchain)
+
+3. **treasury_pool_transactions** (8 columns):
+   - Audit trail for all Treasury Pool movements
+   - Fields: `txType` (inflow/allocation/buyback/replenish/fee), `amountNgnts`, `sourceProjectId`, `metadata` (jsonb), `chainTxHash`
+   - Types: inflow (from projects) → allocation (to buybacks) → replenish (to LP) → fund new projects
+
+4. **redemption_requests** (13 columns):
+   - User requests to redeem project tokens back to NGNTS at current NAV
+   - Fields: `tokensAmount`, `redemptionRateNAV`, `totalNgntsValue`, `status` (pending/processing/completed/rejected), `fundingSource`, `fundingPlan` (jsonb), `processedBy`
+   - Hybrid buyback priority: project cashflow → Treasury reserves → LP wallet
+
+5. **audit_admin_actions** (6 columns):
+   - Comprehensive audit log for all admin operations (NAV updates, cashflow verification, redemptions)
+   - Fields: `action`, `entityType`, `entityId`, `metadata` (jsonb), `adminId`
+
+**Extended Tables:**
+- **platformWallets**: Added `walletRole` (varchar) and `minReserveThreshold` (numeric 30,2) for reserve management
+- **platformWalletTypeEnum**: Extended with 'treasury_pool' value (backward-compatible)
+
+**New Enums:**
+- `navSourceEnum`: manual, formula, audited
+- `cashflowStatusEnum`: recorded, verified, tokenized
+- `treasuryTxTypeEnum`: inflow, allocation, buyback, replenish, fee
+- `redemptionStatusEnum`: pending, processing, completed, rejected
+
+**Key Design Decisions:**
+- **Decimal Precision**: NAV uses (30,8) for high precision, NGNTS amounts use (30,2) for currency
+- **JSONB Metadata**: Flexible storage for fundingPlan, transaction hashes, verification notes
+- **Backward Compatibility**: All new platformWallets columns are nullable, preserving existing records
+- **Type Safety**: Full Drizzle relations and Zod schemas for all tables
+- **Audit Trail**: Every admin action logged in audit_admin_actions with metadata
+
+**Regenerative Capital Workflow:**
+1. Projects generate revenue → recorded in `project_cashflows`
+2. Admin verifies cashflow → status: verified
+3. Cashflow tokenized to Treasury Pool → `treasury_pool_transactions` (txType: inflow)
+4. NAV updated based on cashflow → `project_nav_history`
+5. Users redeem tokens → `redemption_requests` (funded via hybrid priority)
+6. Treasury replenishes LP → `treasury_pool_transactions` (txType: replenish)
+7. LP funds new projects → sustainable investment cycle
+
+**Next Steps (API & UI):**
+- Implement API routes for NAV updates, cashflow recording, treasury transactions, redemptions
+- Build admin UI for cashflow verification, NAV management, redemption processing
+- Create investor UI for token redemption requests and NAV history charts
+- Add integration tests for regenerative capital lifecycle
+
 ## External Dependencies
 
 ### Third-Party Services
