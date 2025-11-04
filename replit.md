@@ -1,95 +1,107 @@
 # TokenStocks MVP - Stellar Tokenized Agricultural Investments
 
 ## Overview
-TokenStocks is a blockchain-based platform built on the Stellar network for tokenized agricultural investments. It facilitates fractional ownership of agricultural assets through blockchain tokens, enabling investments starting from $100. The platform includes secure user authentication, KYC verification, multi-currency wallet management, and a responsive interface for exploring and investing in agricultural opportunities. The project's vision is to democratize agricultural investment, leveraging blockchain for transparency and accessibility.
+TokenStocks is a blockchain-based platform on the Stellar network for tokenized agricultural investments, enabling fractional ownership of agricultural assets with investments starting from $100. It features secure authentication, KYC, multi-currency wallet management, and a responsive interface for investment opportunities. The project aims to democratize agricultural investment through blockchain transparency and accessibility.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Admin Credentials
-- Email: admin@tokenstocks.local
-- Password: 1234567890
-- Note: This is a test account. Use a strong password in production.
-
 ## System Architecture
 
 ### Frontend Architecture
-The frontend is built with React and TypeScript, using Vite for fast builds. It employs Wouter for routing and TanStack Query for server state management. UI/UX is based on Tailwind CSS and Shadcn UI, following a fintech-inspired design with a responsive, mobile-first approach. Components are modular, separating presentation from container logic.
+Built with React and TypeScript, using Vite, Wouter for routing, and TanStack Query for state management. UI/UX utilizes Tailwind CSS and Shadcn UI, following a responsive, mobile-first, fintech-inspired design with modular components.
 
 ### Backend Architecture
-The backend uses Node.js with Express.js and TypeScript. It integrates Drizzle ORM with PostgreSQL for type-safe database operations. Authentication is JWT-based with bcrypt for password hashing and AES-256-CBC for encrypting sensitive data. Blockchain integration is handled via the Stellar SDK, supporting both testnet and mainnet configurations. The API is RESTful, with modular routes and comprehensive error handling.
+Node.js with Express.js and TypeScript, integrating Drizzle ORM with PostgreSQL. Authentication is JWT-based with bcrypt and AES-256-CBC encryption for sensitive data. Stellar SDK handles blockchain integration (testnet/mainnet). The API is RESTful with modular routes and error handling.
 
 ### Data Storage Solutions
-PostgreSQL serves as the primary database, storing user accounts, wallet information, transaction records, and KYC metadata. Supabase Storage is used for file storage, specifically for KYC documents and project-related media, with public URLs referenced in the database.
+PostgreSQL is the primary database for user, wallet, transaction, and KYC data. Supabase Storage is used for KYC documents and project media, with public URLs stored in the database.
 
 ### Authentication Flow
-User registration involves email, phone, password, and personal info, with automatic Stellar keypair generation and encrypted secret key storage. Multiple wallets (NGN, USDC, XLM) are created, and a JWT token is issued for immediate authentication. Login validates credentials against stored password hashes and issues a JWT. Protected routes require a valid JWT in the Authorization header.
+User registration includes email, phone, password, and personal info, generating a Stellar keypair and encrypting the secret key. Multiple wallets (NGN, USDC, XLM) are created, and a JWT is issued. Login validates credentials and issues a JWT for protected routes.
 
 ### KYC Verification System
-The system supports uploading ID cards, selfies, and address proofs (up to 5MB per document) via multipart form data. Files are uploaded to a dedicated "kyc" bucket in Supabase Storage, and public URLs are stored in the user's database record.
+Supports ID cards, selfies, and address proofs (up to 5MB) uploaded to Supabase Storage. KYC status is updated in real-time via `GET /api/users/me` and TanStack Query polling. Admins can review, approve, or reject KYC documents through a dedicated UI, triggering automatic status propagation to the user's frontend.
 
-**Real-Time KYC Status Updates (Phase 2-D):**
-- **User Profile API** (`GET /api/users/me`): Authenticated endpoint returning current user profile including KYC status and document URLs. Used by frontend for real-time status checks.
-- **TanStack Query Integration**: Dashboard, ProjectDetail, and KYCVerification pages use React Query with 10-second auto-refetch polling interval. User data updates automatically when admin approves KYC.
-- **Admin KYC Review UI**: Admin dashboard Users tab shows "Review KYC" button for users with pending status. Clicking opens approval dialog showing:
-  - User details (name, email, phone)
-  - KYC documents section with clickable links to ID card, selfie, and address proof (or "Not uploaded" placeholders)
-  - Approve/Reject buttons
-- **Automatic Status Propagation**: When admin approves/rejects KYC, query invalidation triggers automatic refetch on user's frontend within 10 seconds, unblocking project investments without manual refresh.
-- **localStorage Compatibility**: User data synced to localStorage for backward compatibility with any remaining code that expects it.
+### Bank Account Verification System (AML Compliance)
+Separates identity (KYC) from financial verification. Users must verify both before withdrawal. Bank details (account name, NUBAN, bank name/code) are stored encrypted in PostgreSQL. Supports 12 major Nigerian banks and requires bank statement upload for ownership proof. Security includes encryption at rest, masked display of account numbers, and a dual verification gate (KYC and bank details approved) for withdrawals. Admin UI for review and approval.
 
 ### Technical Implementations
-- **Real On-Chain Stellar Operations (Testnet Only):** User wallets are activated on the Stellar testnet during registration, and projects can mint real tokens. Stellar operations are asynchronous, with transaction hashes stored in the database.
-- **Hybrid Wallet Model:** Migrated to a single hybrid wallet per user, supporting fiatBalance (NGN) and cryptoBalances (JSON for USDC/XLM/tokens), each with a separate Stellar keypair.
-- **Security Hardening:** Encrypted Stellar secrets are no longer exposed via API.
-- **Admin Dashboard APIs:** Comprehensive APIs for dashboard metrics, user management (including KYC approval/rejection), transaction management, and project updates, all secured with admin-role middleware.
-- **Setup Verification Endpoints:** Admin-only endpoints (`/api/setup/*`) to verify database schema, wallet configurations, platform wallets, and Stellar network settings.
-- **Platform Wallet Architecture (Phase 3):** 4-wallet system for fully on-chain operations:
-  - **Operations Wallet** (`GDM44U...IGOD`): 10,000 XLM - Activates new user Stellar accounts (sends 2 XLM)
-  - **Treasury Wallet** (`GAIGB7...JRGW`): 10,000 XLM - Issues NGNTS and project tokens (highest security, issuer account)
-  - **Distribution Wallet** (`GB4OJG...2UUS`): 10,000 XLM + 100M NGNTS - Daily token operations and user crediting
-  - **Liquidity Pool Wallet** (`GD7QTC...ORY6`): Unfunded - Reserved for secondary market buybacks
-- **NGNTS Token Issued:** Naira Token Stellar (NGNTS) issued from Treasury wallet with AuthRevocable flag. 100M initial supply minted to Distribution wallet. Verifiable on Stellar Explorer: [NGNTS Asset](https://stellar.expert/explorer/testnet/asset/NGNTS-GAIGB7IDJAUYW4NSVANXXMYT7BCIPKSBBKULKEUU77BR4TH2NOFYJRGW)
+- **Real On-Chain Stellar Operations (Testnet Only):** User wallets activate on Stellar testnet, and projects mint real tokens. Stellar operations are asynchronous, with transaction hashes stored.
+- **Hybrid Wallet Model:** Single hybrid wallet per user, supporting fiat (NGN) and crypto (USDC/XLM/tokens) balances, each with a Stellar keypair. Encrypted Stellar secrets are not exposed via API.
+- **Admin Dashboard APIs:** Comprehensive APIs for metrics, user/KYC management, transactions, and project updates, secured with admin middleware.
+- **Setup Verification Endpoints:** Admin-only endpoints (`/api/setup/*`) verify database, wallet configs, platform wallets, and Stellar network settings.
+- **Platform Wallet Architecture (Phase 3):** A 4-wallet system for on-chain operations: Operations, Treasury (issuer for NGNTS and project tokens), Distribution, and Liquidity Pool.
+- **NGNTS Token:** Naira Token Stellar (NGNTS) issued from the Treasury wallet with an initial supply of 100M minted to the Distribution wallet.
 
 ### UI/UX Decisions
-- **Color Scheme:** Professional, modern fintech aesthetic inspired by platforms like Coinbase and Stripe.
-- **Typography:** Inter font family for readability in data-rich interfaces.
-- **Component Library:** Shadcn UI for accessible, pre-built components.
-- **Responsiveness:** Mobile-first approach with responsive grid layouts.
-- **Dashboard Experience:**
-  - Pre-funding welcome state with hero CTA for new users
-  - Consolidated Naira Balance tile (Fiat NGN + Blockchain NGNTS)
-  - Subtle XLM gas fees in top-right header with tooltip
-  - Fund Wallet dialog as primary entry point (NGN/USDC selection)
+Professional, modern fintech aesthetic using Inter font and Shadcn UI components. Mobile-first responsive design. Dashboard includes pre-funding states, consolidated Naira balance, subtle XLM gas fees, and a "Fund Wallet" dialog.
 
 ### Blockchain UI Components (Phase 2-A)
-- **On-Chain Verification Dashboard** (`/admin/onchain-verification`): Admin-only page showing blockchain sync status for all projects, including issuer/distribution accounts, trustline status, token minting status, and transaction hashes. Auto-refreshes every 30 seconds.
-- **Blockchain Activity Feed** (Admin Dashboard): Displays recent blockchain activities (project creation, token minting, account activation) with transaction hashes and timestamps. Links to Stellar Explorer for verification.
-- **Wallet Activation Status** (User Dashboard): Badge component that queries Horizon API to check if user's Stellar account is activated on-chain. Shows "Activated" (green) or "Pending Activation" (yellow) status.
-- **Transaction Hash Display** (Project Detail): "Blockchain Info" card showing asset code, issuer account, distribution account, and all transaction hashes (issuer creation, distribution creation, trustline, minting). All transaction hashes link to Stellar Explorer testnet.
-- **Environment Awareness:** All components use `VITE_STELLAR_HORIZON_URL` environment variable with fallback to testnet, ensuring network flexibility.
+- **On-Chain Verification Dashboard:** Admin-only page showing blockchain sync status for projects, auto-refreshing every 30 seconds.
+- **Blockchain Activity Feed:** Admin dashboard displays recent blockchain activities with Stellar Explorer links.
+- **Wallet Activation Status:** User dashboard badge showing "Activated" or "Pending Activation" status by querying Horizon API.
+- **Transaction Hash Display:** Project detail page shows blockchain info (asset code, issuer/distribution accounts) and all transaction hashes linking to Stellar Explorer.
+- **Environment Awareness:** Uses `VITE_STELLAR_HORIZON_URL` for network flexibility.
 
 ### Investment Transactions (Phase 2-B)
-- **Stellar Operations Library** (`server/lib/stellarOps.ts`): Core Stellar SDK functions for trustline management, asset transfers, and transaction recording. Includes `ensureTrustline()`, `transferAsset()`, `recordTransaction()`, and helper functions.
-- **Multi-Currency Investment API** (`/api/investments/create`): Authenticated endpoint supporting NGN, USDC, and XLM investments. Validates balance based on project currency (fiatBalance for NGN, cryptoBalances for crypto), ensures trustline, transfers tokens from distribution account, updates database in atomic transaction with proper balance deductions. Deep clones cryptoBalances to prevent reference issues during concurrent updates.
-- **Portfolio APIs**: GET `/api/investments` (investment history), GET `/api/investments/portfolio` (consolidated token holdings), GET `/api/investments/stats` (investment statistics).
-- **Investment Dialog** (Project Detail Page): Multi-currency investment form with real-time token calculation, validation, and transaction submission. Supports NGN (fiat), USDC, and XLM payments based on project configuration. Shows blockchain sync status warnings.
-- **Enhanced Portfolio Page**: Tabbed interface showing token holdings (consolidated by project with Stellar Explorer links) and investment history. Four summary cards: Total Invested, Portfolio Value, Gain/Loss, and Projects count.
-- **Database Transactions**: All database mutations wrapped in Drizzle transactions to ensure data integrity. CryptoBalances deep-cloned before mutation to ensure atomic updates. If Stellar transfer succeeds but database fails, detailed error logging enables manual reconciliation.
-- **Atomic totalInvestedNGN Updates**: KYC threshold tracking uses atomic SQL increment (`COALESCE(total_invested_ngn, 0) + amount`) to prevent race conditions on concurrent NGN investments.
-- **Trustline Uniqueness**: Database-level unique constraint on (userId, projectId) prevents duplicate trustline creation. API includes existence check before insert.
+- **Stellar Operations Library:** `server/lib/stellarOps.ts` for trustline management, asset transfers, and transaction recording.
+- **Multi-Currency Investment API:** `POST /api/investments/create` supports NGN, USDC, XLM. Validates balances, ensures trustlines, transfers tokens, and updates the database atomically. Deep clones cryptoBalances to prevent race conditions.
+- **Portfolio APIs:** `GET /api/investments` (history), `GET /api/investments/portfolio` (holdings), `GET /api/investments/stats`.
+- **Investment Dialog:** Multi-currency investment form with real-time token calculation and validation.
+- **Enhanced Portfolio Page:** Tabbed interface for token holdings and investment history with summary cards.
+- **Database Transactions:** All database mutations use Drizzle transactions for data integrity. Atomic SQL increments for `totalInvestedNGN`.
+- **Trustline Uniqueness:** Database-level unique constraint on (userId, projectId).
 
 ### Admin Wallet Management (Phase 2-C)
-- **Admin Wallet Dashboard** (`/admin` → My Wallet tab): Displays admin's Stellar public key, XLM/USDC balances, and activation status. Includes "Copy" button for public key and link to Stellar Explorer.
-- **Friendbot Integration** (API: `POST /api/admin/my-wallet/fund-friendbot`): Testnet-only endpoint that funds admin wallet with 10,000 XLM using Stellar Friendbot. Returns transaction hash and updated balance.
-- **User Wallet Activation** (API: `POST /api/admin/wallets/:userId/activate`): Admin can activate any user's Stellar wallet by sending 2 XLM from the admin wallet. Uses `createAndFundAccount()` from `stellarAccount.ts`. Returns transaction hash or "already activated" message.
-- **Wallet Activation Controls**: Each wallet card in the admin Wallets tab shows an "Activate Wallet" button for easy one-click user wallet activation.
+- **Admin Wallet Dashboard:** Displays admin's Stellar public key, XLM/USDC balances, and activation status with Stellar Explorer links.
+- **Friendbot Integration:** Testnet-only endpoint `POST /api/admin/my-wallet/fund-friendbot` for funding admin wallet with XLM.
+- **User Wallet Activation:** Admin can activate user Stellar wallets via `POST /api/admin/wallets/:userId/activate` by sending 2 XLM.
+- **Wallet Activation Controls:** "Activate Wallet" buttons in admin Wallets tab for one-click user wallet activation.
+
+### NGNTS Burning for NGN Withdrawals (Blockchain Transparency)
+**Design Philosophy:** All NGNTS movements must be transparently recorded on the Stellar blockchain. When users withdraw NGN to their bank account, the corresponding NGNTS tokens must be burned (removed from circulation) to maintain 1:1 peg integrity.
+
+**Burn Mechanism:**
+- **Stellar Burn Implementation:** In Stellar, tokens are burned by sending them back to the issuer account (Treasury wallet). Once returned to issuer, they're removed from circulation.
+- **Function:** `burnNgnts()` in `server/lib/ngntsOps.ts` handles NGNTS burning from user wallets.
+- **Transaction Flow:**
+  1. User initiates NGN withdrawal → creates withdrawal request (status: pending)
+  2. Admin approves withdrawal → `burnNgnts()` called before database update
+  3. Burn transaction sent to Stellar (user → Treasury wallet)
+  4. Transaction hash recorded in database (`transactions.reference`)
+  5. Database balance updated (deduct NGNTS from `cryptoBalances`)
+  6. Admin processes manual bank transfer using verified bank details
+
+**Withdrawal Approval Flow:**
+```
+User Request → Admin Review → NGNTS Burn (on-chain) → DB Update → Manual Bank Transfer
+                                    ↓ (if fails)
+                              Cancel Withdrawal (no DB changes)
+```
+
+**API Integration:**
+- **Endpoint:** `PUT /api/admin/withdrawals/:id` (admin-only)
+- **Burn Logic:** For NGN bank withdrawals, `burnNgnts()` is called before database transaction commit
+- **Error Handling:** If burn fails, withdrawal is cancelled with no database changes. User balance remains intact.
+- **Transaction Hash:** Burn transaction hash stored in `transactions.reference` field and returned in API response
+- **Admin Response:** Includes `burnTxHash` and `bankDetails` for manual bank transfer processing
+
+**Security & Transparency:**
+- **Atomic Operation:** Database updates only occur after successful on-chain burn
+- **Transaction Memo:** Each burn includes memo format `WTH-{shortTxId}` (e.g., "WTH-18fb693d") for audit trail
+- **Stellar Explorer Links:** All burn transactions verifiable on Stellar testnet explorer
+- **Balance Integrity:** Database balance and blockchain balance remain synchronized
+
+**Rejection Flow:**
+- If admin rejects withdrawal, amount is refunded to user's `cryptoBalances.NGNTS` (no burn occurs)
+- Status set to `rejected`, transaction marked as `failed`
 
 ## External Dependencies
 
 ### Third-Party Services
-- **Supabase:** PostgreSQL database hosting and file storage (for KYC documents, project photos, project documents).
-- **Stellar Network:** Blockchain for tokenized assets, keypair generation, and transaction processing (testnet configured, mainnet capability).
+- **Supabase:** PostgreSQL database hosting and file storage.
+- **Stellar Network:** Blockchain for tokenized assets and transactions (testnet configured).
 
 ### NPM Dependencies
 - **Core:** `express`, `react`, `react-dom`, `vite`, `typescript`.
@@ -103,4 +115,4 @@ The system supports uploading ID cards, selfies, and address proofs (up to 5MB p
 - **Validation:** `zod`, `drizzle-zod`.
 
 ### Environment Configuration
-Required environment variables include `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`. Optional variables support Stellar network configuration and email services. Validation of these variables occurs at application startup.
+`DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` are required. Optional variables for Stellar network and email services.
