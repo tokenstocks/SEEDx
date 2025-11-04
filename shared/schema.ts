@@ -7,6 +7,7 @@ import { relations } from "drizzle-orm";
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["investor", "admin"]);
 export const kycStatusEnum = pgEnum("kyc_status", ["pending", "submitted", "approved", "rejected"]);
+export const bankDetailsStatusEnum = pgEnum("bank_details_status", ["not_submitted", "pending", "approved", "rejected"]);
 export const currencyEnum = pgEnum("currency", ["NGN", "USDC", "XLM"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "investment", "return", "fee"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "processing", "completed", "failed", "cancelled"]);
@@ -34,6 +35,17 @@ export const users = pgTable("users", {
     selfie?: string;
     addressProof?: string;
   }>(),
+  bankDetails: json("bank_details").$type<{
+    accountName?: string;
+    accountNumberEncrypted?: string;
+    bankName?: string;
+    bankCode?: string;
+    verificationDocument?: string;
+  }>(),
+  bankDetailsStatus: bankDetailsStatusEnum("bank_details_status").notNull().default("not_submitted"),
+  bankDetailsSubmittedAt: timestamp("bank_details_submitted_at"),
+  bankDetailsApprovedAt: timestamp("bank_details_approved_at"),
+  bankDetailsApprovedBy: uuid("bank_details_approved_by").references(() => users.id),
   totalInvestedNGN: decimal("total_invested_ngn", { precision: 18, scale: 2 }).notNull().default("0.00"),
   isSuspended: boolean("is_suspended").notNull().default(false),
   stellarPublicKey: text("stellar_public_key"),

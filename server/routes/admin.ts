@@ -209,6 +209,9 @@ router.get("/users", authenticate, requireAdmin, async (req, res) => {
         lastName: user.lastName,
         role: user.role,
         kycStatus: user.kycStatus,
+        kycDocuments: user.kycDocuments,
+        bankDetails: user.bankDetails,
+        bankDetailsStatus: user.bankDetailsStatus,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       })),
@@ -276,6 +279,64 @@ router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Invalid input", details: error.errors });
     }
     res.status(500).json({ error: "Failed to update KYC status" });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:id/bank-details
+ * Approve or reject bank details (admin only)
+ */
+router.put("/users/:id/bank-details", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = updateKycStatusSchema.parse(req.body); // Reuse same schema (approve/reject action)
+    // @ts-ignore - userId added by auth middleware
+    const adminId = req.userId as string;
+
+    // Fetch the user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.bankDetailsStatus !== "pending") {
+      return res.status(400).json({ 
+        error: "Bank details can only be processed for pending submissions",
+        currentStatus: user.bankDetailsStatus,
+      });
+    }
+
+    const newStatus = body.action === "approve" ? "approved" : "rejected";
+
+    // Update user bank details status
+    await db
+      .update(users)
+      .set({
+        bankDetailsStatus: newStatus,
+        bankDetailsApprovedAt: body.action === "approve" ? new Date() : undefined,
+        bankDetailsApprovedBy: body.action === "approve" ? adminId : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id));
+
+    // TODO: Send email notification to user about bank details status
+
+    res.json({
+      message: `Bank details ${newStatus} successfully`,
+      userId: id,
+      bankDetailsStatus: newStatus,
+    });
+  } catch (error: any) {
+    console.error("Update bank details error:", error);
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to update bank details status" });
   }
 });
 
