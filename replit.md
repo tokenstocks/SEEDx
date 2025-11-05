@@ -16,11 +16,27 @@ The platform features a React and TypeScript frontend built with Vite, Wouter, a
 - **Bank Account Verification:** AML-compliant bank detail verification for withdrawals, supporting major Nigerian banks with encrypted storage and dual-gate approval.
 - **Stellar Integration:** Facilitates on-chain operations (testnet/mainnet), user wallet activation, NGNTS token issuance, and a 4-wallet platform architecture (Operations, Treasury, Distribution, Liquidity Pool) for asset management.
 - **Investment & Portfolio Management:** Supports multi-currency investments (NGN, USDC, XLM), trustline management, atomic database updates, and comprehensive portfolio APIs.
-- **Regenerative Capital Architecture:** Features a multi-pool system with NAV-based token pricing, cashflow-driven treasury replenishment, and a structured redemption process with configurable funding priorities. Includes mechanisms for NAV archiving, cashflow allocation, redemption funding priority, and treasury virtual balance tracking.
+- **Regenerative Capital Architecture (Phase 4-D):** Features a multi-pool system with NAV-based token pricing, cashflow-driven treasury replenishment, and automated regenerative capital loop. The system processes verified project cashflows through a 60/20/10/10 allocation split:
+  - 60% allocated to treasury pool for redemption backing
+  - 20% distributed proportionally to LP investors
+  - 10% allocated for project reinvestment
+  - 10% allocated for platform operational fees
+  All allocations are executed atomically within database transactions to ensure consistency. Expenses are marked as processed but excluded from regenerative distributions.
+- **Token Marketplace:** Internal peer-to-peer marketplace for trading project tokens with NAV-based order matching. Features include:
+  - Order book with buy/sell orders
+  - NAV-based price discovery and automatic order matching
+  - Atomic balance transfers using database transactions
+  - Maintains `tokenAmount = liquidTokens + lockedTokens` invariant
+  - Order history and management (create, cancel, view)
+- **Enhanced LP Lock Policy Controls:** Flexible token lock mechanisms for LP allocations:
+  - **None:** Tokens are immediately liquid and redeemable
+  - **Time-Locked:** Tokens locked until specific unlock date, with automatic unlock job processing
+  - **Permanent:** Tokens permanently locked (e.g., founder grants), never redeemable
+  Auto-unlock job runs to process expired time-locks and convert them to liquid tokens.
 - **NGNTS Burning for Withdrawals:** A transparent mechanism where NGNTS tokens are burned upon user withdrawal of NGN to maintain a 1:1 peg.
-- **Admin Dashboards:** Provides APIs and UI for metrics, user/KYC management, transactions, project updates, wallet management, and blockchain activity monitoring.
-- **Redemption System:** Enables users to sell project tokens for NGNTS with a hybrid funding priority (project cashflow → treasury pool → liquidity pool), including NAV locking and a robust, atomic processing flow with comprehensive error handling and audit trails.
-- **Frontend for Regenerative Capital System:** Provides user-facing interfaces for redemption requests, and admin interfaces for managing redemptions, treasury, cashflows, audit logs, and NAV updates, all with type-safe communication and a consistent UI/UX.
+- **Admin Dashboards:** Provides APIs and UI for metrics, user/KYC management, transactions, project updates, wallet management, blockchain activity monitoring, treasury management with "Run Regeneration" button, and cashflow processing.
+- **Redemption System:** Enables users to sell project tokens for NGNTS with a hybrid funding priority (project cashflow → treasury pool → liquidity pool), including NAV locking and a robust, atomic processing flow with comprehensive error handling and audit trails. Only liquid tokens are redeemable - locked tokens are excluded from redemption.
+- **Frontend for Regenerative Capital System:** Provides user-facing interfaces for redemption requests, marketplace trading, and admin interfaces for managing regenerations, redemptions, treasury, cashflows, audit logs, and NAV updates, all with type-safe communication and a consistent UI/UX.
 
 ## External Dependencies
 

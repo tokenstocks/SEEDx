@@ -23,6 +23,7 @@ import AdminTreasury from "@/pages/AdminTreasury";
 import AdminCashflows from "@/pages/AdminCashflows";
 import AdminAudit from "@/pages/AdminAudit";
 import LPDashboard from "@/pages/LPDashboard";
+import Marketplace from "@/pages/Marketplace";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/portfolio" component={Portfolio} />
       <Route path="/lp-dashboard" component={LPDashboard} />
+      <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/onchain-verification" component={OnChainVerification} />

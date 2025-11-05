@@ -7,10 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, RefreshCw, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, RefreshCw, AlertCircle, CheckCircle, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { TreasurySummary, TreasuryReconciliation, TreasurySnapshot } from "@/types/phase4";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminTreasury() {
   const [, setLocation] = useLocation();
@@ -65,6 +76,27 @@ export default function AdminTreasury() {
     onError: (error: Error) => {
       toast({
         title: "Reconciliation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runRegenerationMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/system/run-regeneration");
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Regeneration Complete",
+        description: `Processed ${data.processedCashflows} cashflows. Treasury: ${data.allocations.treasury} NGNTS, LP: ${data.allocations.lpShare} NGNTS`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/treasury/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/treasury/snapshots"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Regeneration Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -225,6 +257,80 @@ export default function AdminTreasury() {
             </CardContent>
           </Card>
         )}
+
+        {/* Regenerative Capital Management */}
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div>
+              <CardTitle>Regenerative Capital Loop</CardTitle>
+              <CardDescription>
+                Process verified cashflows through 60/20/10/10 allocation cycle
+              </CardDescription>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={runRegenerationMutation.isPending}
+                  data-testid="button-run-regeneration"
+                >
+                  <Zap className={`w-4 h-4 mr-2 ${runRegenerationMutation.isPending ? 'animate-pulse' : ''}`} />
+                  Run Regeneration
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Run Regenerative Capital Loop?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will process all verified, unprocessed project cashflows through the regenerative capital allocation cycle:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>60% allocated to treasury pool</li>
+                      <li>20% distributed to LP investors</li>
+                      <li>10% allocated for project reinvestment</li>
+                      <li>10% allocated for platform fees</li>
+                    </ul>
+                    <p className="mt-2 font-medium">This action will mark processed cashflows and cannot be undone.</p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-regeneration">Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => runRegenerationMutation.mutate()}
+                    data-testid="button-confirm-regeneration"
+                  >
+                    Run Regeneration
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                The regenerative capital loop automatically distributes verified project cashflows to sustain treasury health, reward LP investors, and fund continued growth.
+              </p>
+              <div className="grid md:grid-cols-4 gap-4 pt-2">
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Treasury Allocation</p>
+                  <p className="text-lg font-bold">60%</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">LP Distribution</p>
+                  <p className="text-lg font-bold">20%</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Reinvestment</p>
+                  <p className="text-lg font-bold">10%</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Platform Fees</p>
+                  <p className="text-lg font-bold">10%</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Balance History Chart */}
         <Card className="mb-8">
