@@ -1,0 +1,60 @@
+You are tasked with performing a comprehensive audit of the TokenStocks POC MVP. The goal is to verify functionality, data integrity, and end-to-end workflow readiness for demonstration. Please produce a structured, detailed report that my architect (GPT-5-mini) can review and prioritize for POC readiness.
+
+1. **Backend Verification**
+   - Test all user flows:
+     - Registration, login, KYC submission and approval
+     - Bank verification and withdrawals
+     - NGNTS issuance, project token minting
+     - Multi-currency investment flow
+     - Redemption system:
+       - NAV locking
+       - Hybrid funding priority (project → treasury → LP)
+       - Liquid/time-locked/permanent token handling
+   - Test Treasury Pool allocations:
+     - Auto-distribution ratios (default 60/20/10/10)
+     - Manual override per project
+     - Ensure sums match total project cashflow
+   - Test LP investor token tracking and cashflow allocation
+   - Marketplace engine:
+     - Order matching (buy/sell)
+     - Atomic transactions
+   - Blockchain integration:
+     - Stellar transactions recorded correctly
+     - Token balances match database
+
+2. **Frontend Verification**
+   - Admin dashboards:
+     - Treasury, Cashflows, NAV management
+     - Redemptions, Audit logs
+   - LP Dashboard:
+     - Overview, Portfolio, Cashflows, Profile
+     - Liquid/time-locked/permanent token visibility
+     - Redemption validation
+   - Marketplace:
+     - Buy/sell orders, order book updates
+   - Project detail pages:
+     - NAV display, cashflow history
+
+3. **Test Runs with Sample Data**
+   - Create 2–3 projects with different token types (liquid, time-locked, grant)
+   - Make multiple investments in NGNTS, USDC, XLM
+   - Process redemptions for both liquid and locked tokens
+   - Execute marketplace trades
+   - Record treasury and LP cashflow allocations
+   - Verify auto-distribution works and manual overrides are respected
+
+4. **Integrity Checks**
+   - Ensure token sums match issued amounts
+   - Validate NAV and redemption calculations
+   - Confirm LP liquid/locked balances are accurate
+   - Check that blockchain transactions align with database records
+
+5. **Output**
+   - Structured table/report:
+     - Workflow / Feature | Status (PASS / FAIL / WARNING) | Notes / Errors / Missing
+   - Highlight critical blocking issues
+   - List minor bugs or optional UX enhancements
+   - Confirm whether MVP is functional for POC demo
+   - Provide screenshots or example logs where possible
+
+Deliver the output in a way that allows the architect (GPT-5-mini) to quickly review, prioritize, and sign off the POC MVP for demonstration.
