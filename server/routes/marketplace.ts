@@ -241,7 +241,7 @@ router.post("/orders/match", async (req, res) => {
 
     // Get latest NAV for the project
     const latestNav = await db.query.projectNavHistory.findFirst({
-      where: eq(projects.id, projectId),
+      where: eq(projectNavHistory.projectId, projectId),
       orderBy: (navHistory, { desc }) => [desc(navHistory.effectiveAt)],
     });
 
@@ -293,99 +293,103 @@ router.post("/orders/match", async (req, res) => {
           const sellAmount = parseFloat(sellOrder.tokenAmount);
           const matchAmount = Math.min(buyAmount, sellAmount);
 
-          // Execute the match atomically
+          // Execute the match atomically with transaction wrapping
           try {
-            // Transfer tokens from seller to buyer
-            const sellerBalance = await db.query.projectTokenBalances.findFirst({
-              where: and(
-                eq(projectTokenBalances.userId, sellOrder.userId),
-                eq(projectTokenBalances.projectId, projectId)
-              ),
-            });
+            await db.transaction(async (tx) => {
+              // Transfer tokens from seller to buyer
+              const sellerBalance = await tx.query.projectTokenBalances.findFirst({
+                where: and(
+                  eq(projectTokenBalances.userId, sellOrder.userId),
+                  eq(projectTokenBalances.projectId, projectId)
+                ),
+              });
 
-            const buyerBalance = await db.query.projectTokenBalances.findFirst({
-              where: and(
-                eq(projectTokenBalances.userId, buyOrder.userId),
-                eq(projectTokenBalances.projectId, projectId)
-              ),
-            });
+              const buyerBalance = await tx.query.projectTokenBalances.findFirst({
+                where: and(
+                  eq(projectTokenBalances.userId, buyOrder.userId),
+                  eq(projectTokenBalances.projectId, projectId)
+                ),
+              });
 
-            if (!sellerBalance || parseFloat(sellerBalance.liquidTokens) < matchAmount) {
-              continue; // Seller doesn't have enough liquid tokens
-            }
+              if (!sellerBalance || parseFloat(sellerBalance.liquidTokens) < matchAmount) {
+                // Seller doesn't have enough liquid tokens - rollback and skip
+                throw new Error("Insufficient seller balance");
+              }
 
-            // Update seller's balance (reduce liquid tokens)
-            const newSellerLiquid = parseFloat(sellerBalance.liquidTokens) - matchAmount;
-            const newSellerTotal = parseFloat(sellerBalance.tokenAmount) - matchAmount;
+              // Update seller's balance (reduce liquid tokens)
+              const newSellerLiquid = parseFloat(sellerBalance.liquidTokens) - matchAmount;
+              const newSellerTotal = parseFloat(sellerBalance.tokenAmount) - matchAmount;
 
-            await db
-              .update(projectTokenBalances)
-              .set({
-                liquidTokens: newSellerLiquid.toFixed(2),
-                tokenAmount: newSellerTotal.toFixed(2),
-                updatedAt: new Date(),
-              })
-              .where(eq(projectTokenBalances.id, sellerBalance.id));
-
-            // Update buyer's balance (add liquid tokens)
-            if (buyerBalance) {
-              const newBuyerLiquid = parseFloat(buyerBalance.liquidTokens) + matchAmount;
-              const newBuyerTotal = parseFloat(buyerBalance.tokenAmount) + matchAmount;
-
-              await db
+              await tx
                 .update(projectTokenBalances)
                 .set({
-                  liquidTokens: newBuyerLiquid.toFixed(2),
-                  tokenAmount: newBuyerTotal.toFixed(2),
+                  liquidTokens: newSellerLiquid.toFixed(2),
+                  tokenAmount: newSellerTotal.toFixed(2),
                   updatedAt: new Date(),
                 })
-                .where(eq(projectTokenBalances.id, buyerBalance.id));
-            } else {
-              // Create new balance for buyer
-              await db.insert(projectTokenBalances).values({
-                userId: buyOrder.userId,
-                projectId,
-                tokenAmount: matchAmount.toFixed(2),
-                liquidTokens: matchAmount.toFixed(2),
-                lockedTokens: "0.00",
-                lockType: "none",
-              });
-            }
+                .where(eq(projectTokenBalances.id, sellerBalance.id));
 
-            // Update buy order
-            const remainingBuy = buyAmount - matchAmount;
-            if (remainingBuy <= 0) {
-              await db
-                .update(tokenOrders)
-                .set({ status: "filled", updatedAt: new Date() })
-                .where(eq(tokenOrders.id, buyOrder.id));
-            } else {
-              await db
-                .update(tokenOrders)
-                .set({
-                  tokenAmount: remainingBuy.toFixed(6),
-                  updatedAt: new Date(),
-                })
-                .where(eq(tokenOrders.id, buyOrder.id));
-            }
+              // Update buyer's balance (add liquid tokens)
+              if (buyerBalance) {
+                const newBuyerLiquid = parseFloat(buyerBalance.liquidTokens) + matchAmount;
+                const newBuyerTotal = parseFloat(buyerBalance.tokenAmount) + matchAmount;
 
-            // Update sell order
-            const remainingSell = sellAmount - matchAmount;
-            if (remainingSell <= 0) {
-              await db
-                .update(tokenOrders)
-                .set({ status: "filled", updatedAt: new Date() })
-                .where(eq(tokenOrders.id, sellOrder.id));
-            } else {
-              await db
-                .update(tokenOrders)
-                .set({
-                  tokenAmount: remainingSell.toFixed(6),
-                  updatedAt: new Date(),
-                })
-                .where(eq(tokenOrders.id, sellOrder.id));
-            }
+                await tx
+                  .update(projectTokenBalances)
+                  .set({
+                    liquidTokens: newBuyerLiquid.toFixed(2),
+                    tokenAmount: newBuyerTotal.toFixed(2),
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(projectTokenBalances.id, buyerBalance.id));
+              } else {
+                // Create new balance for buyer
+                await tx.insert(projectTokenBalances).values({
+                  userId: buyOrder.userId,
+                  projectId,
+                  tokenAmount: matchAmount.toFixed(2),
+                  liquidTokens: matchAmount.toFixed(2),
+                  lockedTokens: "0.00",
+                  lockType: "none",
+                });
+              }
 
+              // Update buy order
+              const remainingBuy = buyAmount - matchAmount;
+              if (remainingBuy <= 0) {
+                await tx
+                  .update(tokenOrders)
+                  .set({ status: "filled", updatedAt: new Date() })
+                  .where(eq(tokenOrders.id, buyOrder.id));
+              } else {
+                await tx
+                  .update(tokenOrders)
+                  .set({
+                    tokenAmount: remainingBuy.toFixed(6),
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(tokenOrders.id, buyOrder.id));
+              }
+
+              // Update sell order
+              const remainingSell = sellAmount - matchAmount;
+              if (remainingSell <= 0) {
+                await tx
+                  .update(tokenOrders)
+                  .set({ status: "filled", updatedAt: new Date() })
+                  .where(eq(tokenOrders.id, sellOrder.id));
+              } else {
+                await tx
+                  .update(tokenOrders)
+                  .set({
+                    tokenAmount: remainingSell.toFixed(6),
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(tokenOrders.id, sellOrder.id));
+              }
+            });
+
+            // Only record match if transaction succeeded
             matches.push({
               buyOrderId: buyOrder.id,
               sellOrderId: sellOrder.id,
@@ -394,6 +398,7 @@ router.post("/orders/match", async (req, res) => {
             });
           } catch (error) {
             console.error("Error executing match:", error);
+            // Transaction rolled back - continue to next order pair
           }
         }
       }

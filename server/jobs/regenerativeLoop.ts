@@ -44,7 +44,7 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
       .from(projectCashflows)
       .where(
         and(
-          eq(projectCashflows.status, "verified"),
+          eq(projectCashflows.verificationStatus, "verified"),
           eq(projectCashflows.processed, false)
         )
       );
@@ -73,71 +73,84 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
     // Process each cashflow
     for (const cashflow of unprocessedCashflows) {
       try {
+        // Skip expense cashflows - regenerative loop only processes revenue
+        if (cashflow.cashflowType === "expense") {
+          // Mark as processed but don't allocate
+          await db
+            .update(projectCashflows)
+            .set({ processed: true })
+            .where(eq(projectCashflows.id, cashflow.id));
+          continue; // Skip to next cashflow without updating totals
+        }
+
+        // Calculate amounts for revenue cashflows
         const amount = parseFloat(cashflow.amountNgnts);
-        
-        // Calculate allocations (60/20/10/10)
         const treasuryAmount = amount * 0.60;
         const lpShareAmount = amount * 0.20;
         const reinvestAmount = amount * 0.10;
         const feeAmount = amount * 0.10;
 
-        // 1. Allocate 60% to treasury pool
-        await db.insert(treasuryPoolTransactions).values({
-          type: "inflow",
-          amountNgnts: treasuryAmount.toFixed(2),
-          sourceProjectId: cashflow.projectId,
-          sourceCashflowId: cashflow.id,
-          metadata: {
-            notes: "60% of verified project cashflow",
-            cashflowSource: cashflow.source || "Project revenue",
-            regenerationCycle: true,
-          },
-        });
+        // Wrap all operations for this cashflow in a transaction for atomicity
+        await db.transaction(async (tx) => {
 
-        // 2. Allocate 20% to LP investors (split equally among all LP investors)
-        if (lpInvestors.length > 0) {
-          const lpSharePerInvestor = lpShareAmount / lpInvestors.length;
-          
-          for (const lpInvestor of lpInvestors) {
-            await db.insert(lpCashflowAllocations).values({
-              cashflowId: cashflow.id,
-              lpUserId: lpInvestor.id,
-              shareAmount: lpSharePerInvestor.toFixed(2),
-              sharePercentage: "20.00",
-            });
+          // 1. Allocate 60% to treasury pool
+          await tx.insert(treasuryPoolTransactions).values({
+            type: "inflow",
+            amountNgnts: treasuryAmount.toFixed(2),
+            sourceProjectId: cashflow.projectId,
+            sourceCashflowId: cashflow.id,
+            metadata: {
+              notes: "60% of verified project cashflow",
+              cashflowSource: cashflow.source || "Project revenue",
+              regenerationCycle: true,
+            },
+          });
+
+          // 2. Allocate 20% to LP investors (split equally among all LP investors)
+          if (lpInvestors.length > 0) {
+            const lpSharePerInvestor = lpShareAmount / lpInvestors.length;
+            
+            for (const lpInvestor of lpInvestors) {
+              await tx.insert(lpCashflowAllocations).values({
+                cashflowId: cashflow.id,
+                lpUserId: lpInvestor.id,
+                shareAmount: lpSharePerInvestor.toFixed(2),
+                sharePercentage: "20.00",
+              });
+            }
           }
-        }
 
-        // 3. Allocate 10% to project reinvestment (tracked as treasury metadata)
-        await db.insert(treasuryPoolTransactions).values({
-          type: "allocation",
-          amountNgnts: reinvestAmount.toFixed(2),
-          sourceProjectId: cashflow.projectId,
-          sourceCashflowId: cashflow.id,
-          metadata: {
-            notes: "10% reinvestment allocation for project growth",
-            allocationType: "reinvestment",
-            regenerationCycle: true,
-          },
+          // 3. Allocate 10% to project reinvestment (tracked as treasury metadata)
+          await tx.insert(treasuryPoolTransactions).values({
+            type: "allocation",
+            amountNgnts: reinvestAmount.toFixed(2),
+            sourceProjectId: cashflow.projectId,
+            sourceCashflowId: cashflow.id,
+            metadata: {
+              notes: "10% reinvestment allocation for project growth",
+              allocationType: "reinvestment",
+              regenerationCycle: true,
+            },
+          });
+
+          // 4. Allocate 10% to platform fees
+          await tx.insert(treasuryPoolTransactions).values({
+            type: "fee",
+            amountNgnts: feeAmount.toFixed(2),
+            sourceProjectId: cashflow.projectId,
+            sourceCashflowId: cashflow.id,
+            metadata: {
+              notes: "10% platform operational fee",
+              regenerationCycle: true,
+            },
+          });
+
+          // 5. Mark cashflow as processed
+          await tx
+            .update(projectCashflows)
+            .set({ processed: true })
+            .where(eq(projectCashflows.id, cashflow.id));
         });
-
-        // 4. Allocate 10% to platform fees
-        await db.insert(treasuryPoolTransactions).values({
-          type: "fee",
-          amountNgnts: feeAmount.toFixed(2),
-          sourceProjectId: cashflow.projectId,
-          sourceCashflowId: cashflow.id,
-          metadata: {
-            notes: "10% platform operational fee",
-            regenerationCycle: true,
-          },
-        });
-
-        // 5. Mark cashflow as processed
-        await db
-          .update(projectCashflows)
-          .set({ processed: true })
-          .where(eq(projectCashflows.id, cashflow.id));
 
         // Update totals
         totalProcessed += amount;
