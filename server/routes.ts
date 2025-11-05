@@ -8,6 +8,7 @@ import projectRoutes from "./routes/projects";
 import investmentRoutes from "./routes/investments";
 import setupRoutes from "./routes/setup";
 import exchangeRatesRoutes from "./routes/exchangeRates";
+import lpRoutes from "./routes/lp";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
@@ -24,6 +25,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register investment routes
   app.use("/api/investments", investmentRoutes);
+  
+  // Register LP investor routes
+  app.use("/api/lp", lpRoutes);
   
   // Register admin routes
   app.use("/api/admin", adminRoutes);
