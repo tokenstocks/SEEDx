@@ -178,7 +178,7 @@ router.get("/orders/my", async (req, res) => {
 });
 
 // Cancel an order
-router.post("/orders/cancel", async (req, res) => {
+router.delete("/orders/:id", async (req, res) => {
   try {
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId;
@@ -186,7 +186,7 @@ router.post("/orders/cancel", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { orderId } = req.body;
+    const orderId = req.params.id;
 
     if (!orderId) {
       return res.status(400).json({ error: "orderId is required" });
