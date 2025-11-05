@@ -1,13 +1,17 @@
 import { Router } from "express";
 import { db } from "../db";
-import { tokenOrders, projects, projectTokenBalances, users } from "@shared/schema";
+import { tokenOrders, projects, projectTokenBalances, users, projectNavHistory } from "@shared/schema";
 import { createTokenOrderSchema } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { authMiddleware } from "../middleware/auth";
 
 const router = Router();
 
+// Apply auth middleware to all marketplace routes
+router.use(authMiddleware);
+
 // Create a new token order (buy or sell)
-router.post("/orders/create", async (req, res) => {
+router.post("/orders", async (req, res) => {
   try {
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId;
@@ -131,7 +135,7 @@ router.get("/orders/list", async (req, res) => {
 });
 
 // Get user's own orders
-router.get("/orders/my-orders", async (req, res) => {
+router.get("/orders/my", async (req, res) => {
   try {
     // @ts-ignore - userId is added by auth middleware
     const userId = req.userId;
