@@ -113,6 +113,7 @@ export default function Dashboard() {
     kycStatus: string;
     role: string;
     totalInvestedNGN: string;
+    isLpInvestor?: boolean;
   }>({
     queryKey: ["/api/users/me"],
     refetchInterval: 10000, // Refetch every 10 seconds to catch KYC updates
@@ -439,6 +440,14 @@ export default function Dashboard() {
                 Portfolio
               </Button>
             </Link>
+            {user?.isLpInvestor && (
+              <Link href="/lp-dashboard">
+                <Button variant="ghost" size="sm" className="gap-2 bg-primary/10" data-testid="link-lp-dashboard">
+                  <Sparkles className="w-4 h-4" />
+                  LP Dashboard
+                </Button>
+              </Link>
+            )}
             <Link href="/transactions">
               <Button variant="ghost" size="sm" className="gap-2" data-testid="link-transactions">
                 <Receipt className="w-4 h-4" />

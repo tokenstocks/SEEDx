@@ -196,10 +196,22 @@ export default function Portfolio() {
             <ArrowLeft className="w-4 h-4" />
             Back to dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">My Portfolio</h1>
-          <p className="text-muted-foreground">
-            Track your agricultural investment performance
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Portfolio</h1>
+              <p className="text-muted-foreground">
+                Track your agricultural investment performance
+              </p>
+            </div>
+            {user?.isLpInvestor && (
+              <Link href="/lp-dashboard" data-testid="link-lp-dashboard">
+                <Button variant="default" className="gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  LP Dashboard
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Summary Cards */}
