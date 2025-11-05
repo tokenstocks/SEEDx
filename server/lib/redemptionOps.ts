@@ -162,13 +162,22 @@ export async function determineFundingSource(
 }
 
 /**
- * Validate that a user has sufficient project tokens for redemption
+ * Validate that a user has sufficient LIQUID project tokens for redemption
+ * CRITICAL: Only liquidTokens can be redeemed. Locked tokens (grants, vesting) are NOT redeemable.
  */
 export async function validateUserTokenBalance(
   userId: string,
   projectId: string,
   tokensAmount: string
-): Promise<{ valid: boolean; error?: string; actualBalance?: string }> {
+): Promise<{ 
+  valid: boolean; 
+  error?: string; 
+  actualBalance?: string;
+  liquidBalance?: string;
+  lockedBalance?: string;
+  lockType?: string;
+  lockReason?: string;
+}> {
   try {
     const tokensRequired = parseFloat(tokensAmount);
     
@@ -179,50 +188,71 @@ export async function validateUserTokenBalance(
       };
     }
 
-    // Get project details to find token symbol
-    const [project] = await db
+    // Get user's token balance from project_token_balances table
+    const { projectTokenBalances } = await import("@shared/schema");
+    const [tokenHolding] = await db
       .select()
-      .from(projects)
-      .where(eq(projects.id, projectId))
+      .from(projectTokenBalances)
+      .where(
+        and(
+          eq(projectTokenBalances.userId, userId),
+          eq(projectTokenBalances.projectId, projectId)
+        )
+      )
       .limit(1);
 
-    if (!project || !project.tokenSymbol) {
+    if (!tokenHolding) {
       return {
         valid: false,
-        error: "Project or token not found",
+        error: "No token holdings found for this project",
       };
     }
 
-    // Get user's wallet to check token balance
-    const { wallets } = await import("@shared/schema");
-    const [userWallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.userId, userId))
-      .limit(1);
+    const liquidTokens = parseFloat(tokenHolding.liquidTokens);
+    const lockedTokens = parseFloat(tokenHolding.lockedTokens);
+    const totalTokens = parseFloat(tokenHolding.tokenAmount);
 
-    if (!userWallet) {
+    // CRITICAL VALIDATION: Check LIQUID tokens only (not total tokens)
+    if (liquidTokens < tokensRequired) {
+      // Check if user has enough TOTAL tokens but they're locked
+      if (totalTokens >= tokensRequired) {
+        // User has tokens but they're locked - log audit trail for this attempt
+        console.warn(`⚠️  LOCKED TOKEN REDEMPTION ATTEMPT:`, {
+          userId,
+          projectId,
+          tokensRequested: tokensAmount,
+          liquidAvailable: liquidTokens.toFixed(2),
+          lockedTokens: lockedTokens.toFixed(2),
+          lockType: tokenHolding.lockType,
+          lockReason: tokenHolding.lockReason || "Not specified",
+        });
+
+        return {
+          valid: false,
+          error: `Cannot redeem locked tokens. You have ${lockedTokens.toFixed(2)} locked tokens that are not redeemable.`,
+          actualBalance: totalTokens.toFixed(2),
+          liquidBalance: liquidTokens.toFixed(2),
+          lockedBalance: lockedTokens.toFixed(2),
+          lockType: tokenHolding.lockType || "none",
+          lockReason: tokenHolding.lockReason || "Tokens are locked and cannot be redeemed",
+        };
+      }
+
       return {
         valid: false,
-        error: "User wallet not found",
-      };
-    }
-
-    // Check crypto balances for project token
-    const cryptoBalances = userWallet.cryptoBalances as Record<string, string> || {};
-    const userTokenBalance = parseFloat(cryptoBalances[project.tokenSymbol] || "0");
-
-    if (userTokenBalance < tokensRequired) {
-      return {
-        valid: false,
-        error: `Insufficient tokens. Required: ${tokensAmount}, Available: ${userTokenBalance}`,
-        actualBalance: userTokenBalance.toString(),
+        error: `Insufficient liquid tokens. Required: ${tokensAmount}, Available: ${liquidTokens.toFixed(2)}`,
+        actualBalance: totalTokens.toFixed(2),
+        liquidBalance: liquidTokens.toFixed(2),
+        lockedBalance: lockedTokens.toFixed(2),
+        lockType: tokenHolding.lockType || "none",
       };
     }
 
     return {
       valid: true,
-      actualBalance: userTokenBalance.toString(),
+      actualBalance: totalTokens.toFixed(2),
+      liquidBalance: liquidTokens.toFixed(2),
+      lockedBalance: lockedTokens.toFixed(2),
     };
   } catch (error: any) {
     console.error("❌ Error validating token balance:", error.message);
