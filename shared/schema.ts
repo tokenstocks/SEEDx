@@ -24,6 +24,8 @@ export const cashflowStatusEnum = pgEnum("cashflow_status", ["recorded", "verifi
 export const treasuryTxTypeEnum = pgEnum("treasury_tx_type", ["inflow", "allocation", "buyback", "replenish", "fee"]);
 export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "processing", "completed", "rejected"]);
 export const tokenLockTypeEnum = pgEnum("token_lock_type", ["none", "grant", "permanent", "time_locked"]);
+export const orderTypeEnum = pgEnum("order_type", ["buy", "sell"]);
+export const orderStatusEnum = pgEnum("order_status", ["open", "filled", "cancelled"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -322,6 +324,7 @@ export const projectCashflows = pgTable("project_cashflows", {
   verifiedBy: uuid("verified_by").references(() => users.id),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   status: cashflowStatusEnum("status").notNull().default("recorded"),
+  processed: boolean("processed").notNull().default(false),
   chainTxHash: text("chain_tx_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -332,6 +335,7 @@ export const treasuryPoolTransactions = pgTable("treasury_pool_transactions", {
   type: treasuryTxTypeEnum("type").notNull(),
   amountNgnts: decimal("amount_ngnts", { precision: 30, scale: 2 }).notNull(),
   sourceProjectId: uuid("source_project_id").references(() => projects.id),
+  sourceCashflowId: uuid("source_cashflow_id").references(() => projectCashflows.id),
   destinationWallet: varchar("destination_wallet", { length: 64 }),
   relatedTxHash: text("related_tx_hash"),
   metadata: jsonb("metadata").$type<{
@@ -393,6 +397,29 @@ export const auditAdminActions = pgTable("audit_admin_actions", {
     after?: any;
     [key: string]: any;
   }>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Phase 4-D: Token Marketplace (simulated liquidity exchange)
+export const tokenOrders = pgTable("token_orders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  orderType: orderTypeEnum("order_type").notNull(),
+  tokenAmount: decimal("token_amount", { precision: 18, scale: 6 }).notNull(),
+  pricePerToken: decimal("price_per_token", { precision: 18, scale: 6 }).notNull(),
+  status: orderStatusEnum("status").notNull().default("open"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// LP cashflow allocations table - Track 20% LP revenue share
+export const lpCashflowAllocations = pgTable("lp_cashflow_allocations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  cashflowId: uuid("cashflow_id").notNull().references(() => projectCashflows.id, { onDelete: "cascade" }),
+  lpUserId: uuid("lp_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shareAmount: decimal("share_amount", { precision: 30, scale: 2 }).notNull(),
+  sharePercentage: decimal("share_percentage", { precision: 5, scale: 2 }).notNull().default("20.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -514,6 +541,28 @@ export const redemptionRequestsRelations = relations(redemptionRequests, ({ one 
 export const auditAdminActionsRelations = relations(auditAdminActions, ({ one }) => ({
   admin: one(users, {
     fields: [auditAdminActions.adminId],
+    references: [users.id],
+  }),
+}));
+
+export const tokenOrdersRelations = relations(tokenOrders, ({ one }) => ({
+  user: one(users, {
+    fields: [tokenOrders.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [tokenOrders.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const lpCashflowAllocationsRelations = relations(lpCashflowAllocations, ({ one }) => ({
+  cashflow: one(projectCashflows, {
+    fields: [lpCashflowAllocations.cashflowId],
+    references: [projectCashflows.id],
+  }),
+  lpUser: one(users, {
+    fields: [lpCashflowAllocations.lpUserId],
     references: [users.id],
   }),
 }));
@@ -778,6 +827,25 @@ export const insertAuditAdminActionSchema = createInsertSchema(auditAdminActions
   createdAt: true,
 });
 
+export const insertTokenOrderSchema = createInsertSchema(tokenOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+});
+
+export const createTokenOrderSchema = z.object({
+  projectId: z.string().uuid(),
+  orderType: z.enum(["buy", "sell"]),
+  tokenAmount: z.string().regex(/^\d+(\.\d{1,6})?$/, "Token amount must be a valid decimal with up to 6 decimals"),
+  pricePerToken: z.string().regex(/^\d+(\.\d{1,6})?$/, "Price must be a valid decimal with up to 6 decimals"),
+});
+
+export const insertLpCashflowAllocationSchema = createInsertSchema(lpCashflowAllocations).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -838,3 +906,8 @@ export type CreateRedemptionRequest = z.infer<typeof createRedemptionRequestSche
 export type ProcessRedemptionRequest = z.infer<typeof processRedemptionRequestSchema>;
 export type AuditAdminAction = typeof auditAdminActions.$inferSelect;
 export type InsertAuditAdminAction = z.infer<typeof insertAuditAdminActionSchema>;
+export type TokenOrder = typeof tokenOrders.$inferSelect;
+export type InsertTokenOrder = z.infer<typeof insertTokenOrderSchema>;
+export type CreateTokenOrder = z.infer<typeof createTokenOrderSchema>;
+export type LpCashflowAllocation = typeof lpCashflowAllocations.$inferSelect;
+export type InsertLpCashflowAllocation = z.infer<typeof insertLpCashflowAllocationSchema>;
