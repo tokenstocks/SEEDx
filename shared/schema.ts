@@ -23,6 +23,7 @@ export const navSourceEnum = pgEnum("nav_source", ["manual", "formula", "audited
 export const cashflowStatusEnum = pgEnum("cashflow_status", ["recorded", "verified", "tokenized"]);
 export const treasuryTxTypeEnum = pgEnum("treasury_tx_type", ["inflow", "allocation", "buyback", "replenish", "fee"]);
 export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "processing", "completed", "rejected"]);
+export const tokenLockTypeEnum = pgEnum("token_lock_type", ["none", "grant", "permanent", "time_locked"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -52,6 +53,7 @@ export const users = pgTable("users", {
   bankDetailsApprovedBy: uuid("bank_details_approved_by").references(() => users.id),
   totalInvestedNGN: decimal("total_invested_ngn", { precision: 18, scale: 2 }).notNull().default("0.00"),
   isSuspended: boolean("is_suspended").notNull().default(false),
+  isLpInvestor: boolean("is_lp_investor").notNull().default(false),
   stellarPublicKey: text("stellar_public_key"),
   stellarSecretKeyEncrypted: text("stellar_secret_key_encrypted"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -187,11 +189,21 @@ export const projectUpdates = pgTable("project_updates", {
 });
 
 // Project token balances table - tracks user holdings of project-specific tokens
+// INVARIANT: tokenAmount = liquidTokens + lockedTokens at all times
+// - tokenAmount: Total tokens held (source of truth)
+// - liquidTokens: Tokens available for redemption
+// - lockedTokens: Tokens locked due to grants, vesting, or time-locks (not redeemable)
 export const projectTokenBalances = pgTable("project_token_balances", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   tokenAmount: decimal("token_amount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  // LP token lock-up fields
+  liquidTokens: decimal("liquid_tokens", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  lockedTokens: decimal("locked_tokens", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  lockType: tokenLockTypeEnum("lock_type").notNull().default("none"),
+  lockReason: text("lock_reason"),
+  unlockDate: timestamp("unlock_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
