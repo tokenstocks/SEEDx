@@ -1,10 +1,12 @@
-# TokenStocks - Blockchain Agricultural Investment Platform
+# SEEDx - Sustainable Ecosystem for Economic Development exchange
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-20.x-green.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.6.x-blue.svg)
 
-TokenStocks is a blockchain-based platform for tokenized agricultural investments built on the Stellar network. The platform enables fractional ownership of agricultural assets through blockchain tokens, allowing investors to participate in agricultural projects with as little as $100.
+**Plant capital. Grow impact. A regenerative capital exchange.**
+
+SEEDx (Sustainable Ecosystem for Economic Development exchange) is a blockchain-based regenerative capital platform for tokenized agricultural investments built on the Stellar network. The platform enables Primers (Liquidity Pool Investors) to seed liquidity and Regenerators (project investors) to fund agricultural projects that regenerate the capital pool through automated cashflow distribution.
 
 ## 🌟 Features
 
@@ -63,7 +65,7 @@ TokenStocks is a blockchain-based platform for tokenized agricultural investment
 ```bash
 # 1. Clone repository
 git clone <repository-url>
-cd tokenstocks
+cd seedx
 
 # 2. Install dependencies
 npm install
@@ -96,7 +98,7 @@ Before you begin, ensure you have:
 
 ```bash
 git clone <repository-url>
-cd tokenstocks
+cd seedx
 ```
 
 ### 2. Install Dependencies

@@ -1,8 +1,10 @@
-# TokenStocks MVP Design Guidelines
+# SEEDx MVP Design Guidelines
+
+**Tagline**: Plant capital. Grow impact. A regenerative capital exchange.
 
 ## Design Approach
 
-**Hybrid Approach**: Drawing inspiration from modern fintech leaders (Coinbase, Stripe) combined with data-rich dashboards (Linear, Robinhood) to create a trustworthy yet innovative agricultural investment platform.
+**Hybrid Approach**: Drawing inspiration from modern fintech leaders (Coinbase, Stripe) combined with data-rich dashboards (Linear, Robinhood) to create a trustworthy yet innovative regenerative capital platform for agricultural investment.
 
 **Key Design Principles**:
 - Build immediate trust through professional layouts and clear information hierarchy
@@ -47,8 +49,8 @@
 **Hero Section** (h-screen with strategic content centering):
 - Large hero image showing lush agricultural landscape (farms, crops, sustainable agriculture)
 - Overlay with blurred-background CTA buttons
-- Headline: "Invest in Real Agriculture, Own Digital Tokens"
-- Subheadline explaining tokenized farm assets on Stellar blockchain
+- Headline: "Plant capital. Grow impact."
+- Subheadline: "A regenerative capital exchange for sustainable agricultural investments on the Stellar blockchain."
 - Dual CTAs: "Start Investing" (primary) + "Explore Opportunities" (secondary)
 - Trust indicators below fold: "Blockchain Verified • Regulated • $XXM in Assets"
 

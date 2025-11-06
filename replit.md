@@ -1,7 +1,9 @@
-# TokenStocks MVP - Stellar Tokenized Agricultural Investments
+# SEEDx MVP - Sustainable Ecosystem for Economic Development exchange
+
+**Tagline**: Plant capital. Grow impact. A regenerative capital exchange.
 
 ## Overview
-TokenStocks is a blockchain-based platform on the Stellar network focused on tokenized agricultural investments. It enables fractional ownership of agricultural assets, making investments accessible and aims to create a sustainable investment cycle through a multi-pool regenerative capital system. The platform integrates secure authentication, KYC, multi-currency wallet management, and a responsive interface to enhance transparency and accessibility in agricultural investment.
+SEEDx (Sustainable Ecosystem for Economic Development exchange) is a blockchain-based regenerative capital platform on the Stellar network focused on tokenized agricultural investments. It enables Primers (Liquidity Pool Investors) to seed liquidity and Regenerators (project investors) to fund agricultural projects that regenerate the capital pool through automated cashflow distribution. The platform integrates secure authentication, KYC, multi-currency wallet management, and a responsive interface to enhance transparency and accessibility in agricultural investment.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
