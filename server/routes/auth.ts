@@ -229,6 +229,7 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
         role: user.role,
         kycStatus: user.kycStatus,
         stellarPublicKey: user.stellarPublicKey,
+        isLpInvestor: user.isLpInvestor,
         kycDocuments: user.kycDocuments,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
