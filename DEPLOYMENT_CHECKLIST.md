@@ -1,4 +1,4 @@
-# TokenStocks Deployment Checklist
+# SEEDx Deployment Checklist
 
 ## Pre-Deployment Setup
 

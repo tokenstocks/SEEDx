@@ -1,4 +1,4 @@
-# TokenStocks MVP - Comprehensive Frontend Test Suite & POC Demo Script
+# SEEDx MVP - Comprehensive Frontend Test Suite & POC Demo Script
 **Version:** 1.0  
 **Date:** November 5, 2025  
 **Purpose:** Manual testing guide and proof-of-concept demonstration script
@@ -10,9 +10,9 @@
 ### Test Accounts
 | Role | Email | Password | Purpose |
 |------|-------|----------|---------|
-| Admin | admin@tokenstocks.local | password123 | System administration, treasury, cashflows |
-| LP Investor | lp.investor@tokenstocks.local | password123 | Has existing token holdings with mixed lock policies |
-| Regular Investor | user1@tokenstocks.local | password123 | New investor for marketplace testing |
+| Admin | admin@seedx.local | password123 | System administration, treasury, cashflows |
+| Primer (LP Investor) | primer@seedx.local | password123 | Has existing token holdings with mixed lock policies |
+| Regenerator | regenerator@seedx.local | password123 | New investor for marketplace testing |
 
 ### Sample Projects Data
 | Project | Token Symbol | Total Tokens | Liquid | Time-Locked | Permanent | NAV per Token |
@@ -40,7 +40,7 @@
 | Step | Action | Expected Result | Validation |
 |------|--------|-----------------|------------|
 | 1 | Navigate to `/login` | Login page loads with email/password fields | ✓ Page title shows "Login" |
-| 2 | Enter email: `admin@tokenstocks.local` | Email field populated | ✓ Input value correct |
+| 2 | Enter email: `admin@seedx.local` | Email field populated | ✓ Input value correct |
 | 3 | Enter password: `password123` | Password field masked | ✓ Dots/asterisks visible |
 | 4 | Click "Login" button | Redirect to admin dashboard | ✓ URL changes to `/admin` or `/admin/dashboard` |
 | 5 | Check navigation menu | Admin-specific menu items visible | ✓ "Treasury", "Cashflows", "Redemptions", "Users" visible |
@@ -58,13 +58,13 @@
 
 ---
 
-### Test 1.2: LP Investor Login Workflow
-**Objective:** Verify LP investor can log in and access investor dashboards
+### Test 1.2: Primer (LP Investor) Login Workflow
+**Objective:** Verify Primer can log in and access investor dashboards
 
 | Step | Action | Expected Result | Validation |
 |------|--------|-----------------|------------|
 | 1 | Logout if logged in as admin | Return to `/login` | ✓ Login page visible |
-| 2 | Enter email: `lp.investor@tokenstocks.local` | Email populated | ✓ Input correct |
+| 2 | Enter email: `primer@seedx.local` | Email populated | ✓ Input correct |
 | 3 | Enter password: `password123` | Password masked | ✓ Field shows dots |
 | 4 | Click "Login" | Redirect to investor dashboard | ✓ URL changes to `/dashboard` or `/portfolio` |
 | 5 | Check navigation menu | Investor-specific menu (no admin links) | ✓ "Portfolio", "Marketplace", "Redemptions" visible |
@@ -77,13 +77,13 @@
 
 ---
 
-### Test 1.3: Regular Investor Login
+### Test 1.3: Regenerator Login
 **Objective:** Verify new investor account access
 
 | Step | Action | Expected Result | Validation |
 |------|--------|-----------------|------------|
 | 1 | Logout current user | Return to `/login` | ✓ Login page shown |
-| 2 | Login as `user1@tokenstocks.local` / `password123` | Dashboard loads | ✓ Redirect to `/dashboard` |
+| 2 | Login as `regenerator@seedx.local` / `password123` | Dashboard loads | ✓ Redirect to `/dashboard` |
 | 3 | Check portfolio | Empty state or zero balances | ✓ "No investments yet" or ₦0.00 balances |
 
 **Success Criteria:**
@@ -94,10 +94,10 @@
 
 ## Part 2: Investor Dashboard Testing
 
-### Test 2.1: LP Investor Portfolio Overview
-**Objective:** Verify LP investor can view token holdings with lock policy breakdown
+### Test 2.1: Primer Portfolio Overview
+**Objective:** Verify Primer can view token holdings with lock policy breakdown
 
-**Login as:** `lp.investor@tokenstocks.local`
+**Login as:** `primer@seedx.local`
 
 | Step | Action | Expected Result | Validation |
 |------|--------|-----------------|------------|
