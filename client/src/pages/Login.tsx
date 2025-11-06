@@ -28,7 +28,15 @@ export default function Login() {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      setLocation("/dashboard");
+      
+      // Role-based redirect
+      if (data.user.role === 'admin') {
+        setLocation("/admin");
+      } else if (data.user.isLpInvestor) {
+        setLocation("/lp-dashboard");
+      } else {
+        setLocation("/dashboard");
+      }
     },
     onError: (error: any) => {
       toast({

@@ -110,6 +110,7 @@ router.post("/register", async (req: Request, res: Response) => {
         role: newUser.role,
         kycStatus: newUser.kycStatus,
         stellarPublicKey: newUser.stellarPublicKey,
+        isLpInvestor: newUser.isLpInvestor,
         createdAt: newUser.createdAt,
       },
     });
@@ -172,6 +173,7 @@ router.post("/login", async (req: Request, res: Response) => {
         role: user.role,
         kycStatus: user.kycStatus,
         stellarPublicKey: user.stellarPublicKey,
+        isLpInvestor: user.isLpInvestor,
         createdAt: user.createdAt,
       },
     });
