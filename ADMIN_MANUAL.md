@@ -1,4 +1,4 @@
-# TokenStocks Admin Operations Manual
+# SEEDx Admin Operations Manual
 
 Complete guide for platform administrators.
 

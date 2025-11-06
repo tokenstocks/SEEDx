@@ -1,6 +1,6 @@
-# TokenStocks System Architecture
+# SEEDx System Architecture
 
-Complete technical architecture documentation for the TokenStocks platform.
+Complete technical architecture documentation for the SEEDx platform.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Complete technical architecture documentation for the TokenStocks platform.
 
 ## System Overview
 
-TokenStocks is a full-stack blockchain-based investment platform that enables fractional ownership of agricultural assets through tokenization on the Stellar network.
+SEEDx (Sustainable Ecosystem for Economic Development exchange) is a full-stack blockchain-based regenerative capital platform that enables Primers (Liquidity Pool Investors) to seed liquidity and Regenerators (project investors) to fund agricultural projects that regenerate the capital pool through automated cashflow distribution on the Stellar network.
 
 ### High-Level Architecture
 

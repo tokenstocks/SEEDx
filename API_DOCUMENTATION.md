@@ -1,6 +1,6 @@
-# TokenStocks API Documentation
+# SEEDx API Documentation
 
-Complete API reference for the TokenStocks platform.
+Complete API reference for the SEEDx platform.
 
 ## Base URL
 

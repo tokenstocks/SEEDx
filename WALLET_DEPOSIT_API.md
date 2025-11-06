@@ -1,6 +1,6 @@
 # Wallet Deposit API Documentation
 
-This document describes the wallet deposit flow for TokenStocks MVP, including manual Naira bank transfers and Stellar crypto deposits.
+This document describes the wallet deposit flow for SEEDx MVP, including manual Naira bank transfers and Stellar crypto deposits.
 
 ## Overview
 
@@ -42,7 +42,7 @@ The deposit flow consists of three main steps:
   "paymentMethod": "bank_transfer",
   "currency": "NGN",
   "instructions": {
-    "bankAccount": "Bank Name: First Bank\nAccount Number: 1234567890\nAccount Name: TokenStocks Limited",
+    "bankAccount": "Bank Name: First Bank\nAccount Number: 1234567890\nAccount Name: SEEDx Limited",
     "reference": "TS-20241031-A1B2C3",
     "note": "Please use the reference code when making your bank transfer. This helps us identify your payment."
   }
