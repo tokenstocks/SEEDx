@@ -29,9 +29,9 @@ export default function BenefitsSection() {
     <section className="py-20 px-4 bg-muted/30">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Why TokenStocks?</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">Why SEEDx?</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            The future of agricultural investment is here
+            Plant capital. Grow impact. The future of regenerative capital is here.
           </p>
         </div>
 

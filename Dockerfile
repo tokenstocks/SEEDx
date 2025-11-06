@@ -1,4 +1,4 @@
-# Multi-stage build for TokenStocks backend
+# Multi-stage build for SEEDx backend
 
 # Stage 1: Build
 FROM node:20-alpine AS builder
