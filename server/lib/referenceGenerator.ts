@@ -2,14 +2,14 @@ import crypto from "crypto";
 
 /**
  * Generates a unique reference code for bank transfers
- * Format: TS-YYYYMMDD-XXXXXX (e.g., TS-20241031-A1B2C3)
+ * Format: SD-YYYYMMDD-XXXXXX (e.g., SD-20241031-A1B2C3)
  * @returns Unique reference string
  */
 export function generateBankReference(): string {
   const date = new Date();
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
   const randomPart = crypto.randomBytes(3).toString("hex").toUpperCase();
-  return `TS-${dateStr}-${randomPart}`;
+  return `SD-${dateStr}-${randomPart}`;
 }
 
 /**
@@ -27,11 +27,12 @@ export function generateStellarMemo(): string {
 
 /**
  * Validates if a reference code matches the expected format
+ * Accepts both SD- (new) and TS- (legacy) prefixes
  * @param reference - Reference code to validate
  * @returns boolean
  */
 export function isValidBankReference(reference: string): boolean {
-  return /^TS-\d{8}-[A-F0-9]{6}$/.test(reference);
+  return /^(SD|TS)-\d{8}-[A-F0-9]{6}$/.test(reference);
 }
 
 /**

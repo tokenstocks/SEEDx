@@ -193,8 +193,8 @@ router.post("/deposit/initiate", authenticate, async (req, res) => {
         .returning();
 
       // Return bank account details and reference
-      const bankAccount = process.env.TOKENSTOCKS_BANK_ACCOUNT || 
-        "Bank Name: First Bank\nAccount Number: 1234567890\nAccount Name: TokenStocks Limited";
+      const bankAccount = process.env.SEEDX_BANK_ACCOUNT || process.env.TOKENSTOCKS_BANK_ACCOUNT || 
+        "Bank Name: First Bank\nAccount Number: 1234567890\nAccount Name: SEEDx Limited";
 
       return res.json({
         transactionId: transaction.id,
@@ -227,7 +227,7 @@ router.post("/deposit/initiate", authenticate, async (req, res) => {
         .returning();
 
       // Return Stellar address and memo
-      const stellarAddress = process.env.TOKENSTOCKS_STELLAR_ADDRESS || 
+      const stellarAddress = process.env.SEEDX_STELLAR_ADDRESS || process.env.TOKENSTOCKS_STELLAR_ADDRESS || 
         "GBTOKENSSTOCKSEXAMPLEADDRESSHERE123456789";
 
       return res.json({
