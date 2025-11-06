@@ -20,7 +20,7 @@ router.post("/register", async (req: Request, res: Response) => {
   try {
     // Validate input
     const validatedData = registerUserSchema.parse(req.body);
-    const { email, phone, password, firstName, lastName } = validatedData;
+    const { email, phone, password, firstName, lastName, isLpInvestor } = validatedData;
 
     // Check if user already exists
     const existingUserResult = await db.execute(sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`);
@@ -61,6 +61,7 @@ router.post("/register", async (req: Request, res: Response) => {
         kycStatus: "pending",
         stellarPublicKey,
         stellarSecretKeyEncrypted,
+        isLpInvestor: isLpInvestor || false,
       })
       .returning();
 

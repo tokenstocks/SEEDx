@@ -588,6 +588,7 @@ export const registerUserSchema = z.object({
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  isLpInvestor: z.boolean().optional().default(false),
 });
 
 export const loginSchema = z.object({

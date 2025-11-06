@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,6 +23,7 @@ export default function Register() {
     lastName: "",
     dateOfBirth: "",
     address: "",
+    isLpInvestor: false,
   });
 
   const registerMutation = useMutation({
@@ -40,7 +42,15 @@ export default function Register() {
         title: "Account created!",
         description: "Welcome to TokenStocks. Complete your KYC to start investing.",
       });
-      setLocation("/dashboard");
+      
+      // Role-based redirect after registration
+      if (data.user.role === 'admin') {
+        setLocation("/admin");
+      } else if (data.user.isLpInvestor) {
+        setLocation("/lp-dashboard");
+      } else {
+        setLocation("/dashboard");
+      }
     },
     onError: (error: any) => {
       toast({
@@ -57,7 +67,11 @@ export default function Register() {
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "isLpInvestor") {
+      setFormData((prev) => ({ ...prev, [field]: value === "true" }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   return (
@@ -155,6 +169,25 @@ export default function Register() {
                   required
                   data-testid="input-address"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accountType">Account Type</Label>
+                <Select
+                  value={formData.isLpInvestor ? "lp" : "regular"}
+                  onValueChange={(value) => handleChange("isLpInvestor", value === "lp" ? "true" : "false")}
+                >
+                  <SelectTrigger id="accountType" data-testid="select-accountType">
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="regular">Regular Investor</SelectItem>
+                    <SelectItem value="lp">LP Investor (Limited Partner)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  LP Investors receive proportional distributions from project cashflows
+                </p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
