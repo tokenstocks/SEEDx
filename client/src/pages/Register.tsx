@@ -40,7 +40,7 @@ export default function Register() {
       localStorage.setItem("user", JSON.stringify(data.user));
       toast({
         title: "Account created!",
-        description: "Welcome to TokenStocks. Complete your KYC to start investing.",
+        description: "Welcome to SEEDx. Complete your KYC to start investing.",
       });
       
       // Role-based redirect after registration
@@ -88,7 +88,7 @@ export default function Register() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
             <CardDescription>
-              Sign up to start investing in tokenized agricultural assets
+              Join SEEDx to plant capital and grow impact through regenerative investments
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,12 +181,12 @@ export default function Register() {
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="regular">Regular Investor</SelectItem>
-                    <SelectItem value="lp">LP Investor (Limited Partner)</SelectItem>
+                    <SelectItem value="regular">Regenerator</SelectItem>
+                    <SelectItem value="lp">Primer (Liquidity Pool Investor)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  LP Investors receive proportional distributions from project cashflows
+                  Primers seed the liquidity pool and receive proportional distributions from project cashflows
                 </p>
               </div>
 

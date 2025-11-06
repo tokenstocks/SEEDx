@@ -7,9 +7,9 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="font-bold text-xl mb-4">TokenStocks</h3>
+            <h3 className="font-bold text-xl mb-4">SEEDx</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Tokenized agricultural investments on the Stellar blockchain.
+              Sustainable Ecosystem for Economic Development - A regenerative capital exchange.
             </p>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
@@ -47,7 +47,7 @@ export default function Footer() {
 
         <div className="pt-8 border-t flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2025 TokenStocks. All rights reserved.
+            © 2025 SEEDx. All rights reserved.
           </p>
           <div className="flex gap-2">
             <Badge variant="outline" data-testid="badge-regulated">Regulated</Badge>

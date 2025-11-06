@@ -139,11 +139,11 @@ export default function LPDashboard() {
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
 
-    // Check if user is LP investor
+    // Check if user is Primer
     if (!parsedUser.isLpInvestor) {
       toast({
         title: "Access Denied",
-        description: "LP Investor status required to access this dashboard.",
+        description: "Primer status required to access this dashboard.",
         variant: "destructive",
       });
       setLocation("/portfolio");
@@ -298,7 +298,7 @@ export default function LPDashboard() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold" data-testid="text-page-title">LP Investor Dashboard</h1>
+                <h1 className="text-2xl font-bold" data-testid="text-page-title">Primer Dashboard</h1>
                 <p className="text-sm text-muted-foreground">Manage your liquid & locked token portfolio</p>
               </div>
             </div>
@@ -732,7 +732,7 @@ export default function LPDashboard() {
                         <Label className="text-sm text-muted-foreground">Investor Type</Label>
                         <div className="mt-1">
                           <Badge variant="default" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" data-testid="badge-investor-type">
-                            LP Investor
+                            Primer
                           </Badge>
                         </div>
                       </div>

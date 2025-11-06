@@ -11,10 +11,10 @@ export default function About() {
       <div className="pt-24 pb-16 bg-muted/30">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-title">
-            About TokenStocks
+            About SEEDx
           </h1>
           <p className="text-lg text-muted-foreground" data-testid="text-subtitle">
-            Democratizing agricultural investments through blockchain technology
+            Planting capital. Growing impact. A regenerative capital exchange.
           </p>
         </div>
       </div>
@@ -23,14 +23,14 @@ export default function About() {
         <div className="prose prose-lg max-w-none mb-16">
           <h2 className="text-3xl font-bold mb-4">Our Mission</h2>
           <p className="text-muted-foreground mb-6">
-            TokenStocks is revolutionizing agricultural investment by making it accessible to everyone. 
-            Through the power of blockchain technology on the Stellar network, we enable fractional 
-            ownership of agricultural assets starting from just $100.
+            SEEDx (Sustainable Ecosystem for Economic Development) is revolutionizing agricultural investment 
+            through regenerative capital. Through the power of blockchain technology on the Stellar network, 
+            we enable fractional ownership of agricultural assets starting from just $100.
           </p>
           <p className="text-muted-foreground mb-6">
-            Our platform connects investors with verified agricultural projects across Nigeria, 
-            providing transparent returns and secure transactions through smart contracts and 
-            tokenized assets.
+            Our platform connects Regenerators and Primers with verified agricultural projects, 
+            creating a sustainable cycle where Primers seed the liquidity pool and Regenerators invest 
+            in projects that regenerate it through cashflows.
           </p>
         </div>
 
@@ -83,20 +83,21 @@ export default function About() {
         <div className="bg-muted/50 rounded-lg p-8">
           <h2 className="text-3xl font-bold mb-4">Our Story</h2>
           <p className="text-muted-foreground mb-4">
-            Founded in 2024, TokenStocks was born from a vision to bridge the gap between 
-            traditional agriculture and modern finance. We recognized that while agriculture 
+            Founded in 2024, SEEDx was born from a vision to bridge the gap between 
+            traditional agriculture and regenerative finance. We recognized that while agriculture 
             is one of Nigeria's most important sectors, small-scale farmers often struggle 
-            to access funding, and everyday investors miss out on lucrative opportunities.
+            to access funding, and everyday investors miss out on opportunities to create lasting impact.
           </p>
           <p className="text-muted-foreground mb-4">
-            By leveraging blockchain technology, we've created a platform that benefits everyone: 
-            farmers get the funding they need to expand their operations, and investors gain 
-            access to stable, high-return investments backed by real assets.
+            By leveraging blockchain technology and regenerative capital principles, we've created 
+            a platform that benefits everyone: farmers get the funding they need to expand their operations, 
+            Primers seed the liquidity that makes it possible, and Regenerators invest in projects that 
+            perpetuate the cycle.
           </p>
           <p className="text-muted-foreground">
-            Today, TokenStocks manages over $5.2M in tokenized agricultural assets, supporting 
+            Today, SEEDx manages over $5.2M in tokenized agricultural assets, supporting 
             sustainable farming practices while delivering consistent returns to our growing 
-            community of investors.
+            community of Primers and Regenerators.
           </p>
         </div>
       </div>

@@ -23,10 +23,10 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
       <div className="relative h-full flex flex-col items-center justify-center px-4 text-center">
         <div className="max-w-4xl space-y-6">
           <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
-            Invest in Real Agriculture,<br />Own Digital Tokens
+            Plant capital. Grow impact.
           </h1>
           <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto">
-            Tokenized farm assets on the Stellar blockchain. Transparent returns, fractional ownership, blockchain security.
+            A regenerative capital exchange for sustainable agricultural investments on the Stellar blockchain.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center pt-4">

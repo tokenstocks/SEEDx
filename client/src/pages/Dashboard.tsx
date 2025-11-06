@@ -391,9 +391,9 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">TS</span>
+                <span className="text-primary-foreground font-bold text-sm">SD</span>
               </div>
-              <h1 className="text-xl font-bold" data-testid="text-title">TokenStocks Dashboard</h1>
+              <h1 className="text-xl font-bold" data-testid="text-title">SEEDx Dashboard</h1>
             </div>
             <div className="flex items-center gap-4">
               {/* XLM Gas Fees - Subtle display */}
@@ -543,11 +543,11 @@ export default function Dashboard() {
                 </div>
                 
                 <h2 className="text-4xl font-bold mb-4" data-testid="welcome-title">
-                  Welcome to TokenStocks
+                  Welcome to SEEDx
                 </h2>
                 
                 <p className="text-muted-foreground text-lg mb-10 max-w-lg mx-auto">
-                  Invest in real agriculture through blockchain tokens. Start with as little as 100 NGNTS (₦100).
+                  Plant capital. Grow impact. Invest in regenerative agriculture with as little as 100 NGNTS (₦100).
                 </p>
 
                 <Button 

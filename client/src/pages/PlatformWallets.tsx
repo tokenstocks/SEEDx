@@ -74,7 +74,7 @@ export default function PlatformWallets() {
       <div>
         <h1 className="text-3xl font-bold" data-testid="text-page-title">Platform Wallets</h1>
         <p className="text-muted-foreground mt-2">
-          Manage the 4 core platform wallets for TokenStocks operations
+          Manage the 4 core platform wallets for SEEDx operations
         </p>
       </div>
 

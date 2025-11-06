@@ -40,7 +40,7 @@ export default function HowItWorks() {
       <div className="pt-24 pb-16 bg-muted/30">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-title">
-            How TokenStocks Works
+            How SEEDx Works
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-subtitle">
             Start investing in tokenized agricultural assets in four simple steps
