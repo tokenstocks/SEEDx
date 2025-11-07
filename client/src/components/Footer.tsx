@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
 
 export default function Footer() {
   return (
@@ -7,7 +8,12 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="font-bold text-xl mb-4">SEEDx</h3>
+            <img 
+              src={logoImage} 
+              alt="SEEDx" 
+              className="h-10 w-auto mb-4"
+              data-testid="img-footer-logo"
+            />
             <p className="text-sm text-muted-foreground mb-4">
               Sustainable Ecosystem for Economic Development - A regenerative capital exchange.
             </p>

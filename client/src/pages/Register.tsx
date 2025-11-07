@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -86,6 +87,14 @@ export default function Register() {
 
         <Card>
           <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-4">
+              <img 
+                src={logoImage} 
+                alt="SEEDx" 
+                className="h-12 w-auto"
+                data-testid="img-register-logo"
+              />
+            </div>
             <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
             <CardDescription>
               Join SEEDx to plant capital and grow impact through regenerative investments

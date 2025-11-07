@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,10 +12,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 text-[15px]">
         <div className="flex items-center justify-between h-12">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">SD</span>
-            </div>
-            <span className="font-bold text-xl text-white" data-testid="text-logo">SEEDx</span>
+            <img 
+              src={logoImage} 
+              alt="SEEDx" 
+              className="h-8 w-auto drop-shadow-md"
+              data-testid="img-navbar-logo"
+            />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
