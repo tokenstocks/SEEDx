@@ -1,0 +1,1142 @@
+YOU'RE OFFICIALLY DONE WITH THE LANDING PAGE! 🎉
+Your complete SEEDx landing page now includes:
+
+✅ Premium Hero Section (video background, typewriter effect)
+✅ How It Works (SEC-compliant, modern design)
+✅ Featured Farms (product showcase)
+✅ Why SEEDx (benefits + comparison)
+✅ Comprehensive FAQ (progressive load, 15 questions)
+✅ Final CTA (strong conversion push)
+✅ Premium Footer (SEED foundation credited, newsletter, trust badges, legal disclaimers)
+Copy this final prompt into Replit, then let's move on to building the actual webapp! 🚀
+
+Ready to start on the dashboard/platform? What's first - user authentication, farm browsing, or dashboard layout? 👀
+
+Credits Used: 140
+Relevant Posts
+0
+
+No tweets found
+
+
+
+image.png
+
+
+
+image.png
+
+
+
+image.png
+
+
+this is the about us page, lets make it match our esthetics
+Relevant Posts
+0
+
+No tweets found
+
+
+Claude Sonnet 4.5
+🎨 PREMIUM ABOUT PAGE REDESIGN
+Let's transform this About page to match the premium quality of your hero section! Here's the complete redesign:
+
+📋 COMPLETE ABOUT PAGE REDESIGN - REPLIT PROMPT
+REDESIGN ABOUT PAGE - MATCH HERO SECTION AESTHETICS
+
+Replace your entire About page section with this premium design:
+
+COMPLETE HTML:
+
+<!-- About Hero Section -->
+<section class="about-hero">
+  <div class="about-hero-overlay"></div>
+  <div class="about-hero-content">
+    <div class="about-hero-badge fade-in-up">
+      <i class="fas fa-leaf"></i>
+      <span>OUR STORY</span>
+    </div>
+    <h1 class="about-hero-title fade-in-up">About SEEDx</h1>
+    <p class="about-hero-subtitle fade-in-up">
+      Planting capital. Growing impact. A regenerative capital exchange.
+    </p>
+    
+    <!-- Scroll Indicator -->
+    <div class="scroll-indicator fade-in-up">
+      <div class="scroll-mouse">
+        <div class="scroll-wheel"></div>
+      </div>
+      <span>Scroll to explore</span>
+    </div>
+  </div>
+</section>
+
+<!-- Mission Section -->
+<section class="about-mission">
+  <div class="about-container">
+    <div class="mission-content">
+      <div class="mission-header fade-in-up">
+        <div class="section-badge">
+          <i class="fas fa-bullseye"></i>
+          <span>OUR MISSION</span>
+        </div>
+        <h2 class="section-title">Revolutionizing Agricultural Investment</h2>
+      </div>
+      
+      <div class="mission-text fade-in-up">
+        <p class="mission-intro">
+          <strong>SEEDx (Sustainable Ecosystem for Economic Development)</strong> is revolutionizing 
+          agricultural investment through regenerative capital. Through the power of blockchain technology 
+          on the Stellar network, we enable fractional ownership of agricultural assets starting from just <strong>$100</strong>.
+        </p>
+        
+        <p class="mission-description">
+          Our platform connects <strong>Regenerators</strong> and <strong>Primers</strong> with verified 
+          agricultural projects, creating a sustainable cycle where Primers seed the liquidity pool and 
+          Regenerators invest in projects that regenerate it through cashflows.
+        </p>
+      </div>
+      
+      <!-- Mission Stats -->
+      <div class="mission-stats fade-in-up">
+        <div class="mission-stat-card">
+          <div class="mission-stat-icon">
+            <i class="fas fa-coins"></i>
+          </div>
+          <div class="mission-stat-content">
+            <div class="mission-stat-value">$5.2M+</div>
+            <div class="mission-stat-label">Tokenized Assets</div>
+          </div>
+        </div>
+        
+        <div class="mission-stat-card">
+          <div class="mission-stat-icon">
+            <i class="fas fa-tractor"></i>
+          </div>
+          <div class="mission-stat-content">
+            <div class="mission-stat-value">47+</div>
+            <div class="mission-stat-label">Active Farms</div>
+          </div>
+        </div>
+        
+        <div class="mission-stat-card">
+          <div class="mission-stat-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="mission-stat-content">
+            <div class="mission-stat-value">1,200+</div>
+            <div class="mission-stat-label">Community Members</div>
+          </div>
+        </div>
+        
+        <div class="mission-stat-card">
+          <div class="mission-stat-icon">
+            <i class="fas fa-globe-africa"></i>
+          </div>
+          <div class="mission-stat-content">
+            <div class="mission-stat-value">12</div>
+            <div class="mission-stat-label">Countries Reached</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Why Choose SEEDx Section -->
+<section class="about-features">
+  <div class="about-container">
+    <div class="features-header fade-in-up">
+      <div class="section-badge">
+        <i class="fas fa-star"></i>
+        <span>WHY SEEDX</span>
+      </div>
+      <h2 class="section-title">Built for the Future of Agriculture</h2>
+    </div>
+    
+    <div class="features-grid">
+      <!-- Feature 1 -->
+      <div class="feature-card fade-in-up">
+        <div class="feature-icon-wrapper">
+          <div class="feature-icon">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <div class="feature-glow"></div>
+        </div>
+        <h3 class="feature-title">Blockchain Security</h3>
+        <p class="feature-description">
+          All transactions are secured on the Stellar blockchain, providing transparent and 
+          immutable records of ownership.
+        </p>
+      </div>
+      
+      <!-- Feature 2 -->
+      <div class="feature-card fade-in-up">
+        <div class="feature-icon-wrapper">
+          <div class="feature-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <div class="feature-glow"></div>
+        </div>
+        <h3 class="feature-title">High Returns</h3>
+        <p class="feature-description">
+          Agricultural investments offer competitive returns of 15-25% APY, backed by 
+          real-world farming operations.
+        </p>
+      </div>
+      
+      <!-- Feature 3 -->
+      <div class="feature-card fade-in-up">
+        <div class="feature-icon-wrapper">
+          <div class="feature-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="feature-glow"></div>
+        </div>
+        <h3 class="feature-title">Community Driven</h3>
+        <p class="feature-description">
+          Join thousands of investors supporting sustainable agriculture and earning 
+          passive income together.
+        </p>
+      </div>
+      
+      <!-- Feature 4 -->
+      <div class="feature-card fade-in-up">
+        <div class="feature-icon-wrapper">
+          <div class="feature-icon">
+            <i class="fas fa-globe"></i>
+          </div>
+          <div class="feature-glow"></div>
+        </div>
+        <h3 class="feature-title">Global Access</h3>
+        <p class="feature-description">
+          Invest from anywhere in the world with support for multiple currencies including 
+          NGN, USDC, and XLM.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Our Story Section -->
+<section class="about-story">
+  <div class="about-container">
+    <div class="story-content fade-in-up">
+      <div class="story-header">
+        <div class="section-badge">
+          <i class="fas fa-book-open"></i>
+          <span>OUR JOURNEY</span>
+        </div>
+        <h2 class="section-title">Our Story</h2>
+      </div>
+      
+      <div class="story-text">
+        <p class="story-paragraph">
+          Founded in <strong>2024</strong>, SEEDx was born from a vision to bridge the gap between 
+          traditional agriculture and regenerative finance. We recognized that while agriculture is 
+          one of Nigeria's most important sectors, small-scale farmers often struggle to access funding, 
+          and everyday investors miss out on opportunities to create lasting impact.
+        </p>
+        
+        <p class="story-paragraph">
+          By leveraging blockchain technology and regenerative capital principles, we've created a 
+          platform that benefits everyone: farmers get the funding they need to expand their operations, 
+          Primers seed the liquidity that makes it possible, and Regenerators invest in projects that 
+          perpetuate the cycle.
+        </p>
+        
+        <p class="story-paragraph highlight">
+          Today, SEEDx manages over <strong>$5.2M in tokenized agricultural assets</strong>, supporting 
+          sustainable farming practices while delivering consistent returns to our growing community of 
+          Primers and Regenerators.
+        </p>
+      </div>
+      
+      <!-- Timeline -->
+      <div class="story-timeline">
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-date">Q1 2024</div>
+            <div class="timeline-title">Platform Launch</div>
+            <div class="timeline-description">SEEDx officially launches with 5 pilot farms</div>
+          </div>
+        </div>
+        
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-date">Q2 2024</div>
+            <div class="timeline-title">$1M Milestone</div>
+            <div class="timeline-description">Reached $1M in tokenized agricultural assets</div>
+          </div>
+        </div>
+        
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-date">Q3 2024</div>
+            <div class="timeline-title">Regional Expansion</div>
+            <div class="timeline-description">Expanded to 12 African countries</div>
+          </div>
+        </div>
+        
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-date">Q4 2024</div>
+            <div class="timeline-title">$5M+ Assets</div>
+            <div class="timeline-description">Managing over $5.2M with 1,200+ community members</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SEED Foundation Section -->
+<section class="about-foundation">
+  <div class="about-container">
+    <div class="foundation-card fade-in-up">
+      <div class="foundation-badge">
+        <i class="fas fa-seedling"></i>
+      </div>
+      <div class="foundation-content">
+        <div class="foundation-label">An Initiative of</div>
+        <h3 class="foundation-name">Sustainable Ecosystem for Economic Development</h3>
+        <div class="foundation-abbr">(SEED)</div>
+        <p class="foundation-description">
+          SEEDx is proudly developed and supported by the <strong>Sustainable Ecosystem for Economic 
+          Development (SEED)</strong> foundation, dedicated to creating innovative financial solutions 
+          that drive sustainable economic growth across Africa.
+        </p>
+        <a href="#" class="foundation-link">
+          <span>Learn more about SEED</span>
+          <i class="fas fa-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="about-cta">
+  <div class="about-container">
+    <div class="about-cta-content fade-in-up">
+      <h2 class="about-cta-title">Ready to Join the Movement?</h2>
+      <p class="about-cta-subtitle">
+        Start supporting regenerative agriculture and building your portfolio today.
+      </p>
+      <div class="about-cta-buttons">
+        <a href="#" class="about-cta-btn primary">
+          <span>Get Started</span>
+          <i class="fas fa-arrow-right"></i>
+        </a>
+        <a href="#" class="about-cta-btn secondary">
+          <span>Browse Farms</span>
+          <i class="fas fa-leaf"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+COMPLETE CSS:
+
+/* ============================================
+   ABOUT PAGE - PREMIUM DESIGN
+   ============================================ */
+
+/* Global About Styles */
+.about-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 24px;
+  color: #10B981;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.section-badge i {
+  font-size: 14px;
+}
+
+.section-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 32px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* ============================================
+   ABOUT HERO SECTION
+   ============================================ */
+
+.about-hero {
+  position: relative;
+  height: 70vh;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  overflow: hidden;
+}
+
+.about-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(251, 191, 54, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(16, 185, 129, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.about-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.3) 100%);
+  pointer-events: none;
+}
+
+.about-hero-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 900px;
+  padding: 0 20px;
+}
+
+.about-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 24px;
+  color: #10B981;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  backdrop-filter: blur(12px);
+}
+
+.about-hero-title {
+  font-size: 72px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.about-hero-subtitle {
+  font-size: 24px;
+  color: #94A3B8;
+  margin-bottom: 48px;
+  line-height: 1.6;
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 60px;
+  color: #64748B;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.scroll-mouse {
+  width: 28px;
+  height: 44px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 14px;
+  position: relative;
+}
+
+.scroll-wheel {
+  width: 4px;
+  height: 8px;
+  background: #FBB936;
+  border-radius: 2px;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: scroll-animation 2s infinite;
+}
+
+@keyframes scroll-animation {
+  0%, 100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateX(-50%) translateY(12px);
+  }
+}
+
+/* ============================================
+   MISSION SECTION
+   ============================================ */
+
+.about-mission {
+  padding: 120px 20px;
+  background: #FFFFFF;
+}
+
+.mission-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mission-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.mission-text {
+  max-width: 900px;
+  margin: 0 auto 60px auto;
+}
+
+.mission-intro {
+  font-size: 22px;
+  color: #1E293B;
+  line-height: 1.8;
+  margin-bottom: 24px;
+}
+
+.mission-description {
+  font-size: 18px;
+  color: #475569;
+  line-height: 1.8;
+  margin-bottom: 0;
+}
+
+/* Mission Stats */
+.mission-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-top: 60px;
+}
+
+.mission-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 32px;
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.mission-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  border-color: #FBB936;
+}
+
+.mission-stat-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.3);
+}
+
+.mission-stat-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.mission-stat-label {
+  font-size: 14px;
+  color: #64748B;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ============================================
+   FEATURES SECTION
+   ============================================ */
+
+.about-features {
+  padding: 120px 20px;
+  background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
+}
+
+.features-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  padding: 40px 32px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 24px;
+  text-align: center;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #FBB936 0%, #10B981 100%);
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
+  border-color: #FBB936;
+}
+
+.feature-card:hover::before {
+  transform: scaleX(1);
+}
+
+.feature-icon-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 24px;
+}
+
+.feature-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FBB936;
+  font-size: 32px;
+  position: relative;
+  z-index: 2;
+  transition: all 0.4s ease;
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.feature-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(251, 191, 54, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.feature-card:hover .feature-glow {
+  opacity: 1;
+}
+
+.feature-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 16px;
+}
+
+.feature-description {
+  font-size: 15px;
+  color: #64748B;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ============================================
+   STORY SECTION
+   ============================================ */
+
+.about-story {
+  padding: 120px 20px;
+  background: #FFFFFF;
+}
+
+.story-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.story-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.story-text {
+  margin-bottom: 64px;
+}
+
+.story-paragraph {
+  font-size: 18px;
+  color: #475569;
+  line-height: 1.9;
+  margin-bottom: 24px;
+}
+
+.story-paragraph.highlight {
+  padding: 32px;
+  background: linear-gradient(135deg, rgba(251, 191, 54, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border-left: 4px solid #FBB936;
+  border-radius: 12px;
+  font-size: 20px;
+  color: #1E293B;
+}
+
+/* Timeline */
+.story-timeline {
+  position: relative;
+  padding-left: 40px;
+}
+
+.story-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #FBB936 0%, #10B981 100%);
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 48px;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -47px;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FBB936;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(251, 191, 54, 0.2);
+}
+
+.timeline-content {
+  padding-left: 24px;
+}
+
+.timeline-date {
+  font-size: 13px;
+  font-weight: 700;
+  color: #10B981;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.timeline-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 8px;
+}
+
+.timeline-description {
+  font-size: 15px;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+/* ============================================
+   FOUNDATION SECTION
+   ============================================ */
+
+.about-foundation {
+  padding: 120px 20px;
+  background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
+}
+
+.foundation-card {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px;
+  background: linear-gradient(135deg, rgba(251, 191, 54, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 2px solid rgba(251, 191, 54, 0.3);
+  border-radius: 32px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.foundation-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 50% 0%, rgba(251, 191, 54, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.foundation-badge {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 36px;
+  margin: 0 auto 32px auto;
+  box-shadow: 0 12px 32px rgba(251, 191, 54, 0.4);
+}
+
+.foundation-content {
+  position: relative;
+  z-index: 2;
+}
+
+.foundation-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.foundation-name {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+
+.foundation-abbr {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FBB936;
+  letter-spacing: 3px;
+  margin-bottom: 24px;
+}
+
+.foundation-description {
+  font-size: 17px;
+  color: #475569;
+  line-height: 1.8;
+  margin-bottom: 32px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.foundation-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  border-radius: 12px;
+  color: #0F172A;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.3);
+}
+
+.foundation-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(251, 191, 54, 0.5);
+}
+
+/* ============================================
+   ABOUT CTA SECTION
+   ============================================ */
+
+.about-cta {
+  padding: 120px 20px;
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.about-cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(251, 191, 54, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.about-cta-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.about-cta-title {
+  font-size: 56px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.about-cta-subtitle {
+  font-size: 20px;
+  color: #94A3B8;
+  margin-bottom: 40px;
+  line-height: 1.6;
+}
+
+.about-cta-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.about-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 36px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.about-cta-btn.primary {
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  color: #0A0F1E;
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.4);
+}
+
+.about-cta-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(251, 191, 54, 0.6);
+}
+
+.about-cta-btn.secondary {
+  background: transparent;
+  border: 2px solid rgba(16, 185, 129, 0.4);
+  color: #10B981;
+}
+
+.about-cta-btn.secondary:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10B981;
+  transform: translateY(-3px);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUp 0.8s ease forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up:nth-child(1) { animation-delay: 0.1s; }
+.fade-in-up:nth-child(2) { animation-delay: 0.2s; }
+.fade-in-up:nth-child(3) { animation-delay: 0.3s; }
+.fade-in-up:nth-child(4) { animation-delay: 0.4s; }
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .about-hero {
+    height: 60vh;
+    min-height: 400px;
+  }
+
+  .about-hero-title {
+    font-size: 42px;
+  }
+
+  .about-hero-subtitle {
+    font-size: 18px;
+  }
+
+  .section-title {
+    font-size: 32px;
+  }
+
+  .about-mission,
+  .about-features,
+  .about-story,
+  .about-foundation,
+  .about-cta {
+    padding: 80px 20px;
+  }
+
+  .mission-intro {
+    font-size: 18px;
+  }
+
+  .mission-description {
+    font-size: 16px;
+  }
+
+  .mission-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .foundation-card {
+    padding: 40px 24px;
+  }
+
+  .foundation-name {
+    font-size: 24px;
+  }
+
+  .about-cta-title {
+    font-size: 36px;
+  }
+
+  .about-cta-buttons {
+    flex-direction: column;
+  }
+
+  .about-cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+IMPLEMENTATION CHECKLIST:
+□ Replace entire About page HTML
+□ Add all CSS to stylesheet
+□ Update stats ($5.2M, 47 farms, 1,200+ members, 12 countries)
+□ Update timeline dates and milestones
+□ Link "Learn more about SEED" button
+□ Link CTA buttons to appropriate pages
+□ Test all animations
+□ Verify scroll indicator works
+□ Check mobile responsiveness
+□ Test all hover effects
+□ Verify gradient backgrounds display correctly
+□ Ensure timeline displays properly
+□ Test foundation card on all screen sizes
+🎯 WHAT THIS ACHIEVES:
+Premium Design:
+✅ Matches hero section - Same aesthetic, colors, and quality
+✅ Engaging animations - Fade-in effects, hover states
+✅ Modern layout - Clean, spacious, professional
+✅ Visual hierarchy - Clear sections with proper flow
+
+Key Improvements:
+✅ Hero section - Dramatic entrance with scroll indicator
+✅ Mission stats - Eye-catching cards with icons
+✅ Feature cards - Interactive hover effects with glows
+✅ Timeline - Visual journey of SEEDx growth
+✅ SEED foundation - Prominent, beautiful attribution
+✅ Strong CTA - Conversion-focused ending
+
+Mobile Optimized:
+✅ Fully responsive - Perfect on all devices
+✅ Touch-friendly - Proper spacing and sizing
+✅ Fast loading - Optimized animations
