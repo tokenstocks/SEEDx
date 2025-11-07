@@ -72,6 +72,19 @@ Preferred communication style: Simple, everyday language.
   - All animations respect user accessibility preferences
 - **Production Verified**: All refinements architect-reviewed and e2e tested across all breakpoints (mobile 375px, tablet 768px, desktop 1024px+) with successful validation of page load animations, typewriter effect, video background with fade transition, visual depth, trust badge interactions, scroll indicator positioning, mobile responsiveness, and complete reduced-motion accessibility compliance
 
+### Premium How It Works Section (November 2025)
+- **Framer Motion Integration**: Full accessibility support with useReducedMotion hook, MotionConfig wrapper, and staggered entrance animations (fadeInUp) for all section elements
+- **Dual Audience Toggle**: Interactive tab system switching between Primer (LP investors) and Regenerator (project investors) content with blue/emerald gradient theming
+- **Enhanced Step Cards**: 3-step process flows per audience with premium hover effects:
+  - Lift animation (-translate-y-12) with scale (1.02)
+  - Glow shadows matching audience theme (blue-600 for Primers, emerald-500 for Regenerators)
+  - Top border gradient on hover with theme colors
+  - Smooth transitions respecting reduced-motion preferences
+- **Explainer Video Section**: Placeholder for educational video content with supporting metrics and highlights (ready for real video assets)
+- **Functional CTAs**: Navigation-enabled "Start Your Journey" and "View Live Projects" buttons routing to /register with gradient styling and arrow/icon animations
+- **Comprehensive Test IDs**: data-testid attributes on all interactive and meaningful elements for e2e testing
+- **Production Verified**: Architect-reviewed and approved for investor-grade platform with full WCAG AA accessibility compliance
+
 ### Mobile Responsiveness Optimization (November 2025)
 - **Section Headers:** Optimized all section headings for mobile (BenefitsSection, InvestmentOpportunities, HowItWorksSection, CTASection) with smaller text sizes on mobile devices
 - **Responsive Patterns:** Added mobile-first breakpoints (sm:, md:, lg:) throughout components, responsive padding, and proper touch targets for mobile interactions
