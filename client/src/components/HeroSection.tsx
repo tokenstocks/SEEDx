@@ -17,7 +17,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           alt="Agricultural landscape" 
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/40" />
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/60 to-transparent" />
       </div>
       <CircuitOverlay />
