@@ -60,7 +60,7 @@ export default function CircuitOverlay() {
           </filter>
           <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#00ffcc" stopOpacity="0" />
-            <stop offset="50%" stopColor="#00ffcc" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#00ffcc" stopOpacity="0.3" />
             <stop offset="100%" stopColor="#00ffcc" stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -81,7 +81,7 @@ export default function CircuitOverlay() {
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{
                   pathLength: [0, 1, 1],
-                  opacity: [0, 0.6, 0.4],
+                  opacity: [0, 0.25, 0.15],
                 }}
                 transition={{
                   duration: 3,
@@ -108,7 +108,7 @@ export default function CircuitOverlay() {
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{
                   pathLength: [0, 1],
-                  opacity: [0, 0.5, 0.3],
+                  opacity: [0, 0.2, 0.15],
                 }}
                 transition={{
                   duration: 2.5,
@@ -132,7 +132,7 @@ export default function CircuitOverlay() {
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{
                   scale: [0, 1.5, 1],
-                  opacity: [0, 0.8, 0.5],
+                  opacity: [0, 0.3, 0.2],
                 }}
                 transition={{
                   duration: 2,
@@ -149,7 +149,7 @@ export default function CircuitOverlay() {
 
         <motion.g
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          animate={{ opacity: [0.1, 0.2, 0.1] }}
           transition={{
             duration: 4,
             repeat: Infinity,
@@ -163,7 +163,7 @@ export default function CircuitOverlay() {
 
         <motion.g
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0.2, 0.5, 0.2] }}
+          animate={{ opacity: [0.1, 0.15, 0.1] }}
           transition={{
             duration: 3.5,
             delay: 1,
@@ -185,7 +185,7 @@ export default function CircuitOverlay() {
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{
             pathLength: [0, 1, 1],
-            opacity: [0, 0.6, 0.4],
+            opacity: [0, 0.25, 0.15],
           }}
           transition={{
             duration: 3,
@@ -204,7 +204,7 @@ export default function CircuitOverlay() {
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{
             pathLength: [0, 1, 1],
-            opacity: [0, 0.5, 0.3],
+            opacity: [0, 0.2, 0.15],
           }}
           transition={{
             duration: 2.5,
