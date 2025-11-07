@@ -18,7 +18,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
-        <div className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-t from-white via-white/60 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/60 to-transparent" />
       </div>
       <CircuitOverlay />
       <div className="relative h-full flex flex-col items-center justify-center px-4 text-center z-10">
