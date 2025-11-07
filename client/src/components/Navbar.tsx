@@ -9,7 +9,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-gray-800">
       <div className="max-w-7xl mx-auto px-4 text-[15px]">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 text-[12px]">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">SD</span>
