@@ -5,6 +5,7 @@ import HowItWorksSection from "@/components/HowItWorksSection";
 import FeaturedFarmsSection from "@/components/FeaturedFarmsSection";
 import WhySEEDxSection from "@/components/WhySEEDxSection";
 import FAQSection from "@/components/FAQSection";
+import FinalCTASection from "@/components/FinalCTASection";
 import Footer from "@/components/Footer";
 import heroImage from '@assets/image_1762495662484.png';
 
@@ -23,6 +24,7 @@ export default function Home() {
       <FeaturedFarmsSection />
       <WhySEEDxSection />
       <FAQSection />
+      <FinalCTASection />
       <Footer />
     </div>
   );

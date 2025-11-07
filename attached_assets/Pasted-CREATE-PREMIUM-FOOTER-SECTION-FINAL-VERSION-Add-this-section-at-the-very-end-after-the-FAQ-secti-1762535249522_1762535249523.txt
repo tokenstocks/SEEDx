@@ -1,0 +1,957 @@
+CREATE PREMIUM FOOTER SECTION - FINAL VERSION
+
+Add this section at the very end, after the FAQ section.
+
+COMPLETE HTML:
+
+<!-- Final CTA Section -->
+<section class="final-cta-section">
+  <div class="final-cta-container">
+    <div class="final-cta-content fade-in-up">
+      <div class="final-cta-badge">
+        <i class="fas fa-seedling"></i>
+        <span>JOIN THE MOVEMENT</span>
+      </div>
+      <h2 class="final-cta-title">Ready to Fund the Future of Agriculture?</h2>
+      <p class="final-cta-subtitle">
+        Join thousands of participants supporting regenerative farms across Africa. 
+        Start with as little as $500 and make a real impact.
+      </p>
+      <div class="final-cta-buttons">
+        <a href="#" class="final-cta-btn primary">
+          <span>Get Started Now</span>
+          <i class="fas fa-arrow-right"></i>
+        </a>
+        <a href="#" class="final-cta-btn secondary">
+          <span>Browse Farms</span>
+          <i class="fas fa-leaf"></i>
+        </a>
+      </div>
+      <div class="final-cta-stats">
+        <div class="final-stat">
+          <div class="final-stat-value">$2.4M+</div>
+          <div class="final-stat-label">Total Funded</div>
+        </div>
+        <div class="final-stat-divider"></div>
+        <div class="final-stat">
+          <div class="final-stat-value">47</div>
+          <div class="final-stat-label">Active Farms</div>
+        </div>
+        <div class="final-stat-divider"></div>
+        <div class="final-stat">
+          <div class="final-stat-value">1,200+</div>
+          <div class="final-stat-label">Participants</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-container">
+    
+    <!-- Main Footer Content -->
+    <div class="footer-main">
+      
+      <!-- Company Info -->
+      <div class="footer-column footer-brand">
+        <div class="footer-logo">
+          <img src="your-logo.png" alt="SEEDx Logo" class="footer-logo-img">
+          <span class="footer-logo-text">SEEDx</span>
+        </div>
+        
+        <!-- Parent Organization -->
+        <div class="footer-parent-org">
+          <span class="parent-org-label">An Initiative of</span>
+          <span class="parent-org-name">Sustainable Ecosystem for Economic Development</span>
+          <span class="parent-org-abbr">(SEED)</span>
+        </div>
+        
+        <p class="footer-tagline">
+          Connecting capital with regenerative agriculture across Africa. 
+          Building a sustainable future, one farm at a time.
+        </p>
+        
+        <div class="footer-social">
+          <a href="#" class="social-link" aria-label="Twitter">
+            <i class="fab fa-twitter"></i>
+          </a>
+          <a href="#" class="social-link" aria-label="LinkedIn">
+            <i class="fab fa-linkedin-in"></i>
+          </a>
+          <a href="#" class="social-link" aria-label="Instagram">
+            <i class="fab fa-instagram"></i>
+          </a>
+          <a href="#" class="social-link" aria-label="Telegram">
+            <i class="fab fa-telegram-plane"></i>
+          </a>
+          <a href="#" class="social-link" aria-label="Discord">
+            <i class="fab fa-discord"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Platform Links -->
+      <div class="footer-column">
+        <h4 class="footer-heading">Platform</h4>
+        <ul class="footer-links">
+          <li><a href="#">Browse Farms</a></li>
+          <li><a href="#">How It Works</a></li>
+          <li><a href="#">For Primers</a></li>
+          <li><a href="#">For Regenerators</a></li>
+          <li><a href="#">Token Exchange</a></li>
+          <li><a href="#">Dashboard</a></li>
+        </ul>
+      </div>
+
+      <!-- Resources Links -->
+      <div class="footer-column">
+        <h4 class="footer-heading">Resources</h4>
+        <ul class="footer-links">
+          <li><a href="#">Documentation</a></li>
+          <li><a href="#">FAQ</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Case Studies</a></li>
+          <li><a href="#">Whitepaper</a></li>
+          <li><a href="#">API Docs</a></li>
+        </ul>
+      </div>
+
+      <!-- Company Links -->
+      <div class="footer-column">
+        <h4 class="footer-heading">Company</h4>
+        <ul class="footer-links">
+          <li><a href="#">About Us</a></li>
+          <li><a href="#">Our Mission</a></li>
+          <li><a href="#">Team</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press Kit</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+
+      <!-- Legal Links -->
+      <div class="footer-column">
+        <h4 class="footer-heading">Legal</h4>
+        <ul class="footer-links">
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Cookie Policy</a></li>
+          <li><a href="#">Risk Disclosure</a></li>
+          <li><a href="#">Compliance</a></li>
+          <li><a href="#">Licenses</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Newsletter Signup -->
+    <div class="footer-newsletter">
+      <div class="newsletter-content">
+        <div class="newsletter-text">
+          <h4 class="newsletter-heading">Stay Updated</h4>
+          <p class="newsletter-description">Get the latest farm listings, platform updates, and regenerative agriculture insights.</p>
+        </div>
+        <form class="newsletter-form">
+          <div class="newsletter-input-wrapper">
+            <i class="fas fa-envelope newsletter-icon"></i>
+            <input 
+              type="email" 
+              class="newsletter-input" 
+              placeholder="Enter your email address"
+              required
+            >
+          </div>
+          <button type="submit" class="newsletter-btn">
+            <span>Subscribe</span>
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Trust Badges -->
+    <div class="footer-trust">
+      <div class="trust-badge">
+        <i class="fas fa-shield-alt"></i>
+        <span>SEC Compliant</span>
+      </div>
+      <div class="trust-badge">
+        <i class="fas fa-lock"></i>
+        <span>Bank-Level Security</span>
+      </div>
+      <div class="trust-badge">
+        <i class="fas fa-certificate"></i>
+        <span>Audited Smart Contracts</span>
+      </div>
+      <div class="trust-badge">
+        <i class="fas fa-leaf"></i>
+        <span>Verified Regenerative</span>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="footer-bottom">
+      <div class="footer-bottom-content">
+        <p class="footer-copyright">
+          © 2025 SEEDx. All rights reserved.
+        </p>
+        <div class="footer-disclaimer">
+          <button class="disclaimer-toggle">
+            <i class="fas fa-info-circle"></i>
+            <span>Important Disclaimer</span>
+          </button>
+        </div>
+        <div class="footer-language">
+          <button class="language-selector">
+            <i class="fas fa-globe"></i>
+            <span>English</span>
+            <i class="fas fa-chevron-down"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expandable Disclaimer -->
+    <div class="footer-disclaimer-content" id="disclaimer-content">
+      <div class="disclaimer-box">
+        <h5 class="disclaimer-title">
+          <i class="fas fa-exclamation-triangle"></i>
+          Risk Disclosure & Legal Notice
+        </h5>
+        <p class="disclaimer-text">
+          <strong>Not Investment Advice:</strong> Information provided on this platform is for educational 
+          purposes only and does not constitute investment, financial, legal, or tax advice. 
+          Consult qualified professionals before making any financial decisions.
+        </p>
+        <p class="disclaimer-text">
+          <strong>Risk of Loss:</strong> Participation in agricultural projects carries significant risk. 
+          You may lose some or all of your principal. Past performance does not guarantee future results. 
+          Only participate with funds you can afford to lose.
+        </p>
+        <p class="disclaimer-text">
+          <strong>No Guarantees:</strong> Revenue distributions are not guaranteed and depend entirely on 
+          project performance, market conditions, weather, and other factors beyond our control.
+        </p>
+        <p class="disclaimer-text">
+          <strong>Regulatory Status:</strong> Farm tokens are designed as utility tokens and are not 
+          intended to be securities. However, regulatory classification may vary by jurisdiction. 
+          Ensure compliance with your local laws before participating.
+        </p>
+        <button class="disclaimer-close" id="disclaimer-close">
+          <i class="fas fa-times"></i>
+          Close
+        </button>
+      </div>
+    </div>
+
+  </div>
+</footer>
+
+COMPLETE CSS:
+
+/* ============================================
+   FINAL CTA SECTION
+   ============================================ */
+
+.final-cta-section {
+  background: linear-gradient(180deg, #0F172A 0%, #0A0F1E 100%);
+  padding: 100px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.final-cta-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(251, 191, 54, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.final-cta-container {
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.final-cta-content {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 32px;
+  padding: 60px 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.final-cta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  border-radius: 24px;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.final-cta-badge i {
+  font-size: 14px;
+}
+
+.final-cta-title {
+  font-size: 56px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.final-cta-subtitle {
+  font-size: 20px;
+  color: #94A3B8;
+  max-width: 600px;
+  margin: 0 auto 40px auto;
+  line-height: 1.6;
+}
+
+.final-cta-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 48px;
+  flex-wrap: wrap;
+}
+
+.final-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 36px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.final-cta-btn.primary {
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  color: #0A0F1E;
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.4);
+}
+
+.final-cta-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(251, 191, 54, 0.6);
+}
+
+.final-cta-btn.secondary {
+  background: transparent;
+  border: 2px solid rgba(16, 185, 129, 0.4);
+  color: #10B981;
+}
+
+.final-cta-btn.secondary:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10B981;
+  transform: translateY(-3px);
+}
+
+.final-cta-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  padding-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+}
+
+.final-stat {
+  text-align: center;
+}
+
+.final-stat-value {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FBB936 0%, #10B981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.final-stat-label {
+  font-size: 14px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.final-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.footer {
+  background: #0A0F1E;
+  padding: 80px 20px 0 20px;
+  position: relative;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   FOOTER MAIN
+   ============================================ */
+
+.footer-main {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 60px;
+  margin-bottom: 60px;
+}
+
+.footer-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ============================================
+   FOOTER BRAND
+   ============================================ */
+
+.footer-brand {
+  max-width: 350px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.footer-logo-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.footer-logo-text {
+  font-size: 24px;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+/* ============================================
+   PARENT ORGANIZATION (SEED FOUNDATION)
+   ============================================ */
+
+.footer-parent-org {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px;
+  background: rgba(251, 191, 54, 0.06);
+  border-left: 3px solid #FBB936;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.parent-org-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.parent-org-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.4;
+}
+
+.parent-org-abbr {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FBB936;
+  letter-spacing: 2px;
+}
+
+.footer-tagline {
+  font-size: 15px;
+  color: #64748B;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.footer-social {
+  display: flex;
+  gap: 12px;
+}
+
+.social-link {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94A3B8;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.social-link:hover {
+  background: rgba(251, 191, 54, 0.15);
+  border-color: rgba(251, 191, 54, 0.4);
+  color: #FBB936;
+  transform: translateY(-3px);
+}
+
+/* ============================================
+   FOOTER LINKS
+   ============================================ */
+
+.footer-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-links li a {
+  font-size: 15px;
+  color: #64748B;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.footer-links li a:hover {
+  color: #FBB936;
+  transform: translateX(5px);
+}
+
+/* ============================================
+   FOOTER NEWSLETTER
+   ============================================ */
+
+.footer-newsletter {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 40px;
+  margin-bottom: 60px;
+}
+
+.newsletter-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.newsletter-text {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.newsletter-heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+}
+
+.newsletter-description {
+  font-size: 15px;
+  color: #94A3B8;
+  margin: 0;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 12px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.newsletter-input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+.newsletter-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748B;
+  font-size: 16px;
+}
+
+.newsletter-input {
+  width: 100%;
+  padding: 16px 20px 16px 50px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.newsletter-input:focus {
+  outline: none;
+  border-color: rgba(251, 191, 54, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.newsletter-input::placeholder {
+  color: #64748B;
+}
+
+.newsletter-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0A0F1E;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.newsletter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.4);
+}
+
+/* ============================================
+   FOOTER TRUST BADGES
+   ============================================ */
+
+.footer-trust {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  padding: 40px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.trust-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748B;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.trust-badge i {
+  font-size: 18px;
+  color: #10B981;
+}
+
+/* ============================================
+   FOOTER BOTTOM
+   ============================================ */
+
+.footer-bottom {
+  padding: 32px 0;
+}
+
+.footer-bottom-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.footer-copyright {
+  font-size: 14px;
+  color: #64748B;
+  margin: 0;
+}
+
+.disclaimer-toggle,
+.language-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #94A3B8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.disclaimer-toggle:hover,
+.language-selector:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #FBB936;
+}
+
+/* ============================================
+   EXPANDABLE DISCLAIMER
+   ============================================ */
+
+.footer-disclaimer-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease, margin 0.5s ease;
+}
+
+.footer-disclaimer-content.active {
+  max-height: 800px;
+  margin-bottom: 40px;
+}
+
+.disclaimer-box {
+  background: rgba(251, 191, 54, 0.08);
+  border: 1px solid rgba(251, 191, 54, 0.3);
+  border-left: 4px solid #FBB936;
+  border-radius: 12px;
+  padding: 32px;
+  position: relative;
+}
+
+.disclaimer-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #FBB936;
+  margin-bottom: 20px;
+}
+
+.disclaimer-title i {
+  font-size: 20px;
+}
+
+.disclaimer-text {
+  font-size: 14px;
+  color: #CBD5E1;
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+.disclaimer-text:last-of-type {
+  margin-bottom: 24px;
+}
+
+.disclaimer-close {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.disclaimer-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .footer-main {
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .final-cta-section {
+    padding: 60px 20px;
+  }
+
+  .final-cta-content {
+    padding: 40px 24px;
+  }
+
+  .final-cta-title {
+    font-size: 36px;
+  }
+
+  .final-cta-subtitle {
+    font-size: 17px;
+  }
+
+  .final-cta-buttons {
+    flex-direction: column;
+  }
+
+  .final-cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .final-stat-divider {
+    display: none;
+  }
+
+  .footer {
+    padding: 60px 20px 0 20px;
+  }
+
+  .footer-main {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .footer-brand {
+    max-width: 100%;
+  }
+
+  .footer-parent-org {
+    padding: 14px 16px;
+  }
+
+  .parent-org-name {
+    font-size: 14px;
+  }
+
+  .newsletter-form {
+    flex-direction: column;
+  }
+
+  .newsletter-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .footer-trust {
+    gap: 20px;
+  }
+
+  .trust-badge {
+    font-size: 12px;
+  }
+
+  .footer-bottom-content {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+JAVASCRIPT FOR DISCLAIMER TOGGLE (Add to your script):
+
+<script>
+// Footer Disclaimer Toggle
+document.addEventListener('DOMContentLoaded', function() {
+  const disclaimerToggle = document.querySelector('.disclaimer-toggle');
+  const disclaimerContent = document.getElementById('disclaimer-content');
+  const disclaimerClose = document.getElementById('disclaimer-close');
+
+  if (disclaimerToggle && disclaimerContent) {
+    disclaimerToggle.addEventListener('click', function() {
+      disclaimerContent.classList.add('active');
+      // Smooth scroll to disclaimer
+      setTimeout(() => {
+        disclaimerContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    });
+  }
+
+  if (disclaimerClose && disclaimerContent) {
+    disclaimerClose.addEventListener('click', function() {
+      disclaimerContent.classList.remove('active');
+    });
+  }
+});
+</script>
+
+IMPLEMENTATION CHECKLIST:
+□ Add Final CTA section before footer
+□ Add Footer HTML at the very end
+□ Add all CSS to stylesheet
+□ Add JavaScript for disclaimer toggle
+□ Replace "your-logo.png" with actual logo path (SEEDx logo only)
+□ Update all social media links
+□ Update all footer navigation links
+□ Update stats in Final CTA ($2.4M+, 47 farms, 1,200+ participants)
+□ Test newsletter form submission
+□ Test disclaimer expand/collapse
+□ Verify SEED foundation attribution displays correctly
+□ Verify all links work
+□ Check mobile responsiveness
+□ Test social icon hover effects
+□ Verify trust badges display correctly
+□ Update copyright year if needed
+□ Test on multiple screen sizes
+
+NOTES:
+- SEED foundation is properly credited as parent organization
+- No SEED logo needed - text attribution is clean and professional
+- Highlighted box with gold accent draws attention to SEED
+- All legal disclaimers included and expandable
+- Mobile-optimized and fully responsive
+- Ready for production
