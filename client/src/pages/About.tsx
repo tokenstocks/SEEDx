@@ -446,15 +446,17 @@ export default function About() {
               <span>Get Started</span>
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-            <Button 
-              size="lg"
-              variant="outline"
-              className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 backdrop-blur-sm px-8 h-14 text-lg font-semibold w-full sm:w-auto"
-              data-testid="button-browse-farms-cta"
-            >
-              <span>Browse Farms</span>
-              <Leaf className="w-5 h-5 ml-2" />
-            </Button>
+            <a href="/#featured-farms">
+              <Button 
+                size="lg"
+                variant="outline"
+                className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 backdrop-blur-sm px-8 h-14 text-lg font-semibold w-full sm:w-auto"
+                data-testid="button-browse-farms-cta"
+              >
+                <span>Browse Farms</span>
+                <Leaf className="w-5 h-5 ml-2" />
+              </Button>
+            </a>
           </motion.div>
         </motion.div>
       </section>

@@ -141,6 +141,7 @@ export default function FeaturedFarmsSection() {
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? "always" : "never"}>
       <section 
+        id="featured-farms"
         className="relative py-20 md:py-32 px-4 overflow-hidden bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" 
         data-testid="section-featured-farms"
       >

@@ -48,14 +48,16 @@ export default function FinalCTASection() {
               <span>Get Started Now</span>
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
-            <Button
-              variant="outline"
-              className="bg-transparent border-2 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500 px-9 py-6 text-base font-semibold transition-all duration-300 hover:-translate-y-1"
-              data-testid="button-browse-farms-final"
-            >
-              <span>Browse Farms</span>
-              <Leaf className="w-5 h-5 ml-2" />
-            </Button>
+            <a href="#featured-farms">
+              <Button
+                variant="outline"
+                className="bg-transparent border-2 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:border-emerald-500 px-9 py-6 text-base font-semibold transition-all duration-300 hover:-translate-y-1"
+                data-testid="button-browse-farms-final"
+              >
+                <span>Browse Farms</span>
+                <Leaf className="w-5 h-5 ml-2" />
+              </Button>
+            </a>
           </div>
 
           {/* Stats */}
