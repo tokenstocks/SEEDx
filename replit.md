@@ -14,9 +14,17 @@ Preferred communication style: Simple, everyday language.
 - **Enhanced Logo (Navbar)**: Logo increased 30% (h-[3.25rem]) with premium styling - backdrop-filter blur (10px), white/20 border, rounded-xl corners, sophisticated shadow, hover effects (scale-105, bg-white/15 transition)
 - **Animated Typewriter Headline**: Dynamic headline "Plant capital. Grow [typewriter-word] impact." that cycles through 6 words:
   - Words: sustainable, lasting, regenerative, measurable, global, transformative
-  - Timing: 120ms typing speed, 60ms deletion speed, 2000ms end-of-word pause, 500ms pre-next-word pause
-  - Styling: emerald-400 text color with blinking cursor animation
-  - Implementation: ref-based state management for precise timing control
+  - Timing: 150ms typing speed, 100ms deletion speed, 2000ms pause between transitions
+  - Styling: emerald-400 text color with pulsing cursor animation (conditionally hidden for reduced-motion users)
+  - Implementation: ref-based state management with SSR-safe reduced-motion detection
+- **Framer Motion Page Load Animations**: Elegant staggered entrance animations for investor-grade presentation:
+  - Headline fadeInUp at 0.2s delay (1s duration)
+  - Subtitle fadeInUp at 0.4s delay (1s duration)
+  - Description fadeInUp at 0.6s delay (1s duration)
+  - CTA buttons fadeInUp at 0.8s delay (1s duration)
+  - Trust badges staggered fadeInUp at 1.0s, 1.1s, 1.2s, 1.3s (1s duration each)
+  - Scroll indicator fadeInUp at 1.5s delay (1.5s duration)
+  - MotionConfig integration for global animation control
 - **Enhanced Background Overlays**: Dual overlay system for superior text contrast:
   - Linear gradient: 60%→40%→50%→65% black progression (top to bottom)
   - Radial gradient: 20%→40% black (center darkening for text clarity)
@@ -24,12 +32,19 @@ Preferred communication style: Simple, everyday language.
   - Gradient overlay effect (white/10 from top-left, opacity 0→100% on hover)
   - Enhanced shadows with colored glow (blue-600 Primer, emerald-500 Regenerator)
   - Sophisticated interactions: -translate-y-[3px] on hover, -translate-y-[-1px] on active
-  - Min-widths: 320px (tablet), 400px (desktop)
-- **Optimized Trust Badges**: Refined spacing and styling for cohesive presentation:
-  - Reduced gap from 48-80px to 36px (gap-9 on small screens)
+  - Responsive sizing: 340px max-width on desktop/tablet, full-width on mobile
+- **Enhanced Trust Badges**: Premium interactive badges with emerald accents:
+  - Icons: emerald-500 color with smooth transitions
+  - Hover effects: scale 1.05 with lift animation (-translate-y-2)
+  - Icon hover scaling to 1.1 with emerald color shift
+  - Border highlights on hover (border-emerald-500/30)
   - Semi-transparent backgrounds (black/20) with backdrop-blur effect
-  - Rounded corners (rounded-lg) and hover lift animation (-translate-y-0.5)
   - Drop-shadows on icons and text for depth
+- **Scroll Indicator**: Bottom-right positioned interactive scroll prompt:
+  - Position: bottom-6 right-8 (avoids conflict with trust badges)
+  - Bounce animation: ChevronDown icon bounces infinitely after 2.5s delay
+  - Smooth scroll to next section on click (instant scroll for reduced-motion users)
+  - Opacity transition on hover (0.8 → 1.0)
 - **Typography Refinements**: Letter-spacing optimizations for premium feel:
   - Headline: tracking-[-0.02em] (tighter, more luxurious)
   - Subtitle: tracking-[0.01em] (slightly wider for elegance)
@@ -38,7 +53,15 @@ Preferred communication style: Simple, everyday language.
   - Mobile (375px): headline 36px, subtitle 18px, description 16px, full-width stacked buttons
   - Tablet (768-1024px): headline 52px, subtitle 24px, description 18px
   - Desktop (1024px+): headline 64px, subtitle 28px, description 20px, horizontal button layout
-- **Production Verified**: All refinements architect-reviewed and e2e tested across all breakpoints with successful validation of typewriter animation, visual depth, and mobile responsiveness
+- **World-Class Accessibility**: Full WCAG AA compliance with prefers-reduced-motion support:
+  - SSR-safe reduced-motion detection via useEffect with window guard
+  - Dynamic media query listener for real-time preference changes
+  - Typewriter effect disabled when motion reduced (static "sustainable" fallback)
+  - Pulsing caret animation conditionally hidden
+  - MotionConfig sets reducedMotion="always" for all Framer Motion components
+  - Scroll behavior uses 'auto' (instant) instead of 'smooth' for reduced-motion users
+  - All animations respect user accessibility preferences
+- **Production Verified**: All refinements architect-reviewed and e2e tested across all breakpoints (mobile 375px, tablet 768px, desktop 1024px+) with successful validation of page load animations, typewriter effect, visual depth, trust badge interactions, scroll indicator positioning, mobile responsiveness, and complete reduced-motion accessibility compliance
 
 ### Mobile Responsiveness Optimization (November 2025)
 - **Section Headers:** Optimized all section headings for mobile (BenefitsSection, InvestmentOpportunities, HowItWorksSection, CTASection) with smaller text sizes on mobile devices
