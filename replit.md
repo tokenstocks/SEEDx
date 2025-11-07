@@ -3,10 +3,23 @@
 **Tagline**: Plant capital. Grow impact. A regenerative capital exchange.
 
 ## Overview
-SEEDx (Sustainable Ecosystem for Economic Development exchange) is a blockchain-based regenerative capital platform on the Stellar network focused on tokenized agricultural investments. It enables Primers (Liquidity Pool Investors) to seed liquidity and Regenerators (project investors) to fund agricultural projects that regenerate the capital pool through automated cashflow distribution. The platform integrates secure authentication, KYC, multi-currency wallet management, and a responsive interface to enhance transparency and accessibility in agricultural investment.
+SEEDx (Sustainable Ecosystem for Economic Development exchange) is a blockchain-based regenerative capital platform on the Stellar network focused on tokenized agricultural investments. It enables Primers (Liquidity Pool Investors) to seed liquidity and Regenerators (project investors) to fund agricultural projects that regenerate the capital pool through automated cashflow distribution. The platform integrates secure authentication, KYC, multi-currency wallet management, and a fully responsive mobile-first interface to enhance transparency and accessibility in agricultural investment.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+
+## Recent Updates
+
+### Branding & Visual Design (November 2025)
+- **Logo Implementation:** SEEDx logo with green gradient, circuit board design, and golden accents integrated across all pages (navbar, login, register, footer)
+- **Hero Section Enhancement:** Removed dark gradient overlay to showcase vibrant farm estate imagery at full brightness with drop shadows on text for readability
+- **Navbar Optimization:** Compact navbar (h-12) with prominent logo (h-10) featuring brightness/contrast enhancements for visibility
+
+### Mobile Responsiveness Optimization (November 2025)
+- **Hero Section:** Implemented progressive text sizing (text-3xl → text-7xl), full-width CTA buttons on mobile that stack vertically, responsive spacing throughout
+- **Section Headers:** Optimized all section headings for mobile (BenefitsSection, InvestmentOpportunities, HowItWorksSection, CTASection) with smaller text sizes on mobile devices
+- **Responsive Patterns:** Added mobile-first breakpoints (sm:, md:, lg:) throughout components, responsive padding, and proper touch targets for mobile interactions
+- **Verified Compliance:** All mobile improvements architect-reviewed and confirmed to maintain desktop/tablet layouts without regressions
 
 ## System Architecture
 
