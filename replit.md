@@ -72,18 +72,29 @@ Preferred communication style: Simple, everyday language.
   - All animations respect user accessibility preferences
 - **Production Verified**: All refinements architect-reviewed and e2e tested across all breakpoints (mobile 375px, tablet 768px, desktop 1024px+) with successful validation of page load animations, typewriter effect, video background with fade transition, visual depth, trust badge interactions, scroll indicator positioning, mobile responsiveness, and complete reduced-motion accessibility compliance
 
-### Premium How It Works Section (November 2025)
-- **Framer Motion Integration**: Full accessibility support with useReducedMotion hook, MotionConfig wrapper, and staggered entrance animations (fadeInUp) for all section elements
-- **Dual Audience Toggle**: Interactive tab system switching between Primer (LP investors) and Regenerator (project investors) content with blue/emerald gradient theming
-- **Enhanced Step Cards**: 3-step process flows per audience with premium hover effects:
-  - Lift animation (-translate-y-12) with scale (1.02)
-  - Glow shadows matching audience theme (blue-600 for Primers, emerald-500 for Regenerators)
-  - Top border gradient on hover with theme colors
-  - Smooth transitions respecting reduced-motion preferences
-- **Explainer Video Section**: Placeholder for educational video content with supporting metrics and highlights (ready for real video assets)
-- **Functional CTAs**: Navigation-enabled "Start Your Journey" and "View Live Projects" buttons routing to /register with gradient styling and arrow/icon animations
-- **Comprehensive Test IDs**: data-testid attributes on all interactive and meaningful elements for e2e testing
-- **Production Verified**: Architect-reviewed and approved for investor-grade platform with full WCAG AA accessibility compliance
+### Premium How It Works Section - SEC Compliant (November 2025)
+- **SEC-Compliant Language**: Complete terminology update to reduce securities classification risk:
+  - Toggle labels: "For Primers/Regenerators" → "I Want to Fund Farms/Trade Tokens" (clearer, action-oriented)
+  - Primer steps: "Deploy Capital" → "Fund the Project", "Track Impact & Returns" → "Track Your Impact"
+  - Regenerator steps: "Acquire & Trade Tokens" → "Buy & Trade", "Grow Your Portfolio" → "Build Your Collection"
+  - Investment terminology: "returns", "capital deployment", "portfolio", "fractional ownership", "traders" → participation/utility language
+  - Stats: Removed specific return percentages (12-18%), replaced "Success Rate" with "Completion Rate*" (with footnote)
+  - Video description: "capital moves" → "funding moves", "deployed" → "allocated", "tradeable tokens" → "utility tokens for ecosystem access"
+- **Audience Explainer**: Added clarifying text before toggle: "Choose your path: Fund agricultural projects directly or access farm-backed utility tokens"
+- **Comprehensive Legal Disclaimer**: Amber-highlighted disclaimer section with:
+  - Risk disclosure: Principal loss possibility, no guaranteed returns, project performance dependency
+  - Token clarification: Utility tokens for platform access, not equity/securities/investment contracts
+  - Past performance disclaimer: Historical data not indicative of future results
+  - No investment advice: Users advised to consult qualified professionals
+  - Footnote: "*Completion rate based on projects completed to date"
+  - Premium styling: Amber borders, gradient background, responsive padding
+- **Framer Motion Integration**: Full accessibility support with useReducedMotion hook, MotionConfig wrapper, and staggered entrance animations
+- **Dual Audience Toggle**: Interactive tab system with blue/emerald gradient theming, enhanced padding for longer button text
+- **Enhanced Step Cards**: 3-step process flows with premium hover effects (lift, scale, glow shadows, top border gradients)
+- **Explainer Video Section**: Placeholder with supporting metrics and highlights
+- **Functional CTAs**: Navigation-enabled buttons routing to /register
+- **Comprehensive Test IDs**: data-testid attributes on all interactive and meaningful elements
+- **Production Verified**: Architect-reviewed and approved for SEC-compliant investor-grade platform with full WCAG AA accessibility compliance
 
 ### Mobile Responsiveness Optimization (November 2025)
 - **Section Headers:** Optimized all section headings for mobile (BenefitsSection, InvestmentOpportunities, HowItWorksSection, CTASection) with smaller text sizes on mobile devices
