@@ -17,7 +17,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           alt="Agricultural landscape" 
           className="w-full h-full object-cover"
         />
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/60 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-3/4 bg-gradient-to-t from-white via-white/60 to-transparent" />
       </div>
       <CircuitOverlay />
       <div className="relative h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 text-center z-10">
