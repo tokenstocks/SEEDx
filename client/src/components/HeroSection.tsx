@@ -71,10 +71,6 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="text-xs sm:text-sm">Regulated</span>
             </div>
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm">$5.2M in Assets</span>
-            </div>
           </div>
         </div>
       </div>
