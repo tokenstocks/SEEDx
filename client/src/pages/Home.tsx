@@ -6,7 +6,7 @@ import InvestmentOpportunities from "@/components/InvestmentOpportunities";
 import BenefitsSection from "@/components/BenefitsSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
-import heroImage from '@assets/generated_images/Agricultural_hero_landscape_image_05fbe562.png';
+import heroImage from '@assets/stock_images/hopeful_young_farmer_6bd78b61.jpg';
 
 export default function Home() {
   const [, setLocation] = useLocation();
