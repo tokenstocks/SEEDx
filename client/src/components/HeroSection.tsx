@@ -37,7 +37,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             <Button
               size="lg"
               onClick={onGetStarted}
-              className="w-full sm:flex-1 sm:min-w-[240px] sm:max-w-md overflow-visible bg-blue-600/95 backdrop-blur-sm border border-blue-500/40 shadow-lg"
+              className="w-full sm:flex-1 sm:min-w-[240px] sm:max-w-md overflow-visible bg-blue-600/95 backdrop-blur-sm border border-blue-500/40 shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:-translate-y-1 rounded-2xl"
               data-testid="button-become-primer"
             >
               <div className="flex flex-col gap-1 py-2">
@@ -50,7 +50,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             <Button
               size="lg"
               onClick={onExplore}
-              className="w-full sm:flex-1 sm:min-w-[240px] sm:max-w-md overflow-visible bg-green-500/95 backdrop-blur-sm border border-green-400/40 shadow-lg"
+              className="w-full sm:flex-1 sm:min-w-[240px] sm:max-w-md overflow-visible bg-green-500/95 backdrop-blur-sm border border-green-400/40 shadow-2xl hover:shadow-green-500/50 transition-all duration-300 hover:-translate-y-1 rounded-2xl"
               data-testid="button-become-regenerator"
             >
               <div className="flex flex-col gap-1 py-2">
