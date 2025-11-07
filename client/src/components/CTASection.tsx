@@ -14,11 +14,11 @@ export default function CTASection() {
 
   return (
     <section className="py-20 px-4 bg-primary text-primary-foreground">
-      <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-4xl md:text-5xl font-bold mb-6">
+      <div className="max-w-4xl mx-auto text-center px-4">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
           Ready to Diversify Your Portfolio?
         </h2>
-        <p className="text-xl mb-8 text-primary-foreground/90">
+        <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-primary-foreground/90">
           Join thousands of investors earning returns from real agricultural assets. Start with as little as $100.
         </p>
 
