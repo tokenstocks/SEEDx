@@ -67,10 +67,6 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
               <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="text-xs sm:text-sm">Blockchain Verified</span>
             </div>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm">Regulated</span>
-            </div>
           </div>
         </div>
       </div>
