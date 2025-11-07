@@ -53,6 +53,14 @@ Preferred communication style: Simple, everyday language.
   - Mobile (375px): headline 36px, subtitle 18px, description 16px, full-width stacked buttons
   - Tablet (768-1024px): headline 52px, subtitle 24px, description 18px
   - Desktop (1024px+): headline 64px, subtitle 28px, description 20px, horizontal button layout
+- **Dynamic Video Background**: Optimized video hero with seamless fade transition to static image:
+  - **File Size**: 1.1MB optimized MP4 for fast loading (79% reduction from original)
+  - **Attributes**: autoPlay, muted, playsInline, preload="auto", poster image
+  - **Fade Transition**: 1-second crossfade from video to static image when video ends
+  - **Reduced Motion**: Video hidden, static image shown immediately for accessibility
+  - **Preference Toggle**: Video resets and replays when user disables reduced motion (currentTime reset, autoplay restart)
+  - **Error Handling**: Graceful autoplay blocking with .catch() safeguard
+  - **Mobile Optimized**: playsInline prevents fullscreen on iOS, object-cover ensures proper scaling
 - **World-Class Accessibility**: Full WCAG AA compliance with prefers-reduced-motion support:
   - SSR-safe reduced-motion detection via useEffect with window guard
   - Dynamic media query listener for real-time preference changes
@@ -60,8 +68,9 @@ Preferred communication style: Simple, everyday language.
   - Pulsing caret animation conditionally hidden
   - MotionConfig sets reducedMotion="always" for all Framer Motion components
   - Scroll behavior uses 'auto' (instant) instead of 'smooth' for reduced-motion users
+  - Video background respects motion preferences (hidden when reduced motion enabled)
   - All animations respect user accessibility preferences
-- **Production Verified**: All refinements architect-reviewed and e2e tested across all breakpoints (mobile 375px, tablet 768px, desktop 1024px+) with successful validation of page load animations, typewriter effect, visual depth, trust badge interactions, scroll indicator positioning, mobile responsiveness, and complete reduced-motion accessibility compliance
+- **Production Verified**: All refinements architect-reviewed and e2e tested across all breakpoints (mobile 375px, tablet 768px, desktop 1024px+) with successful validation of page load animations, typewriter effect, video background with fade transition, visual depth, trust badge interactions, scroll indicator positioning, mobile responsiveness, and complete reduced-motion accessibility compliance
 
 ### Mobile Responsiveness Optimization (November 2025)
 - **Section Headers:** Optimized all section headings for mobile (BenefitsSection, InvestmentOpportunities, HowItWorksSection, CTASection) with smaller text sizes on mobile devices
