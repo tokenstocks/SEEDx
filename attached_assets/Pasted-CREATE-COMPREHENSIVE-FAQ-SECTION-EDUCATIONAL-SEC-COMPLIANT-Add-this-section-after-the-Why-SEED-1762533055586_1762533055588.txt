@@ -1,0 +1,1429 @@
+CREATE COMPREHENSIVE FAQ SECTION - EDUCATIONAL & SEC-COMPLIANT
+
+Add this section after the "Why SEEDx" section.
+
+COMPLETE HTML:
+
+<!-- FAQ Section -->
+<section class="faq-section">
+  <div class="faq-container">
+    
+    <!-- Section Header -->
+    <div class="faq-header fade-in-up">
+      <div class="faq-label">QUESTIONS & ANSWERS</div>
+      <h2 class="faq-title">Frequently Asked Questions</h2>
+      <p class="faq-subtitle">
+        Everything you need to know about participating in regenerative agriculture 
+        through SEEDx. Can't find your answer? <a href="#" class="contact-link">Contact our team</a>.
+      </p>
+    </div>
+
+    <!-- FAQ Categories -->
+    <div class="faq-categories fade-in-up" style="animation-delay: 0.1s;">
+      <button class="category-btn active" data-category="all">
+        <i class="fas fa-th"></i>
+        <span>All Questions</span>
+      </button>
+      <button class="category-btn" data-category="getting-started">
+        <i class="fas fa-rocket"></i>
+        <span>Getting Started</span>
+      </button>
+      <button class="category-btn" data-category="financial">
+        <i class="fas fa-chart-line"></i>
+        <span>Financial</span>
+      </button>
+      <button class="category-btn" data-category="technical">
+        <i class="fas fa-cog"></i>
+        <span>Technical</span>
+      </button>
+      <button class="category-btn" data-category="legal">
+        <i class="fas fa-gavel"></i>
+        <span>Legal & Compliance</span>
+      </button>
+    </div>
+
+    <!-- FAQ Grid -->
+    <div class="faq-grid">
+
+      <!-- ============================================
+           GETTING STARTED QUESTIONS
+           ============================================ -->
+
+      <!-- Q1: What is SEEDx? -->
+      <div class="faq-item fade-in-up" data-category="getting-started" style="animation-delay: 0.2s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-seedling"></i>
+          </div>
+          <h3 class="faq-question-text">What is SEEDx?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            SEEDx is a regenerative capital exchange connecting participants with verified 
+            agricultural projects across Africa. We enable direct funding of sustainable farms 
+            while providing access to farm-backed utility tokens for ecosystem participation.
+          </p>
+          <p>
+            Our platform combines blockchain transparency, IoT monitoring, and comprehensive 
+            due diligence to create a trusted marketplace for agricultural project funding 
+            and token access.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q2: How do I get started? -->
+      <div class="faq-item fade-in-up" data-category="getting-started" style="animation-delay: 0.25s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-play-circle"></i>
+          </div>
+          <h3 class="faq-question-text">How do I get started on SEEDx?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p><strong>Getting started is simple:</strong></p>
+          <ol>
+            <li><strong>Create an account</strong> - Sign up with your email and complete identity verification (KYC)</li>
+            <li><strong>Browse projects</strong> - Explore verified farms and review their documentation</li>
+            <li><strong>Choose your path</strong> - Decide whether to fund projects directly or access utility tokens</li>
+            <li><strong>Participate</strong> - Fund a farm or acquire tokens through the exchange</li>
+            <li><strong>Track progress</strong> - Monitor your participation through your personalized dashboard</li>
+          </ol>
+          <p>
+            The entire onboarding process typically takes 5-10 minutes, with KYC verification 
+            completed within 24-48 hours.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q3: Who can participate? -->
+      <div class="faq-item fade-in-up" data-category="getting-started" style="animation-delay: 0.3s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h3 class="faq-question-text">Who can participate on SEEDx?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            SEEDx is currently available to participants in supported jurisdictions who meet 
+            our eligibility requirements:
+          </p>
+          <ul>
+            <li>Must be 18 years or older</li>
+            <li>Must complete identity verification (KYC)</li>
+            <li>Must be located in a supported country (see our <a href="#">supported regions list</a>)</li>
+            <li>Must comply with local regulations regarding agricultural project participation</li>
+          </ul>
+          <p>
+            <strong>Note:</strong> Certain jurisdictions may have additional requirements or 
+            restrictions. U.S. participants may be subject to accredited investor requirements 
+            for certain project types. Please review our <a href="#">Terms of Service</a> for 
+            complete eligibility details.
+          </p>
+        </div>
+      </div>
+
+      <!-- ============================================
+           FINANCIAL QUESTIONS
+           ============================================ -->
+
+      <!-- Q4: What returns can I expect? -->
+      <div class="faq-item fade-in-up" data-category="financial" style="animation-delay: 0.35s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3 class="faq-question-text">What kind of returns can I expect from farm projects?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            <strong>Important:</strong> Returns are not guaranteed and depend entirely on project 
+            performance, market conditions, weather, and numerous other factors. Agricultural 
+            projects carry inherent risks including crop failure, market price fluctuations, 
+            and operational challenges.
+          </p>
+          <p><strong>Historical Context (Not a Guarantee):</strong></p>
+          <ul>
+            <li><strong>Completed projects</strong> have historically generated revenue distributions 
+            ranging from 8-18% annually, depending on crop type, market conditions, and project execution</li>
+            <li><strong>Timeline:</strong> Most projects have cycles of 6-18 months from funding to harvest</li>
+            <li><strong>Distribution schedule:</strong> Revenue distributions typically occur after 
+            harvest and sale of produce, subject to project milestones</li>
+          </ul>
+          <p><strong>Key Factors Affecting Returns:</strong></p>
+          <ul>
+            <li>Crop type and market demand</li>
+            <li>Weather conditions and climate factors</li>
+            <li>Farm management quality</li>
+            <li>Market prices at harvest time</li>
+            <li>Operational efficiency</li>
+            <li>Currency exchange rates (for international projects)</li>
+          </ul>
+          <p>
+            <strong>Risk Disclosure:</strong> You may lose some or all of your principal. Past 
+            performance of completed projects does not guarantee future results. Each project's 
+            detailed risk assessment is available in its documentation. Please review carefully 
+            before participating.
+          </p>
+          <div class="faq-highlight">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>
+              <strong>This is not investment advice.</strong> Revenue distributions are subject 
+              to project performance and are not guaranteed. Consult with qualified financial 
+              and legal professionals before participating.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q5: What are the fees? -->
+      <div class="faq-item fade-in-up" data-category="financial" style="animation-delay: 0.4s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-dollar-sign"></i>
+          </div>
+          <h3 class="faq-question-text">What fees does SEEDx charge?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p><strong>Our fee structure is transparent and straightforward:</strong></p>
+          
+          <div class="fee-table">
+            <div class="fee-row">
+              <div class="fee-type">
+                <strong>Platform Fee (Primers)</strong>
+                <span>For direct farm funding</span>
+              </div>
+              <div class="fee-amount">2-3%</div>
+            </div>
+            <div class="fee-row">
+              <div class="fee-type">
+                <strong>Transaction Fee (Regenerators)</strong>
+                <span>For token exchanges</span>
+              </div>
+              <div class="fee-amount">0.5-1%</div>
+            </div>
+            <div class="fee-row">
+              <div class="fee-type">
+                <strong>Success Fee</strong>
+                <span>Only charged on revenue distributions</span>
+              </div>
+              <div class="fee-amount">10-15%</div>
+            </div>
+            <div class="fee-row">
+              <div class="fee-type">
+                <strong>Withdrawal Fee</strong>
+                <span>For fiat currency withdrawals</span>
+              </div>
+              <div class="fee-amount">$5-25</div>
+            </div>
+          </div>
+
+          <p><strong>What's Included:</strong></p>
+          <ul>
+            <li>Comprehensive due diligence and verification</li>
+            <li>Ongoing project monitoring and reporting</li>
+            <li>Blockchain transaction processing</li>
+            <li>Customer support and platform access</li>
+            <li>Legal and compliance infrastructure</li>
+          </ul>
+
+          <p>
+            <strong>No Hidden Fees:</strong> All fees are disclosed upfront before you participate 
+            in any project or transaction. Detailed fee breakdowns are available in each project's 
+            documentation.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q6: Minimum participation amount? -->
+      <div class="faq-item fade-in-up" data-category="financial" style="animation-delay: 0.45s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-hand-holding-usd"></i>
+          </div>
+          <h3 class="faq-question-text">What is the minimum amount to participate?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            Minimum participation amounts vary by project type and jurisdiction:
+          </p>
+          <ul>
+            <li><strong>Direct farm funding (Primers):</strong> Typically $500-$5,000 minimum, 
+            depending on the specific project and your location</li>
+            <li><strong>Token access (Regenerators):</strong> No minimum for token exchanges; 
+            you can start with any amount</li>
+            <li><strong>U.S. participants:</strong> May be subject to higher minimums or 
+            accredited investor requirements for certain project types</li>
+          </ul>
+          <p>
+            Each project page clearly displays its minimum participation amount. We recommend 
+            starting with amounts you're comfortable potentially losing, as all agricultural 
+            projects carry risk.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q7: How do I receive distributions? -->
+      <div class="faq-item fade-in-up" data-category="financial" style="animation-delay: 0.5s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-coins"></i>
+          </div>
+          <h3 class="faq-question-text">How and when do I receive revenue distributions?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p><strong>Distribution Process:</strong></p>
+          <ol>
+            <li><strong>Harvest & Sale:</strong> Farm produces are harvested and sold to buyers</li>
+            <li><strong>Revenue Calculation:</strong> Net revenue is calculated after deducting 
+            operational costs, fees, and reserves</li>
+            <li><strong>Distribution:</strong> Revenue is distributed proportionally to participants 
+            based on their funding percentage</li>
+            <li><strong>Payment:</strong> Distributions are sent to your SEEDx wallet in stablecoins 
+            (USDC/USDT) or your preferred currency</li>
+          </ol>
+
+          <p><strong>Timeline:</strong></p>
+          <ul>
+            <li>Distributions typically occur 30-60 days after harvest and sale completion</li>
+            <li>Some projects may have multiple distribution events (e.g., multiple harvests)</li>
+            <li>Exact timelines are specified in each project's documentation</li>
+          </ul>
+
+          <p><strong>Tracking:</strong></p>
+          <ul>
+            <li>All distributions are recorded on-chain for transparency</li>
+            <li>You'll receive email notifications when distributions are processed</li>
+            <li>View complete distribution history in your dashboard</li>
+          </ul>
+
+          <p>
+            <strong>Important:</strong> Distributions are subject to project performance and are 
+            not guaranteed. If a project underperforms or fails, distributions may be reduced or 
+            eliminated entirely.
+          </p>
+        </div>
+      </div>
+
+      <!-- ============================================
+           TECHNICAL QUESTIONS
+           ============================================ -->
+
+      <!-- Q8: What blockchain does SEEDx use? -->
+      <div class="faq-item fade-in-up" data-category="technical" style="animation-delay: 0.55s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-cube"></i>
+          </div>
+          <h3 class="faq-question-text">What blockchain technology does SEEDx use?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            SEEDx is built on <strong>Ethereum-compatible blockchains</strong> (including Polygon 
+            and other Layer 2 solutions) to ensure:
+          </p>
+          <ul>
+            <li><strong>Transparency:</strong> All transactions are publicly verifiable on-chain</li>
+            <li><strong>Security:</strong> Smart contracts are audited and battle-tested</li>
+            <li><strong>Low fees:</strong> Layer 2 solutions minimize transaction costs</li>
+            <li><strong>Speed:</strong> Fast transaction confirmation times</li>
+            <li><strong>Interoperability:</strong> Compatible with major wallets and DeFi protocols</li>
+          </ul>
+
+          <p><strong>Smart Contract Features:</strong></p>
+          <ul>
+            <li>Milestone-based fund releases</li>
+            <li>Automated distribution calculations</li>
+            <li>Multi-signature security for large transactions</li>
+            <li>Transparent audit trails</li>
+          </ul>
+
+          <p>
+            You don't need to be a blockchain expert to use SEEDx. Our platform handles all 
+            technical complexity behind the scenes while giving you the benefits of blockchain 
+            transparency and security.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q9: Do I need a crypto wallet? -->
+      <div class="faq-item fade-in-up" data-category="technical" style="animation-delay: 0.6s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-wallet"></i>
+          </div>
+          <h3 class="faq-question-text">Do I need a cryptocurrency wallet to use SEEDx?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p><strong>No, but it's recommended for advanced users.</strong></p>
+
+          <p><strong>Option 1: SEEDx Custodial Wallet (Easiest)</strong></p>
+          <ul>
+            <li>Automatically created when you sign up</li>
+            <li>We manage the technical details for you</li>
+            <li>Fund with credit card, bank transfer, or crypto</li>
+            <li>Best for beginners and most users</li>
+          </ul>
+
+          <p><strong>Option 2: Connect Your Own Wallet (Advanced)</strong></p>
+          <ul>
+            <li>Connect MetaMask, WalletConnect, or other Web3 wallets</li>
+            <li>Maintain full custody of your assets</li>
+            <li>Interact directly with smart contracts</li>
+            <li>Best for experienced crypto users</li>
+          </ul>
+
+          <p>
+            Both options provide the same access to projects and features. Choose what's most 
+            comfortable for you.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q10: How is my data protected? -->
+      <div class="faq-item fade-in-up" data-category="technical" style="animation-delay: 0.65s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <h3 class="faq-question-text">How does SEEDx protect my data and funds?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p><strong>Security Measures:</strong></p>
+          
+          <p><strong>Fund Protection:</strong></p>
+          <ul>
+            <li>Multi-signature wallets for large fund movements</li>
+            <li>Cold storage for majority of platform assets</li>
+            <li>Smart contract audits by leading security firms</li>
+            <li>Insurance coverage for platform-held funds (up to certain limits)</li>
+            <li>Regular security penetration testing</li>
+          </ul>
+
+          <p><strong>Data Protection:</strong></p>
+          <ul>
+            <li>Bank-level encryption (AES-256) for all sensitive data</li>
+            <li>Two-factor authentication (2FA) required for all accounts</li>
+            <li>SOC 2 Type II compliance</li>
+            <li>GDPR compliant data handling</li>
+            <li>Regular third-party security audits</li>
+          </ul>
+
+          <p><strong>Operational Security:</strong></p>
+          <ul>
+            <li>24/7 security monitoring and threat detection</li>
+            <li>Withdrawal whitelist and time-delay options</li>
+            <li>Email/SMS alerts for all account activities</li>
+            <li>IP whitelisting available for enhanced security</li>
+          </ul>
+
+          <p>
+            While we implement industry-leading security measures, no system is 100% secure. 
+            We recommend enabling all available security features and using strong, unique passwords.
+          </p>
+        </div>
+      </div>
+
+      <!-- ============================================
+           LEGAL & COMPLIANCE QUESTIONS
+           ============================================ -->
+
+      <!-- Q11: Are farm tokens securities? -->
+      <div class="faq-item fade-in-up" data-category="legal" style="animation-delay: 0.7s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-gavel"></i>
+          </div>
+          <h3 class="faq-question-text">Are farm tokens considered securities?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            <strong>Farm tokens on SEEDx are designed as utility tokens</strong> that provide 
+            access to platform features and agricultural project ecosystems. They are not 
+            intended to be investment securities or investment contracts.
+          </p>
+
+          <p><strong>Utility Token Characteristics:</strong></p>
+          <ul>
+            <li>Provide access to platform services and features</li>
+            <li>Enable participation in agricultural project ecosystems</li>
+            <li>Facilitate exchange within the SEEDx marketplace</li>
+            <li>Do not represent equity ownership in farms or SEEDx</li>
+            <li>Do not promise or guarantee returns</li>
+          </ul>
+
+          <p><strong>Important Legal Considerations:</strong></p>
+          <ul>
+            <li>Token classification may vary by jurisdiction</li>
+            <li>Regulatory frameworks for digital assets are evolving</li>
+            <li>Some jurisdictions may classify certain tokens differently</li>
+            <li>We comply with applicable regulations in all operating jurisdictions</li>
+          </ul>
+
+          <p>
+            <strong>Direct farm funding participation</strong> may be subject to securities 
+            regulations in certain jurisdictions, including potential accredited investor 
+            requirements in the United States.
+          </p>
+
+          <div class="faq-highlight">
+            <i class="fas fa-info-circle"></i>
+            <p>
+              <strong>This is not legal advice.</strong> Token classification and regulatory 
+              requirements vary by jurisdiction. Consult with qualified legal counsel regarding 
+              your specific situation and local regulations.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q12: What are the tax implications? -->
+      <div class="faq-item fade-in-up" data-category="legal" style="animation-delay: 0.75s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-file-invoice-dollar"></i>
+          </div>
+          <h3 class="faq-question-text">What are the tax implications of using SEEDx?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            <strong>Tax treatment varies significantly by jurisdiction and individual circumstances.</strong> 
+            We cannot provide tax advice, but here are general considerations:
+          </p>
+
+          <p><strong>Potential Taxable Events:</strong></p>
+          <ul>
+            <li><strong>Revenue distributions:</strong> May be taxable as income in your jurisdiction</li>
+            <li><strong>Token exchanges:</strong> May trigger capital gains/losses</li>
+            <li><strong>Token appreciation:</strong> May be subject to capital gains tax when sold</li>
+            <li><strong>Cryptocurrency transactions:</strong> May have specific reporting requirements</li>
+          </ul>
+
+          <p><strong>SEEDx Tax Support:</strong></p>
+          <ul>
+            <li>Annual tax statements summarizing your activity</li>
+            <li>Transaction history export (CSV format)</li>
+            <li>On-chain transaction records for verification</li>
+            <li>Integration with popular crypto tax software (coming soon)</li>
+          </ul>
+
+          <p><strong>Jurisdiction-Specific Considerations:</strong></p>
+          <ul>
+            <li><strong>United States:</strong> IRS treats cryptocurrency as property; revenue 
+            distributions may be ordinary income; consult a CPA familiar with crypto taxation</li>
+            <li><strong>European Union:</strong> Tax treatment varies by member state; some 
+            countries have specific crypto tax regimes</li>
+            <li><strong>Africa:</strong> Tax regulations vary widely; some countries have 
+            emerging crypto tax frameworks</li>
+          </ul>
+
+          <div class="faq-highlight">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>
+              <strong>Consult a tax professional.</strong> Tax laws are complex and vary by 
+              jurisdiction. This information is for general awareness only and is not tax advice. 
+              Consult with a qualified tax advisor familiar with cryptocurrency and agricultural 
+              investments in your jurisdiction.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q13: What happens if a farm fails? -->
+      <div class="faq-item fade-in-up" data-category="legal" style="animation-delay: 0.8s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-exclamation-circle"></i>
+          </div>
+          <h3 class="faq-question-text">What happens if a farm project fails or underperforms?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            <strong>Agricultural projects carry inherent risks,</strong> and despite our rigorous 
+            verification process, some projects may underperform or fail. Here's what happens:
+          </p>
+
+          <p><strong>Risk Mitigation Measures:</strong></p>
+          <ul>
+            <li><strong>Milestone-based funding:</strong> Funds are released in stages as projects 
+            hit verified milestones, reducing total exposure</li>
+            <li><strong>Reserve funds:</strong> Projects maintain operational reserves for 
+            unexpected challenges</li>
+            <li><strong>Insurance:</strong> Many projects carry crop insurance (where available)</li>
+            <li><strong>Diversification:</strong> We encourage participants to spread funding 
+            across multiple projects</li>
+          </ul>
+
+          <p><strong>If a Project Underperforms:</strong></p>
+          <ul>
+            <li>Participants are notified immediately with detailed explanation</li>
+            <li>Project team works with agricultural experts to implement recovery measures</li>
+            <li>Remaining funds may be reallocated or returned (minus costs incurred)</li>
+            <li>Revenue distributions are reduced proportionally to actual performance</li>
+          </ul>
+
+          <p><strong>If a Project Fails Completely:</strong></p>
+          <ul>
+            <li>Full transparency report provided to all participants</li>
+            <li>Any recoverable assets or insurance proceeds are distributed proportionally</li>
+            <li>Lessons learned are incorporated into future due diligence processes</li>
+            <li>Participants may lose some or all of their principal</li>
+          </ul>
+
+          <p><strong>Historical Context:</strong></p>
+          <ul>
+            <li>To date, [X]% of projects have completed successfully</li>
+            <li>[Y]% have experienced partial underperformance but still generated distributions</li>
+            <li>[Z]% have resulted in significant losses to participants</li>
+          </ul>
+
+          <div class="faq-highlight">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>
+              <strong>Risk Warning:</strong> You may lose some or all of your principal. Only 
+              participate with amounts you can afford to lose. Past performance does not guarantee 
+              future results. Diversification does not eliminate risk.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q14: Can I withdraw anytime? -->
+      <div class="faq-item fade-in-up" data-category="financial" style="animation-delay: 0.85s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-sign-out-alt"></i>
+          </div>
+          <h3 class="faq-question-text">Can I withdraw my funds at any time?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p><strong>It depends on your participation type:</strong></p>
+
+          <p><strong>Direct Farm Funding (Primers):</strong></p>
+          <ul>
+            <li><strong>Before project starts:</strong> Full withdrawal available (minus any 
+            processing fees)</li>
+            <li><strong>After project starts:</strong> Funds are committed until project completion 
+            or failure; early withdrawal not available</li>
+            <li><strong>Lock-up period:</strong> Typically 6-18 months depending on crop cycle</li>
+            <li><strong>Distributions:</strong> Received after harvest and can be withdrawn immediately</li>
+          </ul>
+
+          <p><strong>Token Holdings (Regenerators):</strong></p>
+          <ul>
+            <li><strong>Tokens:</strong> Can be exchanged on the platform at any time, subject 
+            to marketplace liquidity</li>
+            <li><strong>Wallet funds:</strong> Can be withdrawn to external wallets or converted 
+            to fiat anytime</li>
+            <li><strong>No lock-up:</strong> Tokens are not subject to lock-up periods</li>
+          </ul>
+
+          <p><strong>Withdrawal Process:</strong></p>
+          <ol>
+            <li>Request withdrawal from your dashboard</li>
+            <li>Choose withdrawal method (crypto wallet, bank transfer, etc.)</li>
+            <li>Complete any required verification</li>
+            <li>Funds typically arrive within 1-5 business days (depending on method)</li>
+          </ol>
+
+          <p>
+            <strong>Important:</strong> Direct farm funding is illiquid until project completion. 
+            Only participate with funds you won't need during the project timeline.
+          </p>
+        </div>
+      </div>
+
+      <!-- Q15: How are farms verified? -->
+      <div class="faq-item fade-in-up" data-category="getting-started" style="animation-delay: 0.9s;">
+        <div class="faq-question">
+          <div class="faq-icon">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <h3 class="faq-question-text">How does SEEDx verify and vet farm projects?</h3>
+          <div class="faq-toggle">
+            <i class="fas fa-plus"></i>
+          </div>
+        </div>
+        <div class="faq-answer">
+          <p>
+            <strong>Every project undergoes our comprehensive 7-stage verification process:</strong>
+          </p>
+
+          <p><strong>Stage 1: Initial Screening</strong></p>
+          <ul>
+            <li>Business plan review</li>
+            <li>Team background checks</li>
+            <li>Market opportunity assessment</li>
+            <li>Preliminary financial analysis</li>
+          </ul>
+
+          <p><strong>Stage 2: Legal Due Diligence</strong></p>
+          <ul>
+            <li>Land ownership verification</li>
+            <li>Regulatory compliance review</li>
+            <li>Contract and agreement analysis</li>
+            <li>Intellectual property verification</li>
+          </ul>
+
+          <p><strong>Stage 3: Financial Audit</strong></p>
+          <ul>
+            <li>Historical financial statement review</li>
+            <li>Cash flow projections analysis</li>
+            <li>Cost structure verification</li>
+            <li>Revenue model validation</li>
+          </ul>
+
+          <p><strong>Stage 4: Physical Site Visit</strong></p>
+          <ul>
+            <li>On-site inspection by agricultural experts</li>
+            <li>Soil quality testing</li>
+            <li>Infrastructure assessment</li>
+            <li>Photo and video documentation</li>
+          </ul>
+
+          <p><strong>Stage 5: Environmental Assessment</strong></p>
+          <ul>
+            <li>Sustainability practices evaluation</li>
+            <li>Environmental impact analysis</li>
+            <li>Regenerative agriculture verification</li>
+            <li>Biodiversity impact assessment</li>
+          </ul>
+
+          <p><strong>Stage 6: Risk Analysis</strong></p>
+          <ul>
+            <li>Market risk evaluation</li>
+            <li>Operational risk assessment</li>
+            <li>Climate and weather risk analysis</li>
+            <li>Overall risk rating assignment</li>
+          </ul>
+
+          <p><strong>Stage 7: Ongoing Monitoring</strong></p>
+          <ul>
+            <li>IoT sensor deployment</li>
+            <li>Regular progress reporting</li>
+            <li>Milestone verification</li>
+            <li>Continuous compliance monitoring</li>
+          </ul>
+
+          <p>
+            <strong>Approval Rate:</strong> Only about 15-20% of submitted projects pass our 
+            complete verification process and are listed on the platform.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Still Have Questions CTA -->
+    <div class="faq-cta fade-in-up" style="animation-delay: 1s;">
+      <div class="faq-cta-content">
+        <div class="faq-cta-icon">
+          <i class="fas fa-comments"></i>
+        </div>
+        <div class="faq-cta-text">
+          <h3>Still have questions?</h3>
+          <p>Our team is here to help. Get in touch and we'll respond within 24 hours.</p>
+        </div>
+        <div class="faq-cta-buttons">
+          <a href="#" class="faq-cta-btn primary">
+            <i class="fas fa-envelope"></i>
+            <span>Contact Support</span>
+          </a>
+          <a href="#" class="faq-cta-btn secondary">
+            <i class="fas fa-book"></i>
+            <span>View Documentation</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+COMPLETE CSS:
+
+/* ============================================
+   FAQ SECTION
+   ============================================ */
+
+.faq-section {
+  background: linear-gradient(180deg, #0A0F1E 0%, #0F172A 100%);
+  padding: 120px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.faq-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(251, 191, 54, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.faq-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   SECTION HEADER
+   ============================================ */
+
+.faq-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.faq-label {
+  display: inline-block;
+  padding: 8px 20px;
+  background: rgba(251, 191, 54, 0.12);
+  border: 1px solid rgba(251, 191, 54, 0.3);
+  border-radius: 24px;
+  color: #FBB936;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  box-shadow: 0 0 20px rgba(251, 191, 54, 0.15);
+}
+
+.faq-title {
+  font-size: 64px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.faq-subtitle {
+  font-size: 20px;
+  color: #94A3B8;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.contact-link {
+  color: #10B981;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+}
+
+.contact-link:hover {
+  color: #FBB936;
+  border-bottom-color: rgba(251, 191, 54, 0.5);
+}
+
+/* ============================================
+   FAQ CATEGORIES
+   ============================================ */
+
+.faq-categories {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 60px;
+  flex-wrap: wrap;
+}
+
+.category-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #94A3B8;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.category-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.category-btn.active {
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  border-color: #FBB936;
+  color: #0A0F1E;
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.3);
+}
+
+.category-btn i {
+  font-size: 16px;
+}
+
+/* ============================================
+   FAQ GRID
+   ============================================ */
+
+.faq-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 60px;
+}
+
+/* ============================================
+   FAQ ITEM
+   ============================================ */
+
+.faq-item {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(251, 191, 54, 0.3);
+}
+
+.faq-item.active {
+  border-color: rgba(251, 191, 54, 0.5);
+  box-shadow: 0 8px 24px rgba(251, 191, 54, 0.15);
+}
+
+/* ============================================
+   FAQ QUESTION
+   ============================================ */
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 32px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.faq-question:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.faq-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #0A0F1E;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.faq-item:hover .faq-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.faq-question-text {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.faq-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.faq-toggle i {
+  font-size: 16px;
+  color: #FBB936;
+  transition: transform 0.3s ease;
+}
+
+.faq-item.active .faq-toggle {
+  background: rgba(251, 191, 54, 0.15);
+}
+
+.faq-item.active .faq-toggle i {
+  transform: rotate(45deg);
+}
+
+/* ============================================
+   FAQ ANSWER
+   ============================================ */
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease, padding 0.5s ease;
+}
+
+.faq-item.active .faq-answer {
+  max-height: 3000px;
+  padding: 0 32px 32px 100px;
+}
+
+.faq-answer p {
+  font-size: 16px;
+  color: #CBD5E1;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+
+.faq-answer p:last-child {
+  margin-bottom: 0;
+}
+
+.faq-answer strong {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.faq-answer ul,
+.faq-answer ol {
+  margin: 16px 0;
+  padding-left: 24px;
+}
+
+.faq-answer li {
+  font-size: 15px;
+  color: #CBD5E1;
+  line-height: 1.8;
+  margin-bottom: 12px;
+}
+
+.faq-answer a {
+  color: #10B981;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+}
+
+.faq-answer a:hover {
+  color: #FBB936;
+  border-bottom-color: rgba(251, 191, 54, 0.5);
+}
+
+/* ============================================
+   FAQ HIGHLIGHT BOX
+   ============================================ */
+
+.faq-highlight {
+  display: flex;
+  gap: 16px;
+  padding: 20px 24px;
+  background: rgba(251, 191, 54, 0.08);
+  border: 1px solid rgba(251, 191, 54, 0.3);
+  border-left: 4px solid #FBB936;
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+.faq-highlight i {
+  font-size: 24px;
+  color: #FBB936;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.faq-highlight p {
+  margin: 0;
+  font-size: 14px;
+  color: #E2E8F0;
+  line-height: 1.7;
+}
+
+/* ============================================
+   FEE TABLE
+   ============================================ */
+
+.fee-table {
+  margin: 24px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.fee-row:last-child {
+  border-bottom: none;
+}
+
+.fee-type {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fee-type strong {
+  font-size: 16px;
+  color: #FFFFFF;
+}
+
+.fee-type span {
+  font-size: 13px;
+  color: #94A3B8;
+}
+
+.fee-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: #10B981;
+}
+
+/* ============================================
+   FAQ CTA
+   ============================================ */
+
+.faq-cta {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 48px 40px;
+}
+
+.faq-cta-content {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.faq-cta-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.faq-cta-text {
+  flex: 1;
+  min-width: 250px;
+}
+
+.faq-cta-text h3 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 8px;
+}
+
+.faq-cta-text p {
+  font-size: 16px;
+  color: #94A3B8;
+  margin: 0;
+}
+
+.faq-cta-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.faq-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.faq-cta-btn.primary {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.faq-cta-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+}
+
+.faq-cta-btn.secondary {
+  background: transparent;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  color: #10B981;
+}
+
+.faq-cta-btn.secondary:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10B981;
+  transform: translateY(-3px);
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .faq-section {
+    padding: 80px 20px;
+  }
+
+  .faq-title {
+    font-size: 42px;
+  }
+
+  .faq-subtitle {
+    font-size: 18px;
+  }
+
+  .faq-categories {
+    flex-direction: column;
+  }
+
+  .category-btn {
+    justify-content: center;
+  }
+
+  .faq-question {
+    padding: 20px;
+    gap: 12px;
+  }
+
+  .faq-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .faq-question-text {
+    font-size: 17px;
+  }
+
+  .faq-item.active .faq-answer {
+    padding: 0 20px 24px 20px;
+  }
+
+  .fee-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .faq-cta-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .faq-cta-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .faq-cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+JAVASCRIPT FOR FAQ FUNCTIONALITY (Add to your script):
+
+<script>
+// FAQ Accordion Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const faqItems = document.querySelectorAll('.faq-item');
+  const categoryButtons = document.querySelectorAll('.category-btn');
+
+  // Accordion functionality
+  faqItems.forEach(item => {
+    const question = item.querySelector('.faq-question');
+    
+    question.addEventListener('click', function() {
+      const isActive = item.classList.contains('active');
+      
+      // Close all items
+      faqItems.forEach(i => i.classList.remove('active'));
+      
+      // Open clicked item if it wasn't active
+      if (!isActive) {
+        item.classList.add('active');
+      }
+    });
+  });
+
+  // Category filter functionality
+  categoryButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove active class from all buttons
+      categoryButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      this.classList.add('active');
+      
+      // Get filter value
+      const filterValue = this.getAttribute('data-category');
+      
+      // Filter FAQ items
+      faqItems.forEach(item => {
+        const itemCategory = item.getAttribute('data-category');
+        
+        if (filterValue === 'all' || itemCategory === filterValue) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+          item.classList.remove('active'); // Close hidden items
+        }
+      });
+    });
+  });
+});
+</script>
+
+IMPLEMENTATION CHECKLIST:
+□ Add HTML after "Why SEEDx" section
+□ Add all CSS to stylesheet
+□ Add JavaScript for accordion and filtering
+□ Replace placeholder data ([X]%, [Y]%, [Z]%) with real stats
+□ Review all legal disclaimers with counsel
+□ Verify all links work
+□ Test accordion open/close functionality
+□ Test category filtering
+□ Check mobile responsiveness
+□ Verify highlight boxes display correctly
+□ Test fee table on mobile
+□ Ensure all icons display properly
+□ Review all content for accuracy
+□ Add actual contact links
+
+IMPORTANT NOTES:
+- Replace [X]%, [Y]%, [Z]% in Q13 with actual historical data
+- Have legal counsel review all disclaimers
+- Update "supported regions list" link
+- Add actual contact support link
+- Consider adding more FAQs based on common user questions
+- Update fee percentages if they differ from examples
+🎯 WHAT THIS FAQ ACHIEVES:
+Legal Protection:
+✅ ROI discussion - In educational context with heavy disclaimers
+✅ Risk warnings - Throughout, especially in financial questions
+✅ No guarantees - Clear language about uncertainty
+✅ Tax guidance - General info + "consult professional"
+✅ Token classification - Utility token explanation
+✅ Failure scenarios - Transparent about risks
+
+Conversion Optimization:
+✅ Addresses objections - Before they become blockers
+✅ Builds trust - Transparency about risks and processes
+✅ Educates users - Comprehensive information
+✅ Reduces support load - Answers common questions
+
+User Experience:
+✅ Category filtering - Easy to find relevant questions
+✅ Accordion design - Clean, scannable layout
+✅ Visual hierarchy - Icons, highlights, tables
+✅ Mobile optimized - Works perfectly on all devices
+
+⚖️ KEY LEGAL FEATURES:
+Returns Discussion (Q4):
+✅ Historical context (not promises)
+✅ "8-18% annually" range (past performance)
+✅ Heavy risk disclaimers
+✅ "Not guaranteed" repeated
+✅ Factors affecting returns listed
+✅ "Not investment advice" warning
+
+Risk Transparency (Q13):
+✅ Honest about failure scenarios
+✅ Historical success/failure rates
+✅ Mitigation measures explained
+✅ Loss of principal warning
+
+Tax Guidance (Q12):
+✅ General information only
+✅ Jurisdiction-specific notes
+✅ "Consult tax professional" repeated
+✅ Not tax advice disclaimer
