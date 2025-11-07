@@ -10,12 +10,12 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-gray-800 bg-gradient-to-b from-gray-950/95 to-gray-900/90 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 text-[15px]">
-        <div className="flex items-center justify-between h-12">
+        <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
             <img 
               src={logoImage} 
               alt="SEEDx" 
-              className="h-8 w-auto drop-shadow-md"
+              className="h-12 w-auto drop-shadow-lg brightness-110 contrast-110"
               data-testid="img-navbar-logo"
             />
           </Link>
