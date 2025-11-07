@@ -59,9 +59,9 @@ export default function CircuitOverlay() {
             </feMerge>
           </filter>
           <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#00ffcc" stopOpacity="0" />
-            <stop offset="50%" stopColor="#00ffcc" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#00ffcc" stopOpacity="0" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -75,7 +75,7 @@ export default function CircuitOverlay() {
                 width={element.width}
                 height={element.height}
                 fill="none"
-                stroke="#00ffcc"
+                stroke="#ffffff"
                 strokeWidth="0.15"
                 filter="url(#glow)"
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -127,7 +127,7 @@ export default function CircuitOverlay() {
                 cx={element.x}
                 cy={element.y}
                 r="0.2"
-                fill="#00ffcc"
+                fill="#ffffff"
                 filter="url(#glow)"
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{
@@ -156,9 +156,9 @@ export default function CircuitOverlay() {
             ease: 'easeInOut',
           }}
         >
-          <rect x="10" y="15" width="8" height="6" fill="none" stroke="#00ffcc" strokeWidth="0.15" />
-          <line x1="10" y1="18" x2="18" y2="18" stroke="#00ffcc" strokeWidth="0.1" />
-          <line x1="14" y1="15" x2="14" y2="21" stroke="#00ffcc" strokeWidth="0.1" />
+          <rect x="10" y="15" width="8" height="6" fill="none" stroke="#ffffff" strokeWidth="0.15" />
+          <line x1="10" y1="18" x2="18" y2="18" stroke="#ffffff" strokeWidth="0.1" />
+          <line x1="14" y1="15" x2="14" y2="21" stroke="#ffffff" strokeWidth="0.1" />
         </motion.g>
 
         <motion.g
@@ -171,15 +171,15 @@ export default function CircuitOverlay() {
             ease: 'easeInOut',
           }}
         >
-          <rect x="75" y="25" width="10" height="8" fill="none" stroke="#00ffcc" strokeWidth="0.15" />
-          <rect x="76" y="26" width="3" height="3" fill="none" stroke="#00ffcc" strokeWidth="0.1" />
-          <rect x="81" y="26" width="3" height="3" fill="none" stroke="#00ffcc" strokeWidth="0.1" />
+          <rect x="75" y="25" width="10" height="8" fill="none" stroke="#ffffff" strokeWidth="0.15" />
+          <rect x="76" y="26" width="3" height="3" fill="none" stroke="#ffffff" strokeWidth="0.1" />
+          <rect x="81" y="26" width="3" height="3" fill="none" stroke="#ffffff" strokeWidth="0.1" />
         </motion.g>
 
         <motion.path
           d="M 20 80 L 30 80 L 30 85 L 25 85 L 25 90"
           fill="none"
-          stroke="#00ffcc"
+          stroke="#ffffff"
           strokeWidth="0.15"
           filter="url(#glow)"
           initial={{ pathLength: 0, opacity: 0 }}
@@ -198,7 +198,7 @@ export default function CircuitOverlay() {
         <motion.path
           d="M 85 70 L 90 70 L 90 80 L 85 80"
           fill="none"
-          stroke="#00ffcc"
+          stroke="#ffffff"
           strokeWidth="0.15"
           filter="url(#glow)"
           initial={{ pathLength: 0, opacity: 0 }}
