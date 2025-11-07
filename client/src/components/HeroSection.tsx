@@ -97,7 +97,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center pt-8 md:pt-12 w-full px-2 sm:px-0">
             <button
               onClick={onGetStarted}
-              className="group relative w-full sm:max-w-[300px] bg-blue-600 text-white px-5 py-3 sm:py-[13px] rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-[3px] active:translate-y-[-1px] shadow-[0_4px_12px_rgba(37,99,235,0.3),0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgba(37,99,235,0.4),0_4px_8px_rgba(0,0,0,0.15)]"
+              className="group relative w-full sm:max-w-[340px] bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-[3px] active:translate-y-[-1px] shadow-[0_4px_12px_rgba(37,99,235,0.3),0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgba(37,99,235,0.4),0_4px_8px_rgba(0,0,0,0.15)]"
               data-testid="button-become-primer"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -110,7 +110,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             </button>
             <button
               onClick={onExplore}
-              className="group relative w-full sm:max-w-[300px] bg-emerald-500 text-white px-5 py-3 sm:py-[13px] rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-[3px] active:translate-y-[-1px] shadow-[0_4px_12px_rgba(16,185,129,0.3),0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.4),0_4px_8px_rgba(0,0,0,0.15)]"
+              className="group relative w-full sm:max-w-[340px] bg-emerald-500 text-white px-5 py-3 sm:py-2.5 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-[3px] active:translate-y-[-1px] shadow-[0_4px_12px_rgba(16,185,129,0.3),0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.4),0_4px_8px_rgba(0,0,0,0.15)]"
               data-testid="button-become-regenerator"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
