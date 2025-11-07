@@ -36,22 +36,32 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             A regenerative capital exchange
           </p>
 
-          <div className="flex flex-wrap gap-4 justify-center pt-6">
-            <Button 
-              size="lg" 
-              className="text-lg px-8 bg-blue-600 hover:bg-blue-700 text-white border-0"
+          <div className="flex flex-wrap gap-6 justify-center pt-6 max-w-4xl mx-auto">
+            <Button
+              size="lg"
               onClick={onGetStarted}
+              className="flex-1 min-w-[280px] max-w-md overflow-visible bg-blue-600 backdrop-blur-sm border border-blue-500/30"
               data-testid="button-become-primer"
             >
-              Become a Primer
+              <div className="flex flex-col gap-1 py-2">
+                <span className="text-lg font-bold text-white">Become a Primer</span>
+                <span className="text-xs text-white/90 leading-relaxed font-normal">
+                  Fund agricultural deployment and participate in the regenerative cycle
+                </span>
+              </div>
             </Button>
-            <Button 
-              size="lg" 
-              className="text-lg px-8 bg-green-500 hover:bg-green-600 text-white border-0"
+            <Button
+              size="lg"
               onClick={onExplore}
+              className="flex-1 min-w-[280px] max-w-md overflow-visible bg-green-500 backdrop-blur-sm border border-green-400/30"
               data-testid="button-become-regenerator"
             >
-              Become a Regenerator
+              <div className="flex flex-col gap-1 py-2">
+                <span className="text-lg font-bold text-white">Become a Regenerator</span>
+                <span className="text-xs text-white/90 leading-relaxed font-normal">
+                  Acquire and trade tokens backed by verified agricultural projects
+                </span>
+              </div>
             </Button>
           </div>
 
