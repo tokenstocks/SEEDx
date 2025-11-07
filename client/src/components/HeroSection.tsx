@@ -209,7 +209,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.5, delay: 1.5, ease: "easeOut" }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white opacity-80 hover:opacity-100 cursor-pointer z-20 transition-opacity duration-300"
+          className="absolute bottom-6 right-8 flex flex-col items-center gap-2 text-white opacity-80 hover:opacity-100 cursor-pointer z-20 transition-opacity duration-300"
           onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
           data-testid="scroll-indicator"
         >
