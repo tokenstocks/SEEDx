@@ -76,11 +76,11 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-600" />
-              <span>Trusted by memberd across the globe</span>
+              <span>Trusted by members across the globe</span>
             </div>
             <div className="flex items-center gap-2">
               <Sprout className="w-4 h-4 text-green-600" />
-              <span>$5.2M in verified agricultural assets</span>
+              <span>Farm-to-Token Pipeline</span>
             </div>
             <div className="flex items-center gap-2">
               <Leaf className="w-4 h-4 text-green-600" />
