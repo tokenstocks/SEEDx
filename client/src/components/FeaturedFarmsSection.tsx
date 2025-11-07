@@ -185,7 +185,7 @@ export default function FeaturedFarmsSection() {
               <p className="text-sm text-slate-400 leading-relaxed text-center">
                 <strong className="text-amber-400 font-bold">Participation Notice:</strong> All projects involve risk. 
                 Funding amounts are not guaranteed to be returned. Project performance varies. 
-                Farm tokens provide utility access and do not represent equity or investment securities. 
+                Farm tokens provide utility access and do not represent equity or securities. 
                 Review all documentation carefully before participating.
               </p>
             </div>

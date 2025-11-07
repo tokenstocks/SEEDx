@@ -374,9 +374,9 @@ export default function HowItWorksSection() {
               including the possible loss of principal. Past performance does not guarantee future results. 
               Revenue distributions are subject to project performance and are not guaranteed. 
               Farm tokens are utility tokens providing access to platform features and do not represent 
-              equity ownership, investment securities, or investment contracts. Token values may fluctuate. 
+              equity ownership, securities, or contracts for financial returns. Token values may fluctuate. 
               Please review all project documentation, risk factors, and terms of service carefully before 
-              participating. This platform does not provide investment advice. Consult with qualified 
+              participating. This platform does not provide financial advice. Consult with qualified 
               professionals regarding your specific situation.
             </p>
             <p className="text-xs text-slate-500 pt-4 border-t border-amber-500/20 italic">

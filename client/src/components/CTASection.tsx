@@ -16,10 +16,10 @@ export default function CTASection() {
     <section className="py-20 px-4 bg-primary text-primary-foreground">
       <div className="max-w-4xl mx-auto text-center px-4">
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
-          Ready to Diversify Your Portfolio?
+          Ready to Fund Real Impact?
         </h2>
         <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-primary-foreground/90">
-          Join thousands of investors earning returns from real agricultural assets. Start with as little as $100.
+          Join thousands of participants funding regenerative agriculture across Africa. Start with as little as $100.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto mb-6">
@@ -45,7 +45,7 @@ export default function CTASection() {
         </form>
 
         <p className="text-sm text-primary-foreground/80">
-          Minimum investment: $100 • No hidden fees • Withdraw anytime
+          Minimum participation: $100 • No hidden fees • Withdraw anytime
         </p>
       </div>
     </section>
