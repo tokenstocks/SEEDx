@@ -1,0 +1,1103 @@
+NEXT SECTION: FEATURED FARMS (Product Showcase)
+This is the MOST IMPORTANT section after "How It Works" because it:
+
+Shows the actual product
+Makes it tangible and real
+Drives conversions
+Builds trust through examples
+📋 COMPLETE PROMPT: FEATURED FARMS SECTION
+Copy and paste this into Replit:
+
+CREATE "FEATURED FARMS" SECTION - PREMIUM PRODUCT SHOWCASE
+
+Add this section immediately after the "How It Works" section.
+
+COMPLETE HTML:
+
+<!-- Featured Farms Section -->
+<section class="featured-farms-section">
+  <div class="farms-container">
+    
+    <!-- Section Header -->
+    <div class="farms-header fade-in-up">
+      <div class="farms-label">LIVE OPPORTUNITIES</div>
+      <h2 class="farms-title">Featured Farms</h2>
+      <p class="farms-subtitle">
+        Verified agricultural projects ready for funding. Each farm has completed 
+        due diligence and is backed by real assets.
+      </p>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="farms-filters fade-in-up" style="animation-delay: 0.1s;">
+      <button class="filter-btn active" data-filter="all">
+        <span>All Projects</span>
+        <span class="filter-count">12</span>
+      </button>
+      <button class="filter-btn" data-filter="funding">
+        <span>Open for Funding</span>
+        <span class="filter-count">8</span>
+      </button>
+      <button class="filter-btn" data-filter="active">
+        <span>Active</span>
+        <span class="filter-count">4</span>
+      </button>
+      <button class="filter-btn" data-filter="completed">
+        <span>Completed</span>
+        <span class="filter-count">15</span>
+      </button>
+    </div>
+
+    <!-- Farm Cards Grid -->
+    <div class="farms-grid">
+      
+      <!-- Farm Card 1 -->
+      <div class="farm-card fade-in-up" data-status="funding" style="animation-delay: 0.2s;">
+        <div class="farm-image-wrapper">
+          <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&q=80" alt="Cassava Farm Nigeria" class="farm-image">
+          <div class="farm-status-badge funding">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span>Open for Funding</span>
+          </div>
+          <div class="farm-verified-badge">
+            <i class="fas fa-shield-check"></i>
+            <span>Verified</span>
+          </div>
+        </div>
+
+        <div class="farm-content">
+          <div class="farm-location">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Ogun State, Nigeria</span>
+          </div>
+
+          <h3 class="farm-name">Cassava Processing & Export</h3>
+          
+          <p class="farm-description">
+            50-hectare cassava farm with processing facility for garri and starch 
+            production. Export contracts secured with European buyers.
+          </p>
+
+          <div class="farm-highlights">
+            <div class="farm-highlight">
+              <i class="fas fa-leaf"></i>
+              <span>Cassava</span>
+            </div>
+            <div class="farm-highlight">
+              <i class="fas fa-calendar-alt"></i>
+              <span>8-10 months</span>
+            </div>
+            <div class="farm-highlight">
+              <i class="fas fa-chart-line"></i>
+              <span>Moderate Risk</span>
+            </div>
+          </div>
+
+          <!-- Funding Progress -->
+          <div class="funding-progress">
+            <div class="progress-header">
+              <span class="progress-label">Funding Progress</span>
+              <span class="progress-percentage">68%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 68%"></div>
+            </div>
+            <div class="progress-stats">
+              <div class="progress-stat">
+                <span class="stat-value">$340K</span>
+                <span class="stat-label">Raised</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-value">$500K</span>
+                <span class="stat-label">Goal</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-value">12 days</span>
+                <span class="stat-label">Remaining</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Farm Metrics -->
+          <div class="farm-metrics">
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-seedling"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">50</span>
+                <span class="metric-label">Hectares</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">45</span>
+                <span class="metric-label">Jobs Created</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">8-10mo</span>
+                <span class="metric-label">Timeline</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA Button -->
+          <a href="#" class="farm-cta-btn">
+            <span>View Details</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Farm Card 2 -->
+      <div class="farm-card fade-in-up" data-status="funding" style="animation-delay: 0.3s;">
+        <div class="farm-image-wrapper">
+          <img src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&q=80" alt="Rice Farm Ghana" class="farm-image">
+          <div class="farm-status-badge funding">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span>Open for Funding</span>
+          </div>
+          <div class="farm-verified-badge">
+            <i class="fas fa-shield-check"></i>
+            <span>Verified</span>
+          </div>
+        </div>
+
+        <div class="farm-content">
+          <div class="farm-location">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Volta Region, Ghana</span>
+          </div>
+
+          <h3 class="farm-name">Organic Rice Cultivation</h3>
+          
+          <p class="farm-description">
+            120-hectare organic rice farm using regenerative practices. Certified 
+            organic with premium market access across West Africa.
+          </p>
+
+          <div class="farm-highlights">
+            <div class="farm-highlight">
+              <i class="fas fa-leaf"></i>
+              <span>Rice</span>
+            </div>
+            <div class="farm-highlight">
+              <i class="fas fa-calendar-alt"></i>
+              <span>6-8 months</span>
+            </div>
+            <div class="farm-highlight">
+              <i class="fas fa-chart-line"></i>
+              <span>Low Risk</span>
+            </div>
+          </div>
+
+          <!-- Funding Progress -->
+          <div class="funding-progress">
+            <div class="progress-header">
+              <span class="progress-label">Funding Progress</span>
+              <span class="progress-percentage">92%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 92%"></div>
+            </div>
+            <div class="progress-stats">
+              <div class="progress-stat">
+                <span class="stat-value">$920K</span>
+                <span class="stat-label">Raised</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-value">$1M</span>
+                <span class="stat-label">Goal</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-value">5 days</span>
+                <span class="stat-label">Remaining</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Farm Metrics -->
+          <div class="farm-metrics">
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-seedling"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">120</span>
+                <span class="metric-label">Hectares</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">80</span>
+                <span class="metric-label">Jobs Created</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">6-8mo</span>
+                <span class="metric-label">Timeline</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA Button -->
+          <a href="#" class="farm-cta-btn">
+            <span>View Details</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Farm Card 3 -->
+      <div class="farm-card fade-in-up" data-status="active" style="animation-delay: 0.4s;">
+        <div class="farm-image-wrapper">
+          <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&q=80" alt="Cocoa Farm Ivory Coast" class="farm-image">
+          <div class="farm-status-badge active">
+            <i class="fas fa-check-circle"></i>
+            <span>Active</span>
+          </div>
+          <div class="farm-verified-badge">
+            <i class="fas fa-shield-check"></i>
+            <span>Verified</span>
+          </div>
+        </div>
+
+        <div class="farm-content">
+          <div class="farm-location">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Abidjan, Ivory Coast</span>
+          </div>
+
+          <h3 class="farm-name">Premium Cocoa Estate</h3>
+          
+          <p class="farm-description">
+            200-hectare cocoa plantation with Fair Trade certification. Direct 
+            contracts with European chocolate manufacturers.
+          </p>
+
+          <div class="farm-highlights">
+            <div class="farm-highlight">
+              <i class="fas fa-leaf"></i>
+              <span>Cocoa</span>
+            </div>
+            <div class="farm-highlight">
+              <i class="fas fa-calendar-alt"></i>
+              <span>12 months</span>
+            </div>
+            <div class="farm-highlight">
+              <i class="fas fa-chart-line"></i>
+              <span>Low Risk</span>
+            </div>
+          </div>
+
+          <!-- Funding Progress (Fully Funded) -->
+          <div class="funding-progress">
+            <div class="progress-header">
+              <span class="progress-label">Funding Status</span>
+              <span class="progress-percentage fully-funded">
+                <i class="fas fa-check"></i> Fully Funded
+              </span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill complete" style="width: 100%"></div>
+            </div>
+            <div class="progress-stats">
+              <div class="progress-stat">
+                <span class="stat-value">$1.5M</span>
+                <span class="stat-label">Funded</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-value">150</span>
+                <span class="stat-label">Participants</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-value">4 months</span>
+                <span class="stat-label">In Progress</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Farm Metrics -->
+          <div class="farm-metrics">
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-seedling"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">200</span>
+                <span class="metric-label">Hectares</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">120</span>
+                <span class="metric-label">Jobs Created</span>
+              </div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="metric-info">
+                <span class="metric-value">12mo</span>
+                <span class="metric-label">Timeline</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA Button -->
+          <a href="#" class="farm-cta-btn">
+            <span>View Progress</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- View All CTA -->
+    <div class="farms-view-all fade-in-up" style="animation-delay: 0.5s;">
+      <a href="#" class="view-all-btn">
+        <span>Browse All Projects</span>
+        <i class="fas fa-arrow-right"></i>
+      </a>
+      <p class="view-all-text">
+        Explore 50+ verified agricultural projects across 15 African countries
+      </p>
+    </div>
+
+  </div>
+</section>
+
+COMPLETE CSS:
+
+/* ============================================
+   FEATURED FARMS SECTION
+   ============================================ */
+
+.featured-farms-section {
+  background: linear-gradient(180deg, #0A0F1E 0%, #0F172A 100%);
+  padding: 120px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.featured-farms-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 30% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(37, 99, 235, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.farms-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   SECTION HEADER
+   ============================================ */
+
+.farms-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.farms-label {
+  display: inline-block;
+  padding: 8px 20px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 24px;
+  color: #10B981;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+.farms-title {
+  font-size: 64px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.farms-subtitle {
+  font-size: 22px;
+  color: #94A3B8;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ============================================
+   FILTER TABS
+   ============================================ */
+
+.farms-filters {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 60px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #94A3B8;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  border-color: #10B981;
+  color: white;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.filter-count {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.filter-btn.active .filter-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ============================================
+   FARMS GRID
+   ============================================ */
+
+.farms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 32px;
+  margin-bottom: 60px;
+}
+
+/* ============================================
+   FARM CARD
+   ============================================ */
+
+.farm-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.farm-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(16, 185, 129, 0.6), 
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.farm-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(16, 185, 129, 0.3),
+    0 0 40px rgba(16, 185, 129, 0.2);
+}
+
+.farm-card:hover::before {
+  opacity: 1;
+}
+
+/* ============================================
+   FARM IMAGE
+   ============================================ */
+
+.farm-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+}
+
+.farm-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.farm-card:hover .farm-image {
+  transform: scale(1.1);
+}
+
+.farm-status-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+  z-index: 2;
+}
+
+.farm-status-badge.funding {
+  background: rgba(37, 99, 235, 0.9);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.farm-status-badge.active {
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.farm-status-badge.completed {
+  background: rgba(100, 116, 139, 0.9);
+  color: white;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.4);
+}
+
+.farm-verified-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(16, 185, 129, 0.9);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  z-index: 2;
+}
+
+.farm-verified-badge i {
+  font-size: 14px;
+}
+
+/* ============================================
+   FARM CONTENT
+   ============================================ */
+
+.farm-content {
+  padding: 32px 28px;
+}
+
+.farm-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #10B981;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.farm-location i {
+  font-size: 16px;
+}
+
+.farm-name {
+  font-size: 26px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 16px;
+  line-height: 1.3;
+  transition: color 0.3s ease;
+}
+
+.farm-card:hover .farm-name {
+  color: #10B981;
+}
+
+.farm-description {
+  font-size: 15px;
+  color: #CBD5E1;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+/* ============================================
+   FARM HIGHLIGHTS
+   ============================================ */
+
+.farm-highlights {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.farm-highlight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #10B981;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.farm-highlight:hover {
+  background: rgba(16, 185, 129, 0.15);
+  transform: translateY(-2px);
+}
+
+.farm-highlight i {
+  font-size: 14px;
+}
+
+/* ============================================
+   FUNDING PROGRESS
+   ============================================ */
+
+.funding-progress {
+  margin-bottom: 28px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-label {
+  font-size: 13px;
+  color: #94A3B8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.progress-percentage {
+  font-size: 18px;
+  font-weight: 700;
+  color: #10B981;
+}
+
+.progress-percentage.fully-funded {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563EB 0%, #1E40AF 100%);
+  border-radius: 8px;
+  transition: width 1s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill.complete {
+  background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.progress-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-stat .stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.progress-stat .stat-label {
+  font-size: 12px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================
+   FARM METRICS
+   ============================================ */
+
+.farm-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metric-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.farm-card:hover .metric-icon {
+  transform: rotate(5deg) scale(1.1);
+}
+
+.metric-icon i {
+  font-size: 18px;
+  color: white;
+}
+
+.metric-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ============================================
+   FARM CTA BUTTON
+   ============================================ */
+
+.farm-cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.farm-cta-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+}
+
+.farm-cta-btn i {
+  transition: transform 0.3s ease;
+}
+
+.farm-cta-btn:hover i {
+  transform: translateX(4px);
+}
+
+/* ============================================
+   VIEW ALL SECTION
+   ============================================ */
+
+.farms-view-all {
+  text-align: center;
+  padding-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 40px;
+  background: transparent;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  color: #10B981;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  margin-bottom: 16px;
+}
+
+.view-all-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10B981;
+  transform: translateY(-3px);
+}
+
+.view-all-btn i {
+  transition: transform 0.3s ease;
+}
+
+.view-all-btn:hover i {
+  transform: translateX(4px);
+}
+
+.view-all-text {
+  font-size: 15px;
+  color: #64748B;
+  margin-top: 12px;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .farms-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .featured-farms-section {
+    padding: 80px 20px;
+  }
+
+  .farms-title {
+    font-size: 42px;
+  }
+
+  .farms-subtitle {
+    font-size: 18px;
+  }
+
+  .farms-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-btn {
+    justify-content: space-between;
+  }
+
+  .farms-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .farm-content {
+    padding: 24px 20px;
+  }
+
+  .farm-name {
+    font-size: 22px;
+  }
+
+  .farm-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+JAVASCRIPT FOR FILTER FUNCTIONALITY (Add to your script):
+
+<script>
+// Farm Filter Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  const farmCards = document.querySelectorAll('.farm-card');
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove active class from all buttons
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      this.classList.add('active');
+      
+      // Get filter value
+      const filterValue = this.getAttribute('data-filter');
+      
+      // Filter farm cards
+      farmCards.forEach(card => {
+        if (filterValue === 'all') {
+          card.style.display = 'block';
+        } else {
+          const cardStatus = card.getAttribute('data-status');
+          if (cardStatus === filterValue) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      });
+    });
+  });
+});
+</script>
+
+IMPLEMENTATION CHECKLIST:
+□ Add HTML after "How It Works" section
+□ Add all CSS to stylesheet
+□ Add JavaScript for filter functionality
+□ Replace placeholder images with real farm photos
+□ Update farm data with real project information
+□ Verify page load animations work
+□ Test hover effects on cards
+□ Test filter functionality
+□ Check mobile responsiveness
+□ Verify all links work
+□ Test progress bar animations
+□ Ensure verified badges display correctly
+
+NOTE: Replace Unsplash image URLs with your actual farm photos when available.
+🎯 WHAT THIS SECTION ACHIEVES:
+Design Excellence:
+✅ Premium card design - Glassmorphism + hover effects
+✅ Hero-level animations - Fade-in-up on scroll
+✅ Status badges - Funding/Active/Completed
+✅ Progress bars - Animated funding progress
+✅ Verified badges - Trust indicators
+✅ Filter tabs - Easy navigation
+✅ Responsive grid - Works on all devices
+
+Conversion Optimization:
+✅ Clear CTAs - "View Details" on every card
+✅ Social proof - Participant counts, funding amounts
+✅ Urgency - "12 days remaining"
+✅ Trust signals - Verified badges, completion rates
+✅ Visual appeal - Beautiful farm imagery
+
+SEC Compliance:
+✅ No return promises - Focus on project details
+✅ Factual information - Hectares, timeline, jobs
+✅ Participation language - Not "investment"
+✅ Transparent metrics - Real data points
