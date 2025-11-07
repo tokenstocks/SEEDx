@@ -30,7 +30,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             </h1>
           </div>
           <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
-            Plant capital.<br/>Grow impact
+            Plant capital.<br/>Grow sustainable impact.
           </h2>
           <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto">
             A regenerative capital exchange
