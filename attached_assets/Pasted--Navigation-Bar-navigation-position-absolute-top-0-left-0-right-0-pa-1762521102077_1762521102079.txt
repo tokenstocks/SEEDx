@@ -1,0 +1,122 @@
+/* Navigation Bar */
+.navigation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+/* Logo - Clean integration with glow */
+.logo {
+  width: 180px;
+  height: auto;
+  padding: 0; /* Remove padding */
+  background: none;
+  backdrop-filter: none;
+  border-radius: 0;
+  border: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5)) 
+          drop-shadow(0 0 20px rgba(16, 185, 129, 0.25));
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)) 
+          drop-shadow(0 0 30px rgba(16, 185, 129, 0.4));
+  transform: scale(1.05);
+}
+
+/* Nav Links */
+.nav-links {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.nav-links a:hover {
+  color: #10B981;
+  transform: translateY(-2px);
+}
+
+/* Nav Actions */
+.nav-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.sign-in {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sign-in:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.get-started {
+  background: #10B981;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+}
+
+.get-started:hover {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .navigation {
+    padding: 16px 24px;
+  }
+
+  .logo {
+    width: 120px;
+  }
+
+  .nav-links {
+    display: none; /* Hide on mobile, show hamburger menu instead */
+  }
+
+  .nav-actions {
+    gap: 12px;
+  }
+
+  .sign-in,
+  .get-started {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}

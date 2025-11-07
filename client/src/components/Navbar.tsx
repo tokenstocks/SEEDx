@@ -12,14 +12,21 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 text-[15px]">
         <div className="flex items-center justify-between h-12">
           <Link href="/" className="flex items-center gap-2">
-            <div className="bg-white/10 backdrop-blur-[10px] rounded-xl px-4 py-2.5 border border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:bg-white/15 hover:scale-105">
-              <img 
-                src={logoImage} 
-                alt="SEEDx" 
-                className="h-[3.25rem] w-auto drop-shadow-lg brightness-110 contrast-110"
-                data-testid="img-navbar-logo"
-              />
-            </div>
+            <img 
+              src={logoImage} 
+              alt="SEEDx" 
+              className="h-[3.25rem] w-auto transition-all duration-300 hover:scale-105 cursor-pointer"
+              style={{
+                filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.25))'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 30px rgba(16, 185, 129, 0.4))';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.25))';
+              }}
+              data-testid="img-navbar-logo"
+            />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
