@@ -23,7 +23,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
       <div className="relative h-full flex flex-col items-center justify-center px-4 text-center z-10">
         <div className="max-w-4xl space-y-6">
           <div className="mb-4">
-            <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight mb-2">
+            <h1 className="md:text-8xl font-bold text-white tracking-tight mb-2 text-[76px]">
               SEEDx
             </h1>
             <p className="text-xl md:text-2xl text-white/80 font-light tracking-wide">
