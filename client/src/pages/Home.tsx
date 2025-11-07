@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
+import FeaturedFarmsSection from "@/components/FeaturedFarmsSection";
 import InvestmentOpportunities from "@/components/InvestmentOpportunities";
 import BenefitsSection from "@/components/BenefitsSection";
 import CTASection from "@/components/CTASection";
@@ -20,6 +21,7 @@ export default function Home() {
         onExplore={() => setLocation('/register')}
       />
       <HowItWorksSection />
+      <FeaturedFarmsSection />
       <InvestmentOpportunities />
       <BenefitsSection />
       <CTASection />
