@@ -46,8 +46,8 @@ const primerSteps: StepData[] = [
   {
     number: "01",
     icon: SearchCheck,
-    title: "Browse Verified Farms",
-    description: "Explore curated agricultural projects across Africa. Each farm is verified, with detailed financials, impact metrics, and risk assessments.",
+    title: "Find a Farm",
+    description: "Explore curated agricultural projects across Africa. Each farm is verified, with detailed financials, impact metrics, and risk assessments available for your review.",
     highlights: [
       { icon: ShieldCheck, text: "Due Diligence Complete" },
       { icon: FileText, text: "Legal Documentation" },
@@ -61,31 +61,31 @@ const primerSteps: StepData[] = [
   {
     number: "02",
     icon: HandCoins,
-    title: "Deploy Capital",
-    description: "Fund projects directly through smart contracts. Your capital is deployed transparently with milestone-based releases tracked on-chain.",
+    title: "Fund the Project",
+    description: "Participate in agricultural projects through smart contracts. Your funding is allocated transparently with milestone-based releases tracked on-chain for full visibility.",
     highlights: [
       { icon: Lock, text: "Smart Contract Secured" },
       { icon: CheckCircle2, text: "Milestone-Based Release" },
       { icon: TrendingUp, text: "Real-Time Tracking" }
     ],
     stats: [
-      { value: "$2.5M+", label: "Deployed" },
-      { value: "98%", label: "Success Rate" }
+      { value: "$2.5M+", label: "Total Funded" },
+      { value: "High", label: "Completion Rate*" }
     ]
   },
   {
     number: "03",
     icon: Sprout,
-    title: "Track Impact & Returns",
-    description: "Monitor farm progress with real-time updates, photos, and IoT data. Receive returns as farms generate revenue from harvests.",
+    title: "Track Your Impact",
+    description: "Monitor farm progress with real-time updates, photos, and IoT data. Receive revenue distributions as farms generate income from harvests, subject to project performance.",
     highlights: [
       { icon: Satellite, text: "IoT Monitoring" },
       { icon: Camera, text: "Photo Updates" },
-      { icon: Coins, text: "Automated Returns" }
+      { icon: Coins, text: "Revenue Distributions" }
     ],
     stats: [
-      { value: "12-18%", label: "Avg. Returns" },
-      { value: "6-12mo", label: "Timeline" }
+      { value: "6-12mo", label: "Typical Cycle" },
+      { value: "Real-Time", label: "Updates" }
     ]
   }
 ];
@@ -94,40 +94,40 @@ const regeneratorSteps: StepData[] = [
   {
     number: "01",
     icon: Store,
-    title: "Browse Token Marketplace",
-    description: "Explore farm-backed tokens representing fractional ownership in real agricultural assets. Each token is backed by verified projects.",
+    title: "Explore Tokens",
+    description: "Browse farm-backed utility tokens providing access to agricultural project ecosystems. Each token is backed by verified projects and offers specific utility benefits.",
     highlights: [
-      { icon: Coins, text: "Fractional Ownership" },
+      { icon: Coins, text: "Utility Token Access" },
       { icon: Sprout, text: "Real Asset Backing" },
       { icon: Leaf, text: "Pan-African Access" }
     ],
     stats: [
       { value: "100+", label: "Token Types" },
-      { value: "24/7", label: "Trading" }
+      { value: "24/7", label: "Access" }
     ]
   },
   {
     number: "02",
     icon: ArrowLeftRight,
-    title: "Acquire & Trade Tokens",
-    description: "Purchase tokens on the exchange with instant settlement. Trade freely with other regenerators in a liquid, transparent marketplace.",
+    title: "Buy & Trade",
+    description: "Access utility tokens on the exchange with instant settlement. Exchange freely with other participants in a transparent marketplace built on blockchain technology.",
     highlights: [
       { icon: Zap, text: "Instant Settlement" },
-      { icon: Droplets, text: "High Liquidity" },
-      { icon: Shield, text: "Secure Trading" }
+      { icon: Droplets, text: "Marketplace Liquidity" },
+      { icon: Shield, text: "Secure Exchange" }
     ],
     stats: [
-      { value: "500+", label: "Active Traders" },
+      { value: "500+", label: "Active Users" },
       { value: "$50K+", label: "Daily Volume" }
     ]
   },
   {
     number: "03",
     icon: TrendingUp,
-    title: "Grow Your Portfolio",
-    description: "Diversify across crops, regions, and seasons. Track your portfolio performance and impact metrics in real-time.",
+    title: "Build Your Collection",
+    description: "Diversify across crops, regions, and seasons. Track your token holdings and associated impact metrics in real-time through your personalized dashboard.",
     highlights: [
-      { icon: Layers, text: "Portfolio Diversification" },
+      { icon: Layers, text: "Diversification Options" },
       { icon: Leaf, text: "Impact Tracking" },
       { icon: Smartphone, text: "Mobile Dashboard" }
     ],
@@ -188,7 +188,21 @@ export default function HowItWorksSection() {
             How SEEDx Works
           </h2>
           <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed" data-testid="text-subtitle">
-            From capital deployment to token trading—transparent, verified, and regenerative
+            From project funding to token access—transparent, verified, and regenerative
+          </p>
+        </motion.div>
+
+        {/* Audience Explainer */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.05, ease: "easeOut" }}
+          className="text-center mb-6"
+        >
+          <p className="text-lg text-slate-400" data-testid="text-audience-explainer">
+            Choose your path: <strong className="text-white font-semibold">Fund agricultural projects directly</strong> or{" "}
+            <strong className="text-white font-semibold">access farm-backed utility tokens</strong>
           </p>
         </motion.div>
 
@@ -202,7 +216,7 @@ export default function HowItWorksSection() {
         >
           <button
             onClick={() => setActiveAudience("primer")}
-            className={`flex items-center gap-3 px-6 md:px-8 py-4 rounded-xl font-semibold transition-all duration-300 ${
+            className={`flex items-center gap-3 px-8 md:px-10 py-4 rounded-xl font-semibold transition-all duration-300 whitespace-nowrap ${
               activeAudience === "primer"
                 ? "bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-lg shadow-blue-600/30 scale-105"
                 : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:border-white/20 hover:-translate-y-1"
@@ -210,11 +224,11 @@ export default function HowItWorksSection() {
             data-testid="toggle-primer"
           >
             <HandCoins className="w-5 h-5" />
-            <span>For Primers</span>
+            <span>I Want to Fund Farms</span>
           </button>
           <button
             onClick={() => setActiveAudience("regenerator")}
-            className={`flex items-center gap-3 px-6 md:px-8 py-4 rounded-xl font-semibold transition-all duration-300 ${
+            className={`flex items-center gap-3 px-8 md:px-10 py-4 rounded-xl font-semibold transition-all duration-300 whitespace-nowrap ${
               activeAudience === "regenerator"
                 ? "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-500/30 scale-105"
                 : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:border-white/20 hover:-translate-y-1"
@@ -222,7 +236,7 @@ export default function HowItWorksSection() {
             data-testid="toggle-regenerator"
           >
             <ArrowLeftRight className="w-5 h-5" />
-            <span>For Regenerators</span>
+            <span>I Want to Trade Tokens</span>
           </button>
         </motion.div>
 
@@ -324,9 +338,9 @@ export default function HowItWorksSection() {
                 Understanding the Regenerative Capital Flow
               </h3>
               <p className="text-slate-300 leading-relaxed mb-6" data-testid="text-video-description">
-                Watch how capital moves from Primers to farms, gets deployed for regenerative 
-                agriculture, and creates tradeable tokens for Regenerators—all tracked 
-                transparently on the blockchain.
+                Watch how funding moves from participants to farms, gets allocated for 
+                regenerative agriculture, and creates utility tokens for ecosystem 
+                access—all tracked transparently on the blockchain.
               </p>
               <div className="flex flex-wrap gap-6">
                 <div className="flex items-center gap-2 text-slate-400" data-testid="stat-video-duration">
@@ -343,6 +357,32 @@ export default function HowItWorksSection() {
                 </div>
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Legal Disclaimer */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.55, ease: "easeOut" }}
+          className="max-w-5xl mx-auto mb-16"
+        >
+          <div className="bg-amber-500/5 border border-amber-500/25 rounded-2xl p-6 md:p-8" data-testid="legal-disclaimer">
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+              <strong className="text-amber-400 font-bold text-base">Important Notice:</strong> Participation in agricultural projects involves risk, 
+              including the possible loss of principal. Past performance does not guarantee future results. 
+              Revenue distributions are subject to project performance and are not guaranteed. 
+              Farm tokens are utility tokens providing access to platform features and do not represent 
+              equity ownership, investment securities, or investment contracts. Token values may fluctuate. 
+              Please review all project documentation, risk factors, and terms of service carefully before 
+              participating. This platform does not provide investment advice. Consult with qualified 
+              professionals regarding your specific situation.
+            </p>
+            <p className="text-xs text-slate-500 pt-4 border-t border-amber-500/20 italic">
+              *Completion rate based on projects completed to date. Historical data may not be indicative 
+              of future performance.
+            </p>
           </div>
         </motion.div>
 
