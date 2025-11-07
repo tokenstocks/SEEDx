@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Shield, TrendingUp, DollarSign } from "lucide-react";
 import CircuitOverlay from "./CircuitOverlay";
-import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
 
 interface HeroSectionProps {
   heroImage: string;
@@ -24,12 +23,6 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
       <div className="relative h-full flex flex-col items-center justify-center px-4 text-center z-10">
         <div className="max-w-4xl space-y-6">
           <div className="mb-4">
-            <img 
-              src={logoImage} 
-              alt="SEEDx - The Regenerative Capital Exchange" 
-              className="h-24 md:h-32 w-auto mx-auto mb-4 drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]"
-              data-testid="img-hero-logo"
-            />
             <p className="text-base md:text-lg text-white font-light tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               The Regenerative Capital Exchange
             </p>
