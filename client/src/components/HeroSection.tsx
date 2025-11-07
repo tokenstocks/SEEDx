@@ -3,7 +3,7 @@ import { Shield, Globe, Sprout, Leaf, ChevronDown } from "lucide-react";
 import CircuitOverlay from "./CircuitOverlay";
 import { useState, useEffect, useRef } from "react";
 import { motion, MotionConfig } from "framer-motion";
-import heroVideoSrc from "@assets/ca3e873e-15ff-43d4-90ae-0670a22a3d91_1762523417021.mp4";
+import heroVideoSrc from "@assets/SEED bg vid_1762525859201.mp4";
 
 interface HeroSectionProps {
   heroImage: string;
@@ -39,6 +39,14 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
       if (e.matches) {
         setDisplayText('sustainable');
         setVideoEnded(true);
+      } else {
+        setVideoEnded(false);
+        if (videoRef.current) {
+          videoRef.current.currentTime = 0;
+          videoRef.current.play().catch(() => {
+            // Autoplay might be blocked, silently fail
+          });
+        }
       }
     };
     
