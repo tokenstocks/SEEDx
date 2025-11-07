@@ -3,6 +3,7 @@ import { Shield, Globe, Sprout, Leaf, ChevronDown } from "lucide-react";
 import CircuitOverlay from "./CircuitOverlay";
 import { useState, useEffect, useRef } from "react";
 import { motion, MotionConfig } from "framer-motion";
+import heroVideoSrc from "@assets/ca3e873e-15ff-43d4-90ae-0670a22a3d91_1762523417021.mp4";
 
 interface HeroSectionProps {
   heroImage: string;
@@ -15,10 +16,12 @@ const TYPEWRITER_WORDS = ['sustainable', 'lasting', 'regenerative', 'measurable'
 export default function HeroSection({ heroImage, onGetStarted, onExplore }: HeroSectionProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [displayText, setDisplayText] = useState('');
+  const [videoEnded, setVideoEnded] = useState(false);
   const wordIndexRef = useRef(0);
   const charIndexRef = useRef(0);
   const isDeletingRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -28,12 +31,14 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
     
     if (mediaQuery.matches) {
       setDisplayText('sustainable');
+      setVideoEnded(true);
     }
     
     const handleChange = (e: MediaQueryListEvent) => {
       setPrefersReducedMotion(e.matches);
       if (e.matches) {
         setDisplayText('sustainable');
+        setVideoEnded(true);
       }
     };
     
@@ -86,15 +91,38 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
     };
   }, [prefersReducedMotion]);
 
+  const handleVideoEnd = () => {
+    setVideoEnded(true);
+  };
+
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? "always" : "never"}>
       <div className="relative h-screen w-full overflow-hidden">
         <div className="absolute inset-0">
+          {/* Video Background */}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            onEnded={handleVideoEnd}
+            className={`w-full h-full object-cover transition-opacity duration-1000 ${
+              videoEnded ? 'opacity-0' : 'opacity-100'
+            }`}
+            style={{ display: prefersReducedMotion ? 'none' : 'block' }}
+          >
+            <source src={heroVideoSrc} type="video/mp4" />
+          </video>
+          
+          {/* Static Image Background (fades in when video ends) */}
           <img 
             src={heroImage} 
             alt="Agricultural landscape" 
-            className="w-full h-full object-cover"
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+              videoEnded || prefersReducedMotion ? 'opacity-100' : 'opacity-0'
+            }`}
           />
+          
           <div 
             className="absolute inset-0 z-[1]"
             style={{
