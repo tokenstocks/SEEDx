@@ -105,13 +105,16 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             autoPlay
             muted
             playsInline
+            preload="auto"
             onEnded={handleVideoEnd}
+            poster={heroImage}
             className={`w-full h-full object-cover transition-opacity duration-1000 ${
               videoEnded ? 'opacity-0' : 'opacity-100'
             }`}
             style={{ display: prefersReducedMotion ? 'none' : 'block' }}
           >
             <source src={heroVideoSrc} type="video/mp4" />
+            Your browser does not support the video tag.
           </video>
           
           {/* Static Image Background (fades in when video ends) */}
