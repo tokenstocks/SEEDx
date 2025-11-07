@@ -10,13 +10,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates
 
-### Branding & Visual Design (November 2025)
-- **Logo Implementation:** SEEDx logo with green gradient, circuit board design, and golden accents integrated across all pages (navbar, login, register, footer)
-- **Hero Section Enhancement:** Removed dark gradient overlay to showcase vibrant farm estate imagery at full brightness with drop shadows on text for readability
-- **Navbar Optimization:** Compact navbar (h-12) with prominent logo (h-10) featuring brightness/contrast enhancements for visibility
+### Comprehensive Hero Section Redesign (November 2025)
+- **Enhanced Logo**: Navbar logo increased 30% in size (h-[3.25rem]) with white glow effect (semi-transparent background, rounded corners, shadow) for better visibility and prominence
+- **Restructured Text Hierarchy**: 
+  - Main headline: "Plant capital. Grow sustainable impact." (40px mobile → 52px tablet → 64px desktop)
+  - Subtitle: "The Regenerative Capital Exchange" (20px mobile → 28px desktop, 70% opacity)
+  - New description: "Connecting capital with verified agricultural opportunities across Africa." (16px mobile → 20px desktop, 80% opacity)
+- **Improved Visual Contrast**: Added dark gradient overlay (50% → 30% → 60% black from top to bottom) for enhanced text readability over hero image
+- **Unified Trust Indicators**: All 4 trust badges now displayed in hero section (Blockchain Verified, Trusted Globally, Farm-to-Token Pipeline, Regenerative Capital Model) with consistent iconography
+- **Enhanced CTA Buttons**: Floating effect with extra-large shadows, colored glow on hover, rounded corners (rounded-2xl), and smooth lift animation for premium feel
+- **Fully Responsive Design**: Mobile-first implementation with exact breakpoint specifications for optimal viewing across all devices
+- **Architect Verified**: All changes reviewed and confirmed to meet design specifications with no regressions
 
 ### Mobile Responsiveness Optimization (November 2025)
-- **Hero Section:** Implemented progressive text sizing (text-3xl → text-7xl), full-width CTA buttons on mobile that stack vertically, responsive spacing throughout
 - **Section Headers:** Optimized all section headings for mobile (BenefitsSection, InvestmentOpportunities, HowItWorksSection, CTASection) with smaller text sizes on mobile devices
 - **Responsive Patterns:** Added mobile-first breakpoints (sm:, md:, lg:) throughout components, responsive padding, and proper touch targets for mobile interactions
 - **Verified Compliance:** All mobile improvements architect-reviewed and confirmed to maintain desktop/tablet layouts without regressions
