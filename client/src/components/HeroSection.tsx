@@ -23,24 +23,24 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
       <div className="relative h-full flex flex-col items-center justify-center px-4 text-center z-10">
         <div className="max-w-4xl space-y-6">
           <div className="mb-4">
-            <h1 className="md:text-8xl font-bold text-white tracking-tight mb-2 text-[76px]">
+            <h1 className="md:text-8xl font-bold text-white tracking-tight mb-2 text-[76px] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
               SEEDx
             </h1>
-            <p className="text-base md:text-lg text-white/70 font-light tracking-wide">
+            <p className="text-base md:text-lg text-white font-light tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
               The Regenerative Capital Exchange
             </p>
           </div>
-          <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
+          <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
             Plant capital.<br/>Grow sustainable impact.
           </h2>
-          <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">Connecting purpose driven funds with verified 
+          <p className="text-lg md:text-xl text-white max-w-2xl mx-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">Connecting purpose driven funds with verified 
           agricultural opportunities that regenerate land, livelihoods and liquidity</p>
 
           <div className="flex flex-wrap gap-6 justify-center pt-6 max-w-4xl mx-auto">
             <Button
               size="lg"
               onClick={onGetStarted}
-              className="flex-1 min-w-[280px] max-w-md overflow-visible bg-blue-600 backdrop-blur-sm border border-blue-500/30"
+              className="flex-1 min-w-[280px] max-w-md overflow-visible bg-blue-600/95 backdrop-blur-sm border border-blue-500/40 shadow-lg"
               data-testid="button-become-primer"
             >
               <div className="flex flex-col gap-1 py-2">
@@ -53,7 +53,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             <Button
               size="lg"
               onClick={onExplore}
-              className="flex-1 min-w-[280px] max-w-md overflow-visible bg-green-500 backdrop-blur-sm border border-green-400/30"
+              className="flex-1 min-w-[280px] max-w-md overflow-visible bg-green-500/95 backdrop-blur-sm border border-green-400/40 shadow-lg"
               data-testid="button-become-regenerator"
             >
               <div className="flex flex-col gap-1 py-2">
@@ -65,7 +65,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-6 justify-center pt-8 text-white/90">
+          <div className="flex flex-wrap gap-6 justify-center pt-8 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
               <span className="text-sm">Blockchain Verified</span>
