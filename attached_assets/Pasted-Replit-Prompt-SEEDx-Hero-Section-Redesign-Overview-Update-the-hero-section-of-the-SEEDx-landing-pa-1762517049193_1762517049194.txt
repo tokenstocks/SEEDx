@@ -1,0 +1,151 @@
+Replit Prompt: SEEDx Hero Section Redesign
+Overview:
+Update the hero section of the SEEDx landing page with improved visual hierarchy, tighter copy, better trust signal placement, and enhanced readability.
+
+Changes to Implement:
+1. Logo (Top Left Navigation)
+Increase logo size by 25-30%
+Add a subtle white glow or semi-transparent white background (border-radius: 8px, padding: 8px) to make it stand out against dark backgrounds
+Ensure logo is clearly visible and prominent
+2. Hero Text Hierarchy - Restructure as follows:
+Current structure:
+
+The Regenerative Capital Exchange (top, smaller)
+Plant capital. Grow sustainable impact. (main headline)
+Long descriptive text (subtitle)
+New structure:
+
+Plant capital. Grow sustainable impact. (main headline - largest, bold)
+The Regenerative Capital Exchange (subtitle - medium size, 70% opacity)
+Connecting capital with verified agricultural opportunities across Africa. (description - smaller, 80% opacity)
+Specific styling:
+
+Main headline: font-size: 64px; font-weight: 700; line-height: 1.1; color: white;
+Subtitle: font-size: 28px; font-weight: 400; opacity: 0.9; margin-top: 12px;
+Description: font-size: 20px; font-weight: 300; opacity: 0.85; margin-top: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
+3. CTA Buttons - Keep Current Design
+Maintain the two-button layout with descriptions inside
+"Become a Primer" (blue) - "Fund agricultural deployment and participate in the regenerative cycle"
+"Become a Regenerator" (green) - "Acquire and trade tokens backed by verified agricultural projects"
+Ensure buttons have proper spacing (gap: 24px between them)
+Button styling: padding: 20px 32px; border-radius: 8px; font-size: 18px; font-weight: 600;
+4. Trust Badges - Show All 4 in Hero Section
+Current: Only "Blockchain Verified" shown centered
+
+New: Display all 4 badges in a horizontal row below the CTA buttons:
+
+🛡️ Blockchain Verified
+🌍 Trusted Globally (or "Trusted Across Africa")
+🌾 Farm-to-Token Pipeline
+♻️ Regenerative Capital Model
+Layout:
+
+Horizontal flexbox, evenly spaced
+Each badge: icon + text
+Icon size: 24px
+Text: font-size: 16px; font-weight: 500; color: white;
+Spacing: gap: 48px between badges
+Margin-top: 48px from CTA buttons
+5. Background Image Overlay - Improve Readability
+Add a gradient overlay to the background image for better text contrast:
+
+css
+Copy
+.hero-section {
+  position: relative;
+  background-image: url('your-farm-image.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+6. Responsive Design Considerations
+Mobile (< 768px):
+
+Main headline: font-size: 40px;
+Subtitle: font-size: 20px;
+Description: font-size: 16px;
+Stack CTA buttons vertically with gap: 16px
+Trust badges: Stack in 2x2 grid or vertical list
+Reduce padding throughout
+Tablet (768px - 1024px):
+
+Main headline: font-size: 52px;
+Keep buttons side-by-side if space allows
+Trust badges: Keep horizontal or 2x2 grid
+Color Palette Reference:
+Deep Blue (Primer): #1E40AF or #2563EB
+Vibrant Green (Regenerator): #10B981 or #22C55E
+White text: #FFFFFF
+Earth tones (accents): #92400E, #78350F
+Final Layout Structure:
+html
+Copy
+<section class="hero-section">
+  <nav>
+    <!-- Larger, more prominent logo with glow/background -->
+  </nav>
+  
+  <div class="hero-content">
+    <h1>Plant capital. Grow sustainable impact.</h1>
+    <h2>The Regenerative Capital Exchange</h2>
+    <p>Connecting capital with verified agricultural opportunities across Africa.</p>
+    
+    <div class="cta-buttons">
+      <button class="primer-btn">
+        <span class="btn-title">Become a Primer</span>
+        <span class="btn-description">Fund agricultural deployment and participate in the regenerative cycle</span>
+      </button>
+      
+      <button class="regenerator-btn">
+        <span class="btn-title">Become a Regenerator</span>
+        <span class="btn-description">Acquire and trade tokens backed by verified agricultural projects</span>
+      </button>
+    </div>
+    
+    <div class="trust-badges">
+      <div class="badge">
+        <icon>🛡️</icon>
+        <span>Blockchain Verified</span>
+      </div>
+      <div class="badge">
+        <icon>🌍</icon>
+        <span>Trusted Globally</span>
+      </div>
+      <div class="badge">
+        <icon>🌾</icon>
+        <span>Farm-to-Token Pipeline</span>
+      </div>
+      <div class="badge">
+        <icon>♻️</icon>
+        <span>Regenerative Capital Model</span>
+      </div>
+    </div>
+  </div>
+</section>
+Testing Checklist:
+ Text is readable on all screen sizes
+ Buttons are clickable and properly spaced
+ Trust badges display correctly on mobile
+ Logo is prominent and visible
+ Background overlay improves contrast without darkening too much
+ All text follows the new hierarchy

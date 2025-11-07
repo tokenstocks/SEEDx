@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Shield, TrendingUp, DollarSign, CheckCircle, Sprout, Leaf } from "lucide-react";
+import { Shield, Globe, Sprout, Leaf } from "lucide-react";
 import CircuitOverlay from "./CircuitOverlay";
 
 interface HeroSectionProps {
@@ -17,23 +17,27 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           alt="Agricultural landscape" 
           className="w-full h-full object-cover"
         />
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/60 to-transparent" />
+        <div 
+          className="absolute inset-0 z-[1]"
+          style={{
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.6) 100%)'
+          }}
+        />
       </div>
       <CircuitOverlay />
       <div className="relative h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 text-center z-10">
-        <div className="max-w-4xl space-y-4 sm:space-y-5 md:space-y-6">
-          <div className="mb-2 sm:mb-3 md:mb-4">
-            <p className="text-sm sm:text-base md:text-lg text-white font-light tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
-              The Regenerative Capital Exchange
-            </p>
-          </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] leading-tight">
+        <div className="max-w-4xl space-y-3 sm:space-y-4 md:space-y-5">
+          <h1 className="text-[40px] md:text-[52px] lg:text-[64px] font-bold text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] leading-[1.1]">
             Plant capital.<br/>Grow sustainable impact.
+          </h1>
+          <h2 className="text-[20px] lg:text-[28px] text-white/70 font-normal tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] mt-3">
+            The Regenerative Capital Exchange
           </h2>
-          <p className="text-base sm:text-lg md:text-xl text-white max-w-2xl mx-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] px-2">Connecting purpose driven funds with verified 
-          agricultural opportunities that regenerate land, livelihoods and liquidity</p>
+          <p className="text-[16px] lg:text-[20px] text-white/80 font-light max-w-3xl mx-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] mt-4">
+            Connecting capital with verified agricultural opportunities across Africa.
+          </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-4 sm:pt-6 w-full px-2 sm:px-0">
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center pt-6 md:pt-8 w-full px-2 sm:px-0">
             <Button
               size="lg"
               onClick={onGetStarted}
@@ -62,29 +66,22 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-4 sm:gap-6 justify-center pt-6 sm:pt-8 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
+          <div className="flex flex-wrap gap-6 sm:gap-8 md:gap-12 justify-center pt-8 sm:pt-10 md:pt-12 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm">Blockchain Verified</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Bottom white bar with trust indicators */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <span>Trusted by members across the globe</span>
+              <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base font-medium">Blockchain Verified</span>
             </div>
             <div className="flex items-center gap-2">
-              <Sprout className="w-4 h-4 text-green-600" />
-              <span>Farm-to-Token Pipeline</span>
+              <Globe className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base font-medium">Trusted Globally</span>
             </div>
             <div className="flex items-center gap-2">
-              <Leaf className="w-4 h-4 text-green-600" />
-              <span>Regenerative capital model</span>
+              <Sprout className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base font-medium">Farm-to-Token Pipeline</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Leaf className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base font-medium">Regenerative Capital Model</span>
             </div>
           </div>
         </div>

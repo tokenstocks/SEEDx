@@ -12,12 +12,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 text-[15px]">
         <div className="flex items-center justify-between h-12">
           <Link href="/" className="flex items-center gap-2">
-            <img 
-              src={logoImage} 
-              alt="SEEDx" 
-              className="h-10 w-auto drop-shadow-lg brightness-110 contrast-110"
-              data-testid="img-navbar-logo"
-            />
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+              <img 
+                src={logoImage} 
+                alt="SEEDx" 
+                className="h-[3.25rem] w-auto drop-shadow-lg brightness-110 contrast-110"
+                data-testid="img-navbar-logo"
+              />
+            </div>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
