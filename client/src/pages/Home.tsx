@@ -17,7 +17,7 @@ export default function Home() {
       <HeroSection 
         heroImage={heroImage}
         onGetStarted={() => setLocation('/register')}
-        onExplore={() => setLocation('/browse')}
+        onExplore={() => setLocation('/register')}
       />
       <HowItWorksSection />
       <InvestmentOpportunities />
