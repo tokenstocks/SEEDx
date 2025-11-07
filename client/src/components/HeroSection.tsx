@@ -19,9 +19,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
       </div>
-
       <CircuitOverlay />
-
       <div className="relative h-full flex flex-col items-center justify-center px-4 text-center z-10">
         <div className="max-w-4xl space-y-6">
           <div className="mb-4">
@@ -32,9 +30,8 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
             Plant capital.<br/>Grow sustainable impact.
           </h2>
-          <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto">
-            A regenerative capital exchange
-          </p>
+          <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto">Connecting purpose driven funds with verified 
+          agricultural opportunities that regenerate land, livelihoods and liquidity</p>
 
           <div className="flex flex-wrap gap-6 justify-center pt-6 max-w-4xl mx-auto">
             <Button
