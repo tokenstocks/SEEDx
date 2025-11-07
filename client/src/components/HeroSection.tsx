@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Shield, Globe, Sprout, Leaf, ChevronDown } from "lucide-react";
 import CircuitOverlay from "./CircuitOverlay";
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 
 interface HeroSectionProps {
   heroImage: string;
@@ -13,6 +13,7 @@ interface HeroSectionProps {
 const TYPEWRITER_WORDS = ['sustainable', 'lasting', 'regenerative', 'measurable', 'global', 'transformative'];
 
 export default function HeroSection({ heroImage, onGetStarted, onExplore }: HeroSectionProps) {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [displayText, setDisplayText] = useState('');
   const wordIndexRef = useRef(0);
   const charIndexRef = useRef(0);
@@ -20,6 +21,31 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    if (mediaQuery.matches) {
+      setDisplayText('sustainable');
+    }
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+      if (e.matches) {
+        setDisplayText('sustainable');
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      return;
+    }
+
     const type = () => {
       const currentWord = TYPEWRITER_WORDS[wordIndexRef.current];
       const isDeleting = isDeletingRef.current;
@@ -58,31 +84,32 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
         clearTimeout(timeoutRef.current);
       }
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
-      <div className="absolute inset-0">
-        <img 
-          src={heroImage} 
-          alt="Agricultural landscape" 
-          className="w-full h-full object-cover"
-        />
-        <div 
-          className="absolute inset-0 z-[1]"
-          style={{
-            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 40%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0.65) 100%)'
-          }}
-        />
-        <div 
-          className="absolute inset-0 z-[1]"
-          style={{
-            background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%)'
-          }}
-        />
-      </div>
-      <CircuitOverlay />
-      <div className="relative h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 text-center z-10">
+    <MotionConfig reducedMotion={prefersReducedMotion ? "always" : "never"}>
+      <div className="relative h-screen w-full overflow-hidden">
+        <div className="absolute inset-0">
+          <img 
+            src={heroImage} 
+            alt="Agricultural landscape" 
+            className="w-full h-full object-cover"
+          />
+          <div 
+            className="absolute inset-0 z-[1]"
+            style={{
+              background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 40%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0.65) 100%)'
+            }}
+          />
+          <div 
+            className="absolute inset-0 z-[1]"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%)'
+            }}
+          />
+        </div>
+        <CircuitOverlay />
+        <div className="relative h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 text-center z-10">
         <div className="max-w-4xl space-y-3 sm:space-y-4 md:space-y-5">
           <motion.h1 
             initial={{ opacity: 0, y: 30 }}
@@ -91,7 +118,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             className="text-[36px] sm:text-[40px] md:text-[52px] lg:text-[64px] font-bold text-white tracking-[-0.02em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)] leading-[1.1]"
           >
             Plant capital.<br/>
-            Grow <span className="inline-block min-w-0 md:min-w-[200px] text-left text-emerald-400" data-testid="typewriter-text">{displayText}<span className="animate-pulse">|</span></span> impact.
+            Grow <span className="inline-block min-w-0 md:min-w-[200px] text-left text-emerald-400" data-testid="typewriter-text">{displayText}{!prefersReducedMotion && <span className="animate-pulse">|</span>}</span> impact.
           </motion.h1>
           <motion.h2 
             initial={{ opacity: 0, y: 30 }}
@@ -210,7 +237,10 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.5, delay: 1.5, ease: "easeOut" }}
           className="absolute bottom-6 right-8 flex flex-col items-center gap-2 text-white opacity-80 hover:opacity-100 cursor-pointer z-20 transition-opacity duration-300"
-          onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
+          onClick={() => window.scrollTo({ 
+            top: window.innerHeight, 
+            behavior: prefersReducedMotion ? 'auto' : 'smooth' 
+          })}
           data-testid="scroll-indicator"
         >
           <span className="text-sm font-medium tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">Scroll to explore</span>
@@ -222,6 +252,7 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           </motion.div>
         </motion.div>
       </div>
-    </div>
+      </div>
+    </MotionConfig>
   );
 }
