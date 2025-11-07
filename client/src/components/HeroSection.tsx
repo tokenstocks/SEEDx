@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Shield, TrendingUp, DollarSign } from "lucide-react";
+import { Shield, TrendingUp, DollarSign, CheckCircle, Sprout, Leaf } from "lucide-react";
 import CircuitOverlay from "./CircuitOverlay";
 
 interface HeroSectionProps {
@@ -74,6 +74,26 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="text-xs sm:text-sm">$5.2M in Assets</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Bottom white bar with trust indicators */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <span>Trusted by investors across Nigeria</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sprout className="w-4 h-4 text-green-600" />
+              <span>$5.2M in verified agricultural assets</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Leaf className="w-4 h-4 text-green-600" />
+              <span>Regenerative capital model</span>
             </div>
           </div>
         </div>
