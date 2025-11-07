@@ -3,7 +3,6 @@ import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import FeaturedFarmsSection from "@/components/FeaturedFarmsSection";
-import InvestmentOpportunities from "@/components/InvestmentOpportunities";
 import BenefitsSection from "@/components/BenefitsSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
@@ -22,7 +21,6 @@ export default function Home() {
       />
       <HowItWorksSection />
       <FeaturedFarmsSection />
-      <InvestmentOpportunities />
       <BenefitsSection />
       <CTASection />
       <Footer />

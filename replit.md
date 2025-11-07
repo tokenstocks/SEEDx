@@ -3,7 +3,7 @@
 **Tagline**: Plant capital. Grow impact. A regenerative capital exchange.
 
 ## Overview
-SEEDx is a blockchain-based regenerative capital platform on the Stellar network focused on tokenized agricultural investments. It connects Primers (liquidity providers) with Regenerators (project investors) to fund agricultural projects, facilitating automated cashflow distribution and capital regeneration. The platform aims to enhance transparency and accessibility in agricultural investment through secure authentication, KYC, multi-currency wallet management, and a responsive mobile-first interface.
+SEEDx is a blockchain-based regenerative capital platform on the Stellar network focused on tokenized agricultural participation. It connects Primers (liquidity providers) with Regenerators (token traders) to fund agricultural projects, facilitating automated cashflow distribution and capital regeneration. The platform uses SEC-compliant language throughout to reduce securities classification risk, emphasizing utility tokens and participation rather than investment terminology. Features include secure authentication, KYC, multi-currency wallet management, and a premium mobile-first interface with investor-grade presentation.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -24,6 +24,7 @@ The platform utilizes a React and TypeScript frontend with Vite, Wouter, and Tan
 - **Admin Dashboards:** APIs and UI for managing metrics, users, KYC, transactions, projects, wallets, blockchain activity, treasury, and cashflow processing.
 - **Redemption System:** Allows users to sell project tokens for NGNTS, prioritizing funding from project cashflow, then treasury, then liquidity pool, with NAV locking and atomic processing.
 - **UI/UX & Responsiveness:** Features investor-grade presentation with Framer Motion animations, enhanced logo, dynamic typewriter headlines, premium CTA buttons, interactive trust badges, and comprehensive mobile responsiveness across all sections, including optimized typography and accessibility features like `prefers-reduced-motion` support. SEC-compliant language is used throughout the platform to mitigate securities classification risk, especially in "How It Works" and "Featured Farms" sections, which include legal disclaimers and audience explainers.
+- **Landing Page Structure (SEC-Compliant):** The landing page follows a strategic flow: Navbar → Hero Section (with dual audience toggle) → How It Works Section (with legal disclaimer) → Featured Farms Section (product showcase with participation notice - replaces non-SEC-safe InvestmentOpportunities section) → Benefits Section → CTA Section → Footer. This structure maximizes conversions while maintaining regulatory compliance.
 
 ## External Dependencies
 
