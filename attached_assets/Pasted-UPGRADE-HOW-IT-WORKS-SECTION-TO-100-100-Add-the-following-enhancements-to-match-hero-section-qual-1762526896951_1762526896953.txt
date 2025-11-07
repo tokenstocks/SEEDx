@@ -1,0 +1,1252 @@
+UPGRADE "HOW IT WORKS" SECTION TO 100/100
+
+Add the following enhancements to match hero section quality:
+
+1. Page load animations (fade-in effects like hero)
+2. Enhanced hover effects (lift + glow + shadow)
+3. Improved color gradients
+4. Dual audience tabs (Primers vs Regenerators)
+5. Explainer video section integration
+
+COMPLETE UPDATED HTML (Replace entire how-it-works-premium section):
+
+<!-- How It Works Section -->
+<section class="how-it-works-premium">
+  <div class="works-container">
+    
+    <!-- Section Header -->
+    <div class="works-header fade-in-up">
+      <div class="works-label">THE PROCESS</div>
+      <h2 class="works-title">How SEEDx Works</h2>
+      <p class="works-subtitle">
+        From capital deployment to token trading—transparent, verified, and regenerative
+      </p>
+    </div>
+
+    <!-- Audience Toggle -->
+    <div class="audience-toggle fade-in-up" style="animation-delay: 0.1s;">
+      <button class="toggle-btn active" data-audience="primer">
+        <i class="fas fa-hand-holding-usd"></i>
+        <span>For Primers</span>
+      </button>
+      <button class="toggle-btn" data-audience="regenerator">
+        <i class="fas fa-exchange-alt"></i>
+        <span>For Regenerators</span>
+      </button>
+    </div>
+
+    <!-- Process Flow - Primer View -->
+    <div class="process-flow primer-flow active-flow">
+      
+      <!-- Step 1: Browse & Select -->
+      <div class="process-step fade-in-up" data-step="1" style="animation-delay: 0.2s;">
+        <div class="step-content">
+          <div class="step-header">
+            <div class="step-badge">
+              <span class="step-num">01</span>
+              <div class="step-icon-wrapper primer-gradient">
+                <i class="fas fa-search-dollar"></i>
+              </div>
+            </div>
+            <h3 class="step-heading">Browse Verified Farms</h3>
+          </div>
+          
+          <p class="step-text">
+            Explore curated agricultural projects across Africa. Each farm is verified, 
+            with detailed financials, impact metrics, and risk assessments.
+          </p>
+          
+          <div class="step-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-shield-check"></i>
+              <span>Due Diligence Complete</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-file-contract"></i>
+              <span>Legal Documentation</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-chart-pie"></i>
+              <span>Risk Assessment</span>
+            </div>
+          </div>
+
+          <div class="step-stats">
+            <div class="stat-item">
+              <div class="stat-value">50+</div>
+              <div class="stat-label">Active Projects</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">15</div>
+              <div class="stat-label">Countries</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Fund Project -->
+      <div class="process-step fade-in-up" data-step="2" style="animation-delay: 0.3s;">
+        <div class="step-content">
+          <div class="step-header">
+            <div class="step-badge">
+              <span class="step-num">02</span>
+              <div class="step-icon-wrapper primer-gradient">
+                <i class="fas fa-hand-holding-usd"></i>
+              </div>
+            </div>
+            <h3 class="step-heading">Deploy Capital</h3>
+          </div>
+          
+          <p class="step-text">
+            Fund projects directly through smart contracts. Your capital is deployed 
+            transparently with milestone-based releases tracked on-chain.
+          </p>
+          
+          <div class="step-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-lock"></i>
+              <span>Smart Contract Secured</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-tasks"></i>
+              <span>Milestone-Based Release</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-chart-line"></i>
+              <span>Real-Time Tracking</span>
+            </div>
+          </div>
+
+          <div class="step-stats">
+            <div class="stat-item">
+              <div class="stat-value">$2.5M+</div>
+              <div class="stat-label">Deployed</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">98%</div>
+              <div class="stat-label">Success Rate</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Track & Earn -->
+      <div class="process-step fade-in-up" data-step="3" style="animation-delay: 0.4s;">
+        <div class="step-content">
+          <div class="step-header">
+            <div class="step-badge">
+              <span class="step-num">03</span>
+              <div class="step-icon-wrapper primer-gradient">
+                <i class="fas fa-seedling"></i>
+              </div>
+            </div>
+            <h3 class="step-heading">Track Impact & Returns</h3>
+          </div>
+          
+          <p class="step-text">
+            Monitor farm progress with real-time updates, photos, and IoT data. 
+            Receive returns as farms generate revenue from harvests.
+          </p>
+          
+          <div class="step-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-satellite-dish"></i>
+              <span>IoT Monitoring</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-camera"></i>
+              <span>Photo Updates</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-coins"></i>
+              <span>Automated Returns</span>
+            </div>
+          </div>
+
+          <div class="step-stats">
+            <div class="stat-item">
+              <div class="stat-value">12-18%</div>
+              <div class="stat-label">Avg. Returns</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">6-12mo</div>
+              <div class="stat-label">Timeline</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Process Flow - Regenerator View -->
+    <div class="process-flow regenerator-flow">
+      
+      <!-- Step 1: Browse Tokens -->
+      <div class="process-step fade-in-up" data-step="1" style="animation-delay: 0.2s;">
+        <div class="step-content">
+          <div class="step-header">
+            <div class="step-badge">
+              <span class="step-num">01</span>
+              <div class="step-icon-wrapper regenerator-gradient">
+                <i class="fas fa-store"></i>
+              </div>
+            </div>
+            <h3 class="step-heading">Browse Token Marketplace</h3>
+          </div>
+          
+          <p class="step-text">
+            Explore farm-backed tokens representing fractional ownership in real 
+            agricultural assets. Each token is backed by verified projects.
+          </p>
+          
+          <div class="step-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-coins"></i>
+              <span>Fractional Ownership</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-tractor"></i>
+              <span>Real Asset Backing</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-globe-africa"></i>
+              <span>Pan-African Access</span>
+            </div>
+          </div>
+
+          <div class="step-stats">
+            <div class="stat-item">
+              <div class="stat-value">100+</div>
+              <div class="stat-label">Token Types</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">24/7</div>
+              <div class="stat-label">Trading</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Acquire Tokens -->
+      <div class="process-step fade-in-up" data-step="2" style="animation-delay: 0.3s;">
+        <div class="step-content">
+          <div class="step-header">
+            <div class="step-badge">
+              <span class="step-num">02</span>
+              <div class="step-icon-wrapper regenerator-gradient">
+                <i class="fas fa-exchange-alt"></i>
+              </div>
+            </div>
+            <h3 class="step-heading">Acquire & Trade Tokens</h3>
+          </div>
+          
+          <p class="step-text">
+            Purchase tokens on the exchange with instant settlement. Trade freely 
+            with other regenerators in a liquid, transparent marketplace.
+          </p>
+          
+          <div class="step-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-bolt"></i>
+              <span>Instant Settlement</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-water"></i>
+              <span>High Liquidity</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-shield-alt"></i>
+              <span>Secure Trading</span>
+            </div>
+          </div>
+
+          <div class="step-stats">
+            <div class="stat-item">
+              <div class="stat-value">500+</div>
+              <div class="stat-label">Active Traders</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">$50K+</div>
+              <div class="stat-label">Daily Volume</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">
+          <div class="arrow-line"></div>
+          <div class="arrow-head">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Grow Portfolio -->
+      <div class="process-step fade-in-up" data-step="3" style="animation-delay: 0.4s;">
+        <div class="step-content">
+          <div class="step-header">
+            <div class="step-badge">
+              <span class="step-num">03</span>
+              <div class="step-icon-wrapper regenerator-gradient">
+                <i class="fas fa-chart-line"></i>
+              </div>
+            </div>
+            <h3 class="step-heading">Grow Your Portfolio</h3>
+          </div>
+          
+          <p class="step-text">
+            Diversify across crops, regions, and seasons. Track your portfolio 
+            performance and impact metrics in real-time.
+          </p>
+          
+          <div class="step-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-layer-group"></i>
+              <span>Portfolio Diversification</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-leaf"></i>
+              <span>Impact Tracking</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-mobile-alt"></i>
+              <span>Mobile Dashboard</span>
+            </div>
+          </div>
+
+          <div class="step-stats">
+            <div class="stat-item">
+              <div class="stat-value">15+</div>
+              <div class="stat-label">Crop Types</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">1,200+</div>
+              <div class="stat-label">Hectares</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Explainer Video Section -->
+    <div class="explainer-video-section fade-in-up" style="animation-delay: 0.5s;">
+      <div class="video-container">
+        <div class="video-wrapper">
+          <div class="video-placeholder">
+            <div class="play-button">
+              <i class="fas fa-play"></i>
+            </div>
+            <div class="video-overlay">
+              <h3>See How It Works</h3>
+              <p>Watch our 2-minute explainer video</p>
+            </div>
+          </div>
+          <!-- Replace with actual video when ready -->
+          <!-- <iframe src="YOUR_VIDEO_URL" frameborder="0" allowfullscreen></iframe> -->
+        </div>
+        <div class="video-info">
+          <h3>Understanding the Regenerative Capital Flow</h3>
+          <p>
+            Watch how capital moves from Primers to farms, gets deployed for regenerative 
+            agriculture, and creates tradeable tokens for Regenerators—all tracked 
+            transparently on the blockchain.
+          </p>
+          <div class="video-stats">
+            <div class="video-stat">
+              <i class="fas fa-clock"></i>
+              <span>2 min watch</span>
+            </div>
+            <div class="video-stat">
+              <i class="fas fa-eye"></i>
+              <span>10K+ views</span>
+            </div>
+            <div class="video-stat">
+              <i class="fas fa-thumbs-up"></i>
+              <span>98% helpful</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom CTA -->
+    <div class="works-cta fade-in-up" style="animation-delay: 0.6s;">
+      <a href="#" class="cta-button-primary">
+        <span>Start Your Journey</span>
+        <i class="fas fa-arrow-right"></i>
+      </a>
+      <a href="#" class="cta-button-secondary">
+        <span>View Live Projects</span>
+        <i class="fas fa-external-link-alt"></i>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+COMPLETE UPDATED CSS (Replace all how-it-works CSS):
+
+/* ============================================
+   HOW IT WORKS PREMIUM SECTION - 100/100
+   ============================================ */
+
+.how-it-works-premium {
+  background: linear-gradient(180deg, #0A0F1E 0%, #0F172A 50%, #0A0F1E 100%);
+  padding: 120px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Enhanced Background Pattern */
+.how-it-works-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(100, 116, 139, 0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.works-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   PAGE LOAD ANIMATIONS (HERO-STYLE)
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+/* ============================================
+   SECTION HEADER
+   ============================================ */
+
+.works-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.works-label {
+  display: inline-block;
+  padding: 8px 20px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 24px;
+  color: #10B981;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+.works-title {
+  font-size: 64px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.works-subtitle {
+  font-size: 22px;
+  color: #94A3B8;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ============================================
+   AUDIENCE TOGGLE (NEW)
+   ============================================ */
+
+.audience-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 60px;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #94A3B8;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle-btn i {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+  border-color: #2563EB;
+  color: white;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+}
+
+.toggle-btn.active[data-audience="regenerator"] {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  border-color: #10B981;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.toggle-btn.active i {
+  transform: scale(1.1);
+}
+
+/* ============================================
+   PROCESS FLOW
+   ============================================ */
+
+.process-flow {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-bottom: 80px;
+}
+
+.process-flow.active-flow {
+  display: grid;
+}
+
+.process-step {
+  position: relative;
+}
+
+/* ============================================
+   ENHANCED STEP CONTENT CARD
+   ============================================ */
+
+.step-content {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 48px 36px;
+  height: 100%;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top Glow Border */
+.step-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(37, 99, 235, 0.6), 
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.regenerator-flow .step-content::before {
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(16, 185, 129, 0.6), 
+    transparent
+  );
+}
+
+/* ENHANCED HOVER EFFECTS */
+.step-content:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(37, 99, 235, 0.4);
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(37, 99, 235, 0.3),
+    0 0 40px rgba(37, 99, 235, 0.2);
+}
+
+.regenerator-flow .step-content:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(16, 185, 129, 0.3),
+    0 0 40px rgba(16, 185, 129, 0.2);
+}
+
+.step-content:hover::before {
+  opacity: 1;
+}
+
+/* ============================================
+   STEP HEADER
+   ============================================ */
+
+.step-header {
+  margin-bottom: 24px;
+}
+
+.step-badge {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.step-num {
+  font-size: 56px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #2563EB, #1E40AF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.regenerator-flow .step-num {
+  background: linear-gradient(135deg, #10B981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.step-content:hover .step-num {
+  transform: scale(1.1);
+}
+
+.step-icon-wrapper {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.4s ease;
+}
+
+.primer-gradient {
+  background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+}
+
+.regenerator-gradient {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
+.step-content:hover .step-icon-wrapper {
+  transform: rotate(5deg) scale(1.1);
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.5);
+}
+
+.regenerator-flow .step-content:hover .step-icon-wrapper {
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+}
+
+.step-icon-wrapper i {
+  font-size: 32px;
+  color: white;
+  transition: transform 0.3s ease;
+}
+
+.step-content:hover .step-icon-wrapper i {
+  transform: scale(1.15);
+}
+
+.step-heading {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.3;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.step-content:hover .step-heading {
+  color: #2563EB;
+}
+
+.regenerator-flow .step-content:hover .step-heading {
+  color: #10B981;
+}
+
+/* ============================================
+   STEP TEXT & HIGHLIGHTS
+   ============================================ */
+
+.step-text {
+  font-size: 16px;
+  color: #CBD5E1;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.step-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #E2E8F0;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.highlight-item:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.3);
+  transform: translateX(8px);
+}
+
+.regenerator-flow .highlight-item:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.highlight-item i {
+  color: #2563EB;
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.regenerator-flow .highlight-item i {
+  color: #10B981;
+}
+
+.highlight-item:hover i {
+  transform: scale(1.2);
+}
+
+/* ============================================
+   STEP STATS
+   ============================================ */
+
+.step-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item {
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-4px);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #2563EB, #1E40AF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.regenerator-flow .stat-value {
+  background: linear-gradient(135deg, #10B981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ============================================
+   FLOW ARROWS
+   ============================================ */
+
+.flow-arrow {
+  position: absolute;
+  right: -48px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+}
+
+.process-step:last-child .flow-arrow {
+  display: none;
+}
+
+.arrow-line {
+  width: 70px;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    rgba(37, 99, 235, 0.4), 
+    rgba(37, 99, 235, 0.1)
+  );
+}
+
+.regenerator-flow .arrow-line {
+  background: linear-gradient(90deg, 
+    rgba(16, 185, 129, 0.4), 
+    rgba(16, 185, 129, 0.1)
+  );
+}
+
+.arrow-head {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12);
+  border: 2px solid rgba(37, 99, 235, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -22px;
+  transition: all 0.3s ease;
+}
+
+.regenerator-flow .arrow-head {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.arrow-head:hover {
+  background: rgba(37, 99, 235, 0.2);
+  transform: scale(1.1);
+}
+
+.regenerator-flow .arrow-head:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.arrow-head i {
+  color: #2563EB;
+  font-size: 18px;
+}
+
+.regenerator-flow .arrow-head i {
+  color: #10B981;
+}
+
+/* ============================================
+   EXPLAINER VIDEO SECTION (NEW)
+   ============================================ */
+
+.explainer-video-section {
+  margin-bottom: 80px;
+  padding: 60px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.video-container {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.video-wrapper {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.video-placeholder {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.video-placeholder:hover {
+  transform: scale(1.02);
+}
+
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.video-placeholder:hover .play-button {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 12px 40px rgba(16, 185, 129, 0.6);
+}
+
+.play-button i {
+  font-size: 32px;
+  color: white;
+  margin-left: 4px;
+}
+
+.video-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+  z-index: 1;
+}
+
+.video-overlay h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.video-overlay p {
+  font-size: 16px;
+  color: #CBD5E1;
+  margin: 0;
+}
+
+.video-info h3 {
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 20px;
+  line-height: 1.3;
+}
+
+.video-info p {
+  font-size: 16px;
+  color: #94A3B8;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.video-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.video-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #CBD5E1;
+}
+
+.video-stat i {
+  color: #10B981;
+  font-size: 16px;
+}
+
+/* ============================================
+   BOTTOM CTA
+   ============================================ */
+
+.works-cta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.cta-button-primary,
+.cta-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 36px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-button-primary {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+}
+
+.cta-button-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+}
+
+.cta-button-secondary {
+  background: transparent;
+  color: #10B981;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.cta-button-secondary:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10B981;
+  transform: translateY(-3px);
+}
+
+.cta-button-primary i,
+.cta-button-secondary i {
+  transition: transform 0.3s ease;
+}
+
+.cta-button-primary:hover i,
+.cta-button-secondary:hover i {
+  transform: translateX(4px);
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .process-flow {
+    grid-template-columns: 1fr;
+    gap: 60px;
+  }
+
+  .flow-arrow {
+    right: auto;
+    top: auto;
+    bottom: -50px;
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+  }
+
+  .video-container {
+    grid-template-columns: 1fr;
+  }
+
+  .step-content {
+    padding: 40px 28px;
+  }
+
+  .works-title {
+    font-size: 48px;
+  }
+}
+
+@media (max-width: 768px) {
+  .how-it-works-premium {
+    padding: 80px 20px;
+  }
+
+  .works-header {
+    margin-bottom: 40px;
+  }
+
+  .works-title {
+    font-size: 36px;
+  }
+
+  .works-subtitle {
+    font-size: 18px;
+  }
+
+  .audience-toggle {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .toggle-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .step-heading {
+    font-size: 24px;
+  }
+
+  .step-num {
+    font-size: 42px;
+  }
+
+  .step-icon-wrapper {
+    width: 60px;
+    height: 60px;
+  }
+
+  .step-icon-wrapper i {
+    font-size: 26px;
+  }
+
+  .step-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .video-info h3 {
+    font-size: 24px;
+  }
+
+  .video-stats {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .works-cta {
+    flex-direction: column;
+  }
+
+  .cta-button-primary,
+  .cta-button-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+JAVASCRIPT FOR TOGGLE FUNCTIONALITY (Add to your script):
+
+<script>
+// Audience Toggle Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleButtons = document.querySelectorAll('.toggle-btn');
+  const primerFlow = document.querySelector('.primer-flow');
+  const regeneratorFlow = document.querySelector('.regenerator-flow');
+
+  toggleButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove active class from all buttons
+      toggleButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      this.classList.add('active');
+      
+      // Show/hide appropriate flow
+      const audience = this.getAttribute('data-audience');
+      if (audience === 'primer') {
+        primerFlow.classList.add('active-flow');
+        regeneratorFlow.classList.remove('active-flow');
+      } else {
+        regeneratorFlow.classList.add('active-flow');
+        primerFlow.classList.remove('active-flow');
+      }
+    });
+  });
+
+  // Video placeholder click handler
+  const videoPlaceholder = document.querySelector('.video-placeholder');
+  if (videoPlaceholder) {
+    videoPlaceholder.addEventListener('click', function() {
+      // Replace with actual video embed or modal
+      alert('Video player would open here. Replace with your video URL.');
+    });
+  }
+});
+</script>
+
+IMPLEMENTATION CHECKLIST:
+□ Replace entire how-it-works section HTML
+□ Replace all how-it-works CSS
+□ Add JavaScript for toggle functionality
+□ Verify page load animations work (fade-in-up)
+□ Test hover effects (lift, glow, float)
+□ Test audience toggle (Primers vs Regenerators)
+□ Verify video placeholder displays
+□ Check mobile responsiveness
+□ Test all transitions are smooth
+□ Verify color gradients match brand
+
+EXPLAINER VIDEO PLACEMENT:
+The video is placed AFTER the process steps but BEFORE the final CTA buttons.
+This is the optimal position because:
+1. Users understand the concept first (from steps)
+2. Video reinforces understanding
+3. Positioned right before conversion (CTA buttons)
+4. Doesn't interrupt the flow
+5. Acts as final convincer before action
+
+When you have your actual explainer video, replace the placeholder with:
+<iframe src="YOUR_YOUTUBE_OR_VIMEO_URL" frameborder="0" allowfullscreen></iframe>
