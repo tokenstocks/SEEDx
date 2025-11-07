@@ -28,29 +28,29 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
         if (charIndex < currentWord.length) {
           charIndexRef.current++;
           setDisplayText(currentWord.substring(0, charIndexRef.current));
-          timeoutRef.current = setTimeout(type, 120);
+          timeoutRef.current = setTimeout(type, 200);
         } else {
           timeoutRef.current = setTimeout(() => {
             isDeletingRef.current = true;
             type();
-          }, 2000);
+          }, 3000);
         }
       } else {
         if (charIndex > 0) {
           charIndexRef.current--;
           setDisplayText(currentWord.substring(0, charIndexRef.current));
-          timeoutRef.current = setTimeout(type, 60);
+          timeoutRef.current = setTimeout(type, 120);
         } else {
           isDeletingRef.current = false;
           timeoutRef.current = setTimeout(() => {
             wordIndexRef.current = (wordIndexRef.current + 1) % TYPEWRITER_WORDS.length;
             type();
-          }, 500);
+          }, 800);
         }
       }
     };
 
-    timeoutRef.current = setTimeout(type, 120);
+    timeoutRef.current = setTimeout(type, 200);
 
     return () => {
       if (timeoutRef.current) {
