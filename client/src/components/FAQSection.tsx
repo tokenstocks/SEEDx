@@ -46,7 +46,11 @@ interface FAQ {
 
 export default function FAQSection() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
+  const [visibleCount, setVisibleCount] = useState(6); // Show 6 initially
   const shouldReduceMotion = useReducedMotion();
+  
+  const INITIAL_COUNT = 6;
+  const LOAD_MORE_COUNT = 6;
 
   const categories = [
     { id: "all" as Category, label: "All Questions", icon: LayoutGrid },
@@ -629,9 +633,22 @@ export default function FAQSection() {
     },
   ];
 
+  // Filter by category, then limit by visible count
   const filteredFAQs = activeCategory === "all"
     ? faqs
     : faqs.filter((faq) => faq.category === activeCategory);
+  
+  const visibleFAQs = filteredFAQs.slice(0, visibleCount);
+  const remainingCount = filteredFAQs.length - visibleCount;
+  
+  const handleCategoryChange = (category: Category) => {
+    setActiveCategory(category);
+    setVisibleCount(INITIAL_COUNT); // Reset to initial count when changing categories
+  };
+  
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + LOAD_MORE_COUNT);
+  };
 
   return (
     <section className="relative py-20 md:py-32 px-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
@@ -678,7 +695,7 @@ export default function FAQSection() {
             return (
               <Button
                 key={category.id}
-                onClick={() => setActiveCategory(category.id)}
+                onClick={() => handleCategoryChange(category.id)}
                 variant={activeCategory === category.id ? "default" : "outline"}
                 className={`flex items-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                   activeCategory === category.id
@@ -703,7 +720,7 @@ export default function FAQSection() {
           className="mb-12 md:mb-16"
         >
           <Accordion type="single" collapsible className="space-y-4">
-            {filteredFAQs.map((faq) => {
+            {visibleFAQs.map((faq) => {
               const Icon = faq.icon;
               return (
                 <AccordionItem
@@ -730,6 +747,49 @@ export default function FAQSection() {
             })}
           </Accordion>
         </motion.div>
+
+        {/* Load More Button */}
+        {remainingCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="flex flex-col items-center gap-6 mb-12 md:mb-16"
+          >
+            {/* Divider Line */}
+            <div className="relative w-full max-w-md">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleLoadMore}
+              variant="outline"
+              className="group relative overflow-hidden bg-white/5 backdrop-blur-sm border-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500 px-8 py-6 text-base font-semibold rounded-2xl transition-all duration-300 hover:-translate-y-1 shadow-lg shadow-amber-500/10 hover:shadow-amber-500/30"
+              data-testid="button-load-more-faqs"
+            >
+              {/* Shimmer Effect */}
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
+                  <span className="text-amber-400 font-bold text-sm">{remainingCount}</span>
+                </div>
+                <span>Show {Math.min(remainingCount, LOAD_MORE_COUNT)} More Question{Math.min(remainingCount, LOAD_MORE_COUNT) !== 1 ? 's' : ''}</span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-all group-hover:translate-y-1">
+                  <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </Button>
+
+            <p className="text-sm text-slate-500 italic text-center">
+              Or use category filters above to find specific topics
+            </p>
+          </motion.div>
+        )}
 
         {/* Still Have Questions CTA */}
         <motion.div

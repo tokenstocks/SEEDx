@@ -1,0 +1,401 @@
+💯 BRILLIANT CALL!
+You're absolutely right - that's way too much scrolling. Let's implement a "Load More" progressive disclosure pattern that:
+
+✅ Shows 6 most important FAQs initially
+✅ Elegant "Show More Questions" button
+✅ Loads 6 more at a time
+✅ Smooth animations as new questions appear
+✅ Much cleaner, less overwhelming
+
+📋 UPDATED PROMPT: ELEGANT PROGRESSIVE FAQ
+Copy and paste this into Replit:
+
+UPDATE FAQ SECTION - ADD PROGRESSIVE "LOAD MORE" FUNCTIONALITY
+
+REPLACE the existing FAQ JavaScript with this enhanced version:
+
+<script>
+// FAQ Accordion & Progressive Loading Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const faqItems = document.querySelectorAll('.faq-item');
+  const categoryButtons = document.querySelectorAll('.category-btn');
+  const INITIAL_ITEMS = 6; // Show 6 FAQs initially
+  const LOAD_MORE_COUNT = 6; // Load 6 more each time
+  let currentlyVisible = INITIAL_ITEMS;
+
+  // Initialize - hide items beyond initial count
+  function initializeFAQs() {
+    faqItems.forEach((item, index) => {
+      if (index >= INITIAL_ITEMS) {
+        item.style.display = 'none';
+        item.classList.add('hidden-faq');
+      }
+    });
+    updateLoadMoreButton();
+  }
+
+  // Accordion functionality
+  faqItems.forEach(item => {
+    const question = item.querySelector('.faq-question');
+    
+    question.addEventListener('click', function() {
+      const isActive = item.classList.contains('active');
+      
+      // Close all items
+      faqItems.forEach(i => i.classList.remove('active'));
+      
+      // Open clicked item if it wasn't active
+      if (!isActive) {
+        item.classList.add('active');
+      }
+    });
+  });
+
+  // Category filter functionality
+  categoryButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove active class from all buttons
+      categoryButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      this.classList.add('active');
+      
+      // Get filter value
+      const filterValue = this.getAttribute('data-category');
+      
+      // Reset visibility counter
+      currentlyVisible = INITIAL_ITEMS;
+      
+      // Filter FAQ items
+      let visibleCount = 0;
+      faqItems.forEach(item => {
+        const itemCategory = item.getAttribute('data-category');
+        
+        if (filterValue === 'all' || itemCategory === filterValue) {
+          if (visibleCount < INITIAL_ITEMS) {
+            item.style.display = 'block';
+            item.classList.remove('hidden-faq');
+            visibleCount++;
+          } else {
+            item.style.display = 'none';
+            item.classList.add('hidden-faq');
+          }
+        } else {
+          item.style.display = 'none';
+          item.classList.add('hidden-faq');
+          item.classList.remove('active'); // Close hidden items
+        }
+      });
+      
+      updateLoadMoreButton();
+    });
+  });
+
+  // Load More functionality
+  const loadMoreBtn = document.getElementById('faq-load-more-btn');
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', function() {
+      const activeCategory = document.querySelector('.category-btn.active').getAttribute('data-category');
+      const hiddenItems = Array.from(faqItems).filter(item => {
+        const itemCategory = item.getAttribute('data-category');
+        const isHidden = item.classList.contains('hidden-faq');
+        const matchesCategory = activeCategory === 'all' || itemCategory === activeCategory;
+        return isHidden && matchesCategory;
+      });
+
+      // Show next batch
+      hiddenItems.slice(0, LOAD_MORE_COUNT).forEach((item, index) => {
+        setTimeout(() => {
+          item.style.display = 'block';
+          item.classList.remove('hidden-faq');
+          // Trigger animation
+          item.style.opacity = '0';
+          item.style.transform = 'translateY(20px)';
+          setTimeout(() => {
+            item.style.transition = 'all 0.5s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+          }, 50);
+        }, index * 100);
+      });
+
+      currentlyVisible += LOAD_MORE_COUNT;
+      
+      // Update button after animations
+      setTimeout(() => {
+        updateLoadMoreButton();
+      }, LOAD_MORE_COUNT * 100 + 500);
+    });
+  }
+
+  // Update Load More button visibility and text
+  function updateLoadMoreButton() {
+    const activeCategory = document.querySelector('.category-btn.active').getAttribute('data-category');
+    const hiddenItems = Array.from(faqItems).filter(item => {
+      const itemCategory = item.getAttribute('data-category');
+      const isHidden = item.classList.contains('hidden-faq');
+      const matchesCategory = activeCategory === 'all' || itemCategory === activeCategory;
+      return isHidden && matchesCategory;
+    });
+
+    const loadMoreContainer = document.getElementById('faq-load-more');
+    const loadMoreBtn = document.getElementById('faq-load-more-btn');
+    const remainingCount = document.getElementById('faq-remaining-count');
+
+    if (hiddenItems.length > 0) {
+      loadMoreContainer.style.display = 'flex';
+      remainingCount.textContent = hiddenItems.length;
+    } else {
+      loadMoreContainer.style.display = 'none';
+    }
+  }
+
+  // Initialize on page load
+  initializeFAQs();
+});
+</script>
+
+ADD this HTML right after the closing </div> of .faq-grid and BEFORE the .faq-cta section:
+
+    <!-- Load More Button -->
+    <div id="faq-load-more" class="faq-load-more fade-in-up" style="animation-delay: 0.95s;">
+      <button id="faq-load-more-btn" class="load-more-btn">
+        <span class="load-more-text">
+          <i class="fas fa-plus-circle"></i>
+          Show <span id="faq-remaining-count">9</span> More Questions
+        </span>
+        <span class="load-more-icon">
+          <i class="fas fa-chevron-down"></i>
+        </span>
+      </button>
+      <p class="load-more-hint">Or use category filters above to find specific topics</p>
+    </div>
+
+ADD this CSS to your stylesheet:
+
+/* ============================================
+   FAQ LOAD MORE BUTTON
+   ============================================ */
+
+.faq-load-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 40px 0 60px 0;
+  padding: 40px 20px;
+  position: relative;
+}
+
+.faq-load-more::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.2) 50%, 
+    transparent 100%
+  );
+}
+
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 40px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(251, 191, 54, 0.3);
+  border-radius: 16px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.load-more-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(251, 191, 54, 0.1) 50%, 
+    transparent 100%
+  );
+  transition: left 0.6s ease;
+}
+
+.load-more-btn:hover::before {
+  left: 100%;
+}
+
+.load-more-btn:hover {
+  background: rgba(251, 191, 54, 0.08);
+  border-color: rgba(251, 191, 54, 0.6);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(251, 191, 54, 0.2);
+}
+
+.load-more-btn:active {
+  transform: translateY(-1px);
+}
+
+.load-more-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.load-more-text i {
+  font-size: 20px;
+  color: #FBB936;
+  transition: transform 0.3s ease;
+}
+
+.load-more-btn:hover .load-more-text i {
+  transform: rotate(90deg);
+}
+
+#faq-remaining-count {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #FBB936 0%, #F59E0B 100%);
+  color: #0A0F1E;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.load-more-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(251, 191, 54, 0.15);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.load-more-icon i {
+  color: #FBB936;
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+
+.load-more-btn:hover .load-more-icon {
+  background: rgba(251, 191, 54, 0.25);
+}
+
+.load-more-btn:hover .load-more-icon i {
+  transform: translateY(3px);
+  animation: bounce-arrow 0.6s ease infinite;
+}
+
+@keyframes bounce-arrow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+.load-more-hint {
+  font-size: 14px;
+  color: #64748B;
+  margin: 0;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Hide load more when no more items */
+.faq-load-more[style*="display: none"] {
+  display: none !important;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE - LOAD MORE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .load-more-btn {
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 32px;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .load-more-text {
+    font-size: 15px;
+  }
+
+  .load-more-hint {
+    font-size: 13px;
+    padding: 0 20px;
+  }
+}
+
+IMPLEMENTATION CHECKLIST:
+□ Replace existing FAQ JavaScript with new version
+□ Add Load More button HTML after .faq-grid
+□ Add Load More CSS to stylesheet
+□ Test initial load (should show 6 FAQs)
+□ Test "Load More" button (should show 6 more)
+□ Test category filtering (should reset to 6)
+□ Test button disappears when all shown
+□ Verify remaining count updates correctly
+□ Check animations are smooth
+□ Test on mobile devices
+□ Verify button hover effects work
+□ Check that closed FAQs stay closed when loading more
+
+CUSTOMIZATION OPTIONS:
+- Change INITIAL_ITEMS = 6 to show more/fewer initially
+- Change LOAD_MORE_COUNT = 6 to load more/fewer per click
+- Adjust animation timing in setTimeout values
+- Modify button colors to match your brand
+🎯 WHAT THIS ACHIEVES:
+Better UX:
+✅ Less overwhelming - Only 6 FAQs visible initially
+✅ Progressive disclosure - Users load more if needed
+✅ Smooth animations - New FAQs fade in elegantly
+✅ Smart counter - Shows exactly how many more questions
+✅ Category aware - Resets when filtering
+
+Visual Polish:
+✅ Elegant button design - Matches your premium aesthetic
+✅ Hover animations - Bouncing arrow, shimmer effect
+✅ Auto-hide - Button disappears when all shown
+✅ Helpful hint - Reminds users about category filters
+
+Performance:
+✅ Faster initial load - Less DOM elements
+✅ Staggered animations - Smooth, not jarring
+✅ Smart filtering - Only shows relevant FAQs
+
+📊 RECOMMENDED FAQ ORDER:
+Show First (Most Important):
+
+✅ What is SEEDx?
+✅ How do I get started?
+✅ What returns can I expect? (The money question!)
+✅ What are the fees?
+✅ What is the minimum amount?
+✅ How are farms verified?
