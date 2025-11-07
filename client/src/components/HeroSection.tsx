@@ -26,6 +26,9 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
             <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight mb-2">
               SEEDx
             </h1>
+            <p className="text-xl md:text-2xl text-white/80 font-light tracking-wide">
+              The Regenerative Capital Exchange
+            </p>
           </div>
           <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
             Plant capital.<br/>Grow sustainable impact.
