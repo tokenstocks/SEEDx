@@ -15,6 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink, History } from "lucide-react";
 import { Link } from "wouter";
 import type { NavEntry } from "@/types/phase4";
+import AppHeader from "@/components/AppHeader";
 
 interface Project {
   id: string;
@@ -278,6 +279,7 @@ export default function ProjectDetail() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <AppHeader />
       <div className="max-w-5xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
@@ -663,7 +665,7 @@ export default function ProjectDetail() {
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  Updated {new Date(entry.effectiveDate).toLocaleString()}
+                                  Updated {new Date(entry.effectiveAt).toLocaleString()}
                                 </p>
                                 {entry.notes && (
                                   <p className="text-sm mt-2">{entry.notes}</p>

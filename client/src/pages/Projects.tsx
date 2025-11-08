@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { TrendingUp, MapPin, Calendar, Search } from "lucide-react";
+import AppHeader from "@/components/AppHeader";
 
 interface Project {
   id: string;
@@ -62,6 +63,7 @@ export default function Projects() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <AppHeader />
       <div className="max-w-7xl mx-auto p-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Investment Projects</h1>

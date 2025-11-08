@@ -42,6 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Link } from "wouter";
 import { WalletActivationStatus } from "@/components/WalletActivationStatus";
 import { useQuery } from "@tanstack/react-query";
+import AppHeader from "@/components/AppHeader";
 
 const withdrawalSchema = z.object({
   currency: z.enum(["NGN", "USDC", "XLM"]),
@@ -386,15 +387,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <AppHeader />
+      
       <header className="bg-background border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">SD</span>
-              </div>
-              <h1 className="text-xl font-bold" data-testid="text-title">SEEDx Dashboard</h1>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold" data-testid="text-title">Dashboard</h1>
             <div className="flex items-center gap-4">
               {/* XLM Gas Fees - Subtle display */}
               <Tooltip>
@@ -411,22 +409,14 @@ export default function Dashboard() {
                   </p>
                 </TooltipContent>
               </Tooltip>
-
-              <Avatar>
-                <AvatarFallback data-testid="avatar-user">
-                  {user.firstName?.[0]}{user.lastName?.[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden md:block">
-                <p className="text-sm font-medium" data-testid="text-username">{user.firstName} {user.lastName}</p>
-                <p className="text-xs text-muted-foreground" data-testid="text-email">{user.email}</p>
-              </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} data-testid="button-logout">
-                <LogOut className="w-5 h-5" />
-              </Button>
             </div>
           </div>
-          
+        </div>
+      </header>
+
+      {/* Quick Actions - Keep these for convenience */}
+      <div className="bg-background/50 border-b">
+        <div className="max-w-7xl mx-auto px-4 py-2">
           <nav className="flex gap-2 overflow-x-auto">
             <Link href="/projects">
               <Button variant="ghost" size="sm" className="gap-2" data-testid="link-projects">
@@ -448,6 +438,12 @@ export default function Dashboard() {
                 </Button>
               </Link>
             )}
+            <Link href="/marketplace">
+              <Button variant="ghost" size="sm" className="gap-2" data-testid="link-marketplace">
+                <TrendingUp className="w-4 h-4" />
+                Marketplace
+              </Button>
+            </Link>
             <Link href="/transactions">
               <Button variant="ghost" size="sm" className="gap-2" data-testid="link-transactions">
                 <Receipt className="w-4 h-4" />
@@ -462,7 +458,7 @@ export default function Dashboard() {
             </Link>
           </nav>
         </div>
-      </header>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Wallet Status Card */}
