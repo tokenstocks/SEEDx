@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn - SEED & SEEDx</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #ffffff;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #1e3a1e 0%, #2d5a2d 100%);
+            color: white;
+            padding: 120px 20px 80px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.95;
+            line-height: 1.8;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Section Styles */
+        section {
+            padding: 80px 20px;
+        }
+
+        section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            color: #1e3a1e;
+            font-weight: 700;
+        }
+
+        section h3 {
+            font-size: 1.8rem;
+            margin-top: 48px;
+            margin-bottom: 16px;
+            color: #2d5a2d;
+            font-weight: 600;
+        }
+
+        section p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        /* Alternating Background */
+        section:nth-child(even) {
+            background: #f8faf8;
+        }
+
+        /* The Problem Section */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .problem-card {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-left: 4px solid #c74444;
+        }
+
+        .problem-card h4 {
+            font-size: 1.4rem;
+            margin-bottom: 12px;
+            color: #c74444;
+        }
+
+        .problem-card p {
+            font-size: 1rem;
+            color: #555;
+        }
+
+        /* Solution Section */
+        .solution-box {
+            background: linear-gradient(135deg, #e8f5e8 0%, #d4ead4 100%);
+            padding: 48px;
+            border-radius: 16px;
+            margin-top: 32px;
+            border: 2px solid #2d5a2d;
+        }
+
+        .solution-box h4 {
+            font-size: 1.6rem;
+            color: #1e3a1e;
+            margin-bottom: 16px;
+        }
+
+        .solution-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .solution-box li {
+            font-size: 1.1rem;
+            padding: 12px 0;
+            padding-left: 32px;
+            position: relative;
+            color: #333;
+        }
+
+        .solution-box li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #2d5a2d;
+            font-weight: bold;
+            font-size: 1.4rem;
+        }
+
+        /* How It Works */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            margin-top: 48px;
+        }
+
+        .step {
+            text-align: center;
+            padding: 32px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .step:hover {
+            transform: translateY(-8px);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: #2d5a2d;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 0 auto 20px;
+        }
+
+        .step h4 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            color: #1e3a1e;
+        }
+
+        .step p {
+            font-size: 1rem;
+            color: #555;
+        }
+
+        /* Stakeholder Cards */
+        .stakeholder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-top: 48px;
+        }
+
+        .stakeholder-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+            border-top: 6px solid #2d5a2d;
+        }
+
+        .stakeholder-card h4 {
+            font-size: 1.6rem;
+            margin-bottom: 16px;
+            color: #1e3a1e;
+        }
+
+        .stakeholder-card .subtitle {
+            font-size: 1rem;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+
+        .stakeholder-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .stakeholder-card li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+            font-size: 1rem;
+            color: #444;
+        }
+
+        .stakeholder-card li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #2d5a2d;
+            font-weight: bold;
+        }
+
+        /* Impact Metrics */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 32px 20px;
+            background: linear-gradient(135deg, #2d5a2d 0%, #1e3a1e 100%);
+            color: white;
+            border-radius: 12px;
+        }
+
+        .metric-number {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        /* Technology Section */
+        .tech-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .tech-feature {
+            padding: 24px;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .tech-feature h5 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            color: #1e3a1e;
+        }
+
+        .tech-feature p {
+            font-size: 0.95rem;
+            color: #666;
+        }
+
+        /* FAQ Section */
+        .faq-item {
+            background: white;
+            padding: 32px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .faq-item h4 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            color: #1e3a1e;
+        }
+
+        .faq-item p {
+            font-size: 1rem;
+            color: #555;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #1e3a1e 0%, #2d5a2d 100%);
+            color: white;
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .cta-section h2 {
+            color: white;
+            font-size: 2.8rem;
+            margin-bottom: 24px;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #1e3a1e;
+        }
+
+        .btn-primary:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            section h2 {
+                font-size: 2rem;
+            }
+
+            section h3 {
+                font-size: 1.5rem;
+            }
+
+            .stakeholder-grid,
+            .problem-grid,
+            .steps {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="container">
+            <h1>Understanding Regenerative Capital</h1>
+            <p>Learn how SEED & SEEDx transform one-time grants into perpetual impact engines—financing verified social impact projects across agriculture, renewable energy, water, education, healthcare, and beyond.</p>
+        </div>
+    </div>
+
+    <!-- What is SEED Section -->
+    <section>
+        <div class="container">
+            <h2>What is SEED & SEEDx?</h2>
+            <p><strong>SEED (Sustainable Ecosystem for Economic Development)</strong> is a regenerative capital ecosystem that transforms how impact capital flows to communities and projects across Africa and beyond.</p>
+            
+            <p><strong>SEEDx</strong> is the Regenerative Capital Exchange (RCX) platform—the technology that makes SEED's vision real. Together, they create a system where grants don't disappear after one use, but regenerate perpetually to finance project after project.</p>
+
+            <div class="solution-box">
+                <h4>The Core Innovation</h4>
+                <ul>
+                    <li><strong>Blockchain Tokenization:</strong> Real-world assets become tradeable digital tokens with transparent ownership</li>
+                    <li><strong>Liquidity Pool Mechanics:</strong> Patient capital pools together to de-risk projects and create recyclable capital</li>
+                    <li><strong>Cooperative Ownership:</strong> Democratic governance ensures communities and investors co-own the platform</li>
+                    <li><strong>AI-Powered Verification:</strong> Automated impact measurement provides real-time accountability</li>
+                </ul>
+            </div>
+
+            <p style="margin-top: 32px;"><strong>Result:</strong> One-time grants become evergreen capital that continuously finances verified social impact projects—achieving 5-10x capital efficiency while building community wealth and environmental regeneration.</p>
+        </div>
+    </section>
+
+    <!-- The Problem Section -->
+    <section>
+        <div class="container">
+            <h2>The Problem We're Solving</h2>
+            <p>Traditional impact capital is broken. Over \$50 billion flows into Africa annually through CSR and philanthropy, yet less than 15% achieves measurable, sustained impact. Here's why:</p>
+
+            <div class="problem-grid">
+                <div class="problem-card">
+                    <h4>One-Time Deployment</h4>
+                    <p>Grants are spent once and gone forever. No recycling, no compounding, no regeneration. Each new project requires entirely new funding.</p>
+                </div>
+
+                <div class="problem-card">
+                    <h4>Zero Transparency</h4>
+                    <p>Impact reports arrive 6-12 months late, data is self-reported and unverified. Donors rarely see real-time, verified outcomes.</p>
+                </div>
+
+                <div class="problem-card">
+                    <h4>Beneficiary Exclusion</h4>
+                    <p>Communities and impact-driven individuals lack access to patient capital. No collateral, no credit history, too small for traditional finance.</p>
+                </div>
+
+                <div class="problem-card">
+                    <h4>No Market Access</h4>
+                    <p>Millions want to invest in verified impact projects but have no accessible, transparent entry point. Impact assets remain illiquid and inaccessible.</p>
+                </div>
+
+                <div class="problem-card">
+                    <h4>Risk Transfer</h4>
+                    <p>Development finance often comes with 8-15% interest rates. One setback creates a debt spiral. Communities bear all downside risk.</p>
+                </div>
+
+                <div class="problem-card">
+                    <h4>Scale Paradox</h4>
+                    <p>Pilot projects succeed, but scaling requires proportional capital increase. Without regeneration, scale remains a fantasy.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section>
+        <div class="container">
+            <h2>How the Regenerative Cycle Works</h2>
+            <p>SEED & SEEDx create a perpetual cycle where capital regenerates, projects thrive, and impact compounds across generations.</p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h4>Primers Fund Liquidity Pools</h4>
+                    <p>Philanthropists, CSR departments, and impact investors deposit patient capital into themed liquidity pools (agriculture, energy, water, etc.).</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h4>Pools De-Risk Projects</h4>
+                    <p>Liquidity pools invest in pre-vetted regenerative projects, absorbing early-stage risk and providing patient capital breathing room.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h4>Projects Get Tokenized</h4>
+                    <p>Verified projects are tokenized on the blockchain—creating tradeable digital assets backed by real farms, solar installations, water systems, and more.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h4>Regenerators Buy Tokens</h4>
+                    <p>Impact investors (Regenerators) purchase tokens, gaining fractional ownership in de-risked projects. Capital flows back to liquidity pools.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <h4>Projects Generate Returns</h4>
+                    <p>As projects succeed (harvest sales, energy generation, water subscriptions), returns flow to token holders and liquidity pools.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <h4>Capital Regenerates</h4>
+                    <p>Liquidity pools use replenished capital to fund new projects. The cycle repeats perpetually—same capital finances 5-10+ projects over time.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Who Participates Section -->
+    <section>
+        <div class="container">
+            <h2>Who Participates in the Ecosystem?</h2>
+            <p>SEED & SEEDx bring together three key stakeholder groups, each playing a vital role in the regenerative capital cycle.</p>
+
+            <div class="stakeholder-grid">
+                <div class="stakeholder-card">
+                    <h4>Primers</h4>
+                    <div class="subtitle">Patient Capital Partners</div>
+                    <p><strong>Who they are:</strong> Philanthropists, family foundations, corporate CSR departments, development finance institutions, and impact-focused family offices.</p>
+                    
+                    <p style="margin-top: 20px;"><strong>What they get:</strong></p>
+                    <ul>
+                        <li>5-10x capital efficiency through perpetual recycling</li>
+                        <li>Real-time, AI-verified impact data</li>
+                        <li>Control over fund deployment and sector allocation</li>
+                        <li>Legacy impact that compounds annually</li>
+                        <li>Transparent, blockchain-verified reporting</li>
+                    </ul>
+                </div>
+
+                <div class="stakeholder-card">
+                    <h4>Regenerators</h4>
+                    <div class="subtitle">Cooperative Members & Impact Investors</div>
+                    <p><strong>Who they are:</strong> African diaspora professionals, local middle class, farmer cooperatives, impact funds, and values-driven investors globally.</p>
+                    
+                    <p style="margin-top: 20px;"><strong>What they get:</strong></p>
+                    <ul>
+                        <li>Access to de-risked impact investment opportunities</li>
+                        <li>Tokens backed by verified real-world assets</li>
+                        <li>Democratic governance and cooperative ownership</li>
+                        <li>Target yields of 8-20% annually</li>
+                        <li>Liquidity through secondary token trading</li>
+                        <li>Direct connection to transformative projects</li>
+                    </ul>
+                </div>
+
+                <div class="stakeholder-card">
+                    <h4>Project Owners</h4>
+                    <div class="subtitle">Coming Soon</div>
+                    <p><strong>Who they are:</strong> Social enterprises, cooperatives, community-based organizations, and impact ventures across agriculture, energy, water, education, healthcare, and infrastructure.</p>
+                    
+                    <p style="margin-top: 20px;"><strong>What they get:</strong></p>
+                    <ul>
+                        <li>Patient capital at favorable terms</li>
+                        <li>No predatory debt or extractive finance</li>
+                        <li>Cooperative member support and engagement</li>
+                        <li>Access to AI verification and technology</li>
+                        <li>Transparent impact measurement</li>
+                        <li>Pathway to sustainable, scalable operations</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact Section -->
+    <section>
+        <div class="container">
+            <h2>Measuring Impact That Matters</h2>
+            <p>Every project on SEEDx is verified for real-world impact across environmental, social, and economic dimensions. We track what matters—and prove it with data.</p>
+
+            <h3>Our Impact Vision (2025-2030)</h3>
+            
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-number">100K+</div>
+                    <div class="metric-label">Beneficiaries Across Sectors</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-number">\$500M+</div>
+                    <div class="metric-label">Regenerating Capital</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-number">10M</div>
+                    <div class="metric-label">Tons CO₂ Reduced/Sequestered</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-number">1M+</div>
+                    <div class="metric-label">People with Improved Access</div>
+                </div>
+            </div>
+
+            <h3>Impact Metrics We Track</h3>
+            <p>Aligned with the UN Sustainable Development Goals (SDGs), we measure impact across multiple dimensions:</p>
+
+            <div class="tech-features">
+                <div class="tech-feature">
+                    <h5>Economic Impact</h5>
+                    <p>Jobs created, income uplift, revenue generated, wealth building, fair wages, and economic mobility.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Environmental Impact</h5>
+                    <p>Carbon sequestered, land restored, biodiversity enhanced, water efficiency, emissions reduced.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Social Impact</h5>
+                    <p>Energy access, clean water access, educational outcomes, healthcare improvements, community ownership.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Governance Impact</h5>
+                    <p>Democratic participation, cooperative membership, transparent decision-making, community voice.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Section -->
+    <section>
+        <div class="container">
+            <h2>Technology: Blockchain + AI for Transparency</h2>
+            <p>SEED & SEEDx leverage cutting-edge technology to deliver transparency, security, and verified impact at scale.</p>
+
+            <h3>Blockchain Infrastructure (Stellar Network)</h3>
+            <p>We use the Stellar blockchain for tokenization and transactions because it offers:</p>
+
+            <div class="tech-features">
+                <div class="tech-feature">
+                    <h5>Low Cost</h5>
+                    <p>\$0.00001 per transaction—making micro-investments economically viable.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Speed</h5>
+                    <p>3-5 second transaction finality—instant token purchases and transfers.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Transparency</h5>
+                    <p>Every transaction recorded on an immutable public ledger—full audit trail.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Security</h5>
+                    <p>Multi-signature wallets, encryption, and battle-tested infrastructure since 2014.</p>
+                </div>
+            </div>
+
+            <h3>AI-Powered Verification</h3>
+            <p>We combine blockchain transparency with AI-driven impact verification:</p>
+
+            <div class="tech-features">
+                <div class="tech-feature">
+                    <h5>Satellite Monitoring</h5>
+                    <p>Track land use, vegetation health, infrastructure development, and environmental changes in real-time.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Computer Vision</h5>
+                    <p>Verify project progress through automated image analysis—construction stages, crop growth, asset existence.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>IoT Sensors</h5>
+                    <p>Real-time data from soil sensors, weather stations, energy meters, and water flow monitors.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>Predictive Analytics</h5>
+                    <p>Machine learning models forecast project performance, assess risk, and detect anomalies.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sectors Section -->
+    <section>
+        <div class="container">
+            <h2>Sectors We Serve</h2>
+            <p>SEED is sector-agnostic by design. We can tokenize and finance any verified social impact project. Our regenerative capital model works universally across:</p>
+
+            <div class="tech-features">
+                <div class="tech-feature">
+                    <h5>🌾 Agriculture</h5>
+                    <p>Regenerative farms, cooperatives, processing infrastructure, value chains—from cassava to cocoa.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>⚡ Renewable Energy</h5>
+                    <p>Solar mini-grids, home systems, biogas, biomass—bringing clean energy to off-grid communities.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>💧 Water Infrastructure</h5>
+                    <p>Boreholes, purification systems, irrigation—delivering clean water and sanitation access.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>⛏️ Sustainable Mining</h5>
+                    <p>Formalizing artisanal mining, processing infrastructure, ethical sourcing, land reclamation.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>📚 Education</h5>
+                    <p>Vocational training, school infrastructure, EdTech platforms—closing skills gaps and expanding access.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>🏥 Healthcare</h5>
+                    <p>Primary clinics, medical equipment, health insurance cooperatives—improving health outcomes.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>🏘️ Real Estate</h5>
+                    <p>Affordable housing, cooperative housing, community development—dignified living spaces.</p>
+                </div>
+                <div class="tech-feature">
+                    <h5>🌍 Infrastructure</h5>
+                    <p>Roads, bridges, community facilities—building the foundations for thriving communities.</p>
+                </div>
+            </div>
+
+            <p style="margin-top: 32px;"><strong>Why launch with agriculture?</strong> Strategic convenience, not identity. The founder's 50-hectare cassava farm provides a low-risk, controlled MVP environment to prove the regenerative capital model before expanding across all sectors.</p>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section>
+        <div class="container">
+            <h2>Frequently Asked Questions</h2>
+
+            <div class="faq-item">
+                <h4>Do I need to understand blockchain or cryptocurrency to participate?</h4>
+                <p>No. We've designed SEEDx to be accessible to everyone, regardless of technical knowledge. The blockchain works behind the scenes—you interact with a simple, user-friendly web platform. We handle the complexity so you can focus on impact.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>What returns can Regenerators expect?</h4>
+                <p>Target yields range from 8-20% annually, depending on project type and risk profile. Returns come from real project revenue (harvest sales, energy generation, water subscriptions, etc.)—not speculation. Past performance doesn't guarantee future results, and all investments carry risk.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>How is impact verified?</h4>
+                <p>We use a combination of AI-powered tools (satellite imagery, computer vision, IoT sensors), third-party audits, and blockchain transparency. Every impact claim is backed by verifiable data, and all reports are published on the platform.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>Can I sell my tokens if I need liquidity?</h4>
+                <p>Yes. SEEDx includes a secondary marketplace where Regenerators can trade tokens peer-to-peer. Liquidity depends on market demand, but we're building mechanisms (automated market makers, periodic buybacks) to enhance liquidity over time.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>What happens if a project fails?</h4>
+                <p>Not all projects will succeed—that's the nature of impact investing. Liquidity pools diversify across multiple projects to mitigate risk. We conduct thorough due diligence, provide agronomic/technical support, and maintain transparency about challenges. Regenerators should only invest what they can afford to lose.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>How does SEED make money?</h4>
+                <p>SEED & SEEDx generate revenue through platform transaction fees (0.5-2% on token purchases), liquidity pool management fees (1-3% annually), and advisory services. This ensures the platform is self-sustaining while keeping costs low for users.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>Is this available in my country?</h4>
+                <p>We're launching in Nigeria first (2025), with expansion to West, East, and Southern Africa over the next 3-5 years. Regenerators from anywhere in the world can participate, subject to local regulations. We're building compliance infrastructure to expand globally.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>How is SEED different from traditional impact investing platforms?</h4>
+                <p>Three key differences: (1) <strong>Regenerative capital</strong>—grants recycle perpetually instead of being spent once. (2) <strong>Blockchain transparency</strong>—every transaction and impact metric is verifiable on

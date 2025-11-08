@@ -9,6 +9,7 @@ import Register from "@/pages/Register";
 import Browse from "@/pages/Browse";
 import Dashboard from "@/pages/Dashboard";
 import About from "@/pages/About";
+import Learn from "@/pages/Learn";
 import HowItWorks from "@/pages/HowItWorks";
 import KYCVerification from "@/pages/KYCVerification";
 import Projects from "@/pages/Projects";
@@ -49,6 +50,7 @@ function Router() {
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
       <Route path="/about" component={About} />
+      <Route path="/learn" component={Learn} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route component={NotFound} />
     </Switch>
