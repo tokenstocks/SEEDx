@@ -30,11 +30,11 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="/#featured-farms" className="text-sm font-medium text-white/90 hover:text-white transition-colors" data-testid="link-nav-browse">
-              Browse Farms
-            </a>
-            <Link href="/how-it-works" className="text-sm font-medium text-white/90 hover:text-white transition-colors" data-testid="link-nav-how">
-              How It Works
+            <Link href="/learn" className="text-sm font-medium text-white/90 hover:text-white transition-colors" data-testid="link-nav-learn">
+              Learn
+            </Link>
+            <Link href="/platform" className="text-sm font-medium text-white/90 hover:text-white transition-colors" data-testid="link-nav-platform">
+              Platform
             </Link>
             <Link href="/about" className="text-sm font-medium text-white/90 hover:text-white transition-colors" data-testid="link-nav-about">
               About
@@ -62,11 +62,11 @@ export default function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-800" data-testid="mobile-menu">
             <div className="flex flex-col gap-4">
-              <a href="/#featured-farms" className="text-sm font-medium text-white/90" data-testid="link-mobile-browse">
-                Browse Farms
-              </a>
-              <Link href="/how-it-works" className="text-sm font-medium text-white/90" data-testid="link-mobile-how">
-                How It Works
+              <Link href="/learn" className="text-sm font-medium text-white/90" data-testid="link-mobile-learn">
+                Learn
+              </Link>
+              <Link href="/platform" className="text-sm font-medium text-white/90" data-testid="link-mobile-platform">
+                Platform
               </Link>
               <Link href="/about" className="text-sm font-medium text-white/90" data-testid="link-mobile-about">
                 About
