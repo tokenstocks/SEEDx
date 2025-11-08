@@ -15,7 +15,7 @@ The platform utilizes a React and TypeScript frontend with Vite, Wouter, and Tan
 
 ### Key Features & Implementations
 - **Authentication & KYC:** JWT-based authentication, user registration, and a KYC system for ID verification with admin review.
-- **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool) for asset management.
+- **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool) for asset management. **Critical Fix (Nov 2025):** Deposit approval workflow now properly uses Operations platform wallet (`wallet_type='operations'`) for funding new user accounts instead of admin personal wallet. Friendbot auto-activation implemented for testnet to bootstrap unfunded Operations wallet. Database schema updated from `json` to `jsonb` type for `crypto_balances` column, resolving COALESCE type conversion errors during balance updates.
 - **Investment & Portfolio Management:** Supports multi-currency investments (NGN, USDC, XLM), trustline management, and atomic database updates.
 - **Regenerative Capital Architecture:** A multi-pool system with NAV-based token pricing and automated cashflow distribution (60% treasury, 20% LP investors, 10% reinvestment, 10% operational fees).
 - **Token Marketplace:** An internal peer-to-peer marketplace for trading project tokens with an order book, NAV-based price discovery, automatic order matching, and atomic balance transfers.
@@ -36,6 +36,8 @@ The platform utilizes a React and TypeScript frontend with Vite, Wouter, and Tan
 ### Third-Party Services
 - **Supabase:** PostgreSQL database hosting and file storage.
 - **Stellar Network:** Blockchain platform for tokenized assets and transactions (testnet configured).
+  - **Testnet Bootstrap:** Operations wallet automatically funded via Friendbot if not activated on-chain
+  - **Mainnet Requirement:** Operations wallet must be manually funded before mainnet launch to avoid runtime failures
 
 ### NPM Dependencies
 - **Frontend:** `react`, `react-dom`, `vite`, `wouter`, `@tanstack/react-query`, `tailwindcss`, `@radix-ui/*`, `class-variance-authority`, `clsx`, `tailwind-merge`.
