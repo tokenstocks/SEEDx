@@ -46,10 +46,12 @@ export default function Marketplace() {
     enabled: !!user && !!selectedProject,
   });
 
-  const { data: myOrders } = useQuery<any[]>({
+  const { data: myOrdersData } = useQuery<{ orders: any[] }>({
     queryKey: ["/api/marketplace/orders/my"],
     enabled: !!user,
   });
+
+  const myOrders = myOrdersData?.orders || [];
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: any) => {
