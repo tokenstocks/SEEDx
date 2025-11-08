@@ -2,7 +2,7 @@ import * as StellarSdk from "stellar-sdk";
 import { horizonServer, NETWORK_PASSPHRASE, isTestnet } from "./stellarConfig";
 import { decrypt } from "./encryption";
 import { db } from "../db";
-import { users, wallets } from "@shared/schema";
+import { platformWallets } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 /**
@@ -16,40 +16,28 @@ export interface CreateAccountResponse {
 }
 
 /**
- * Get the Admin wallet credentials for funding operations
- * @returns Admin keypair or null if not found
+ * Get the Operations platform wallet credentials for funding new accounts
+ * @returns Operations wallet keypair or null if not found
  */
-async function getAdminKeypair(): Promise<StellarSdk.Keypair | null> {
+async function getPlatformFundingKeypair(): Promise<StellarSdk.Keypair | null> {
   try {
-    // Find the admin user
-    const [adminUser] = await db
+    // Get the Operations platform wallet
+    const [operationsWallet] = await db
       .select()
-      .from(users)
-      .where(eq(users.role, "admin"))
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "operations"))
       .limit(1);
 
-    if (!adminUser) {
-      console.error("❌ Admin user not found");
-      return null;
-    }
-
-    // Get admin's wallet
-    const [adminWallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.userId, adminUser.id))
-      .limit(1);
-
-    if (!adminWallet || !adminWallet.cryptoWalletSecretEncrypted) {
-      console.error("❌ Admin wallet or secret key not found");
+    if (!operationsWallet || !operationsWallet.encryptedSecretKey) {
+      console.error("❌ Operations platform wallet not found or secret key missing");
       return null;
     }
 
     // Decrypt the secret key
-    const secretKey = decrypt(adminWallet.cryptoWalletSecretEncrypted);
+    const secretKey = decrypt(operationsWallet.encryptedSecretKey);
     return StellarSdk.Keypair.fromSecret(secretKey);
   } catch (error: any) {
-    console.error("❌ Error getting admin keypair:", error.message);
+    console.error("❌ Error getting platform funding keypair:", error.message);
     return null;
   }
 }
@@ -109,22 +97,58 @@ export async function createAndFundAccount(
       }
     }
 
-    // Get admin keypair for funding
-    const adminKeypair = await getAdminKeypair();
-    if (!adminKeypair) {
+    // Get Operations platform wallet keypair for funding
+    const fundingKeypair = await getPlatformFundingKeypair();
+    if (!fundingKeypair) {
       return {
         success: false,
-        error: "Admin wallet not configured for funding operations",
+        error: "Operations wallet not configured. Please contact system administrator.",
       };
     }
 
     console.log(`🔄 Creating account ${publicKey.substring(0, 8)}... with ${startingBalance} XLM...`);
 
-    // Load admin account from Stellar
-    const adminAccount = await horizonServer.loadAccount(adminKeypair.publicKey());
+    // Check if the funding wallet exists on Stellar and activate with Friendbot if needed (testnet only)
+    let fundingAccount;
+    try {
+      fundingAccount = await horizonServer.loadAccount(fundingKeypair.publicKey());
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        // Funding wallet doesn't exist on-chain
+        if (isTestnet) {
+          console.log(`⚠️  Operations wallet not found on testnet. Activating with Friendbot...`);
+          try {
+            // Fund with Friendbot (testnet only)
+            const friendbotUrl = `https://friendbot.stellar.org?addr=${fundingKeypair.publicKey()}`;
+            const friendbotResponse = await fetch(friendbotUrl);
+            if (!friendbotResponse.ok) {
+              throw new Error(`Friendbot failed: ${friendbotResponse.statusText}`);
+            }
+            console.log(`✅ Operations wallet activated with Friendbot!`);
+            // Load the newly created account
+            fundingAccount = await horizonServer.loadAccount(fundingKeypair.publicKey());
+          } catch (friendbotError: any) {
+            console.error(`❌ Failed to activate Operations wallet with Friendbot:`, friendbotError);
+            return {
+              success: false,
+              error: "Operations wallet not activated. Friendbot activation failed. Please contact administrator.",
+            };
+          }
+        } else {
+          // Mainnet - require manual funding
+          return {
+            success: false,
+            error: "Operations wallet not activated on mainnet. Please fund the Operations wallet manually before proceeding.",
+          };
+        }
+      } else {
+        // Other errors
+        throw error;
+      }
+    }
 
     // Build transaction
-    const transaction = new StellarSdk.TransactionBuilder(adminAccount, {
+    const transaction = new StellarSdk.TransactionBuilder(fundingAccount, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: NETWORK_PASSPHRASE,
     })
@@ -138,7 +162,7 @@ export async function createAndFundAccount(
       .build();
 
     // Sign transaction
-    transaction.sign(adminKeypair);
+    transaction.sign(fundingKeypair);
 
     // Submit to Stellar network
     const result = await horizonServer.submitTransaction(transaction);

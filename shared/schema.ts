@@ -69,11 +69,11 @@ export const wallets = pgTable("wallets", {
   // Fiat balance (NGN) - database-only tracking
   fiatBalance: decimal("fiat_balance", { precision: 18, scale: 2 }).notNull().default("0.00"),
   // Crypto balances - tracked on Stellar blockchain
-  cryptoBalances: json("crypto_balances").$type<{
+  cryptoBalances: jsonb("crypto_balances").$type<{
     USDC?: string;
     XLM?: string;
     [tokenSymbol: string]: string | undefined; // Project tokens dynamically
-  }>().default(sql`'{}'::json`),
+  }>().default(sql`'{}'::jsonb`),
   // Stellar wallet for all crypto assets
   cryptoWalletPublicKey: text("crypto_wallet_public_key"),
   cryptoWalletSecretEncrypted: text("crypto_wallet_secret_encrypted"),
