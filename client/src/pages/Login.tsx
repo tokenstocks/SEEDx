@@ -3,13 +3,13 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Sparkles, Shield, Zap } from "lucide-react";
 import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
+import { motion } from "framer-motion";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -54,75 +54,160 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-back">
-            <ArrowLeft className="w-4 h-4" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Back Link */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group" data-testid="link-back">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Back to home
           </Link>
-        </div>
+        </motion.div>
 
-        <Card>
-          <CardHeader className="space-y-1">
-            <div className="flex justify-center mb-4">
+        {/* Login Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden"
+        >
+          {/* Top Glow Border */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-3xl bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+
+          {/* Header */}
+          <div className="px-8 pt-10 pb-6 text-center border-b border-white/10">
+            <div className="flex justify-center mb-6">
               <img 
                 src={logoImage} 
                 alt="SEEDx" 
-                className="h-12 w-auto"
+                className="h-16 w-auto"
                 data-testid="img-login-logo"
               />
             </div>
-            <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-            <CardDescription>
-              Enter your email and password to access your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <h1 className="text-3xl font-bold mb-3 bg-gradient-to-br from-white to-slate-300 bg-clip-text text-transparent">
+              Welcome Back
+            </h1>
+            <p className="text-slate-400">
+              Sign in to continue your regenerative capital journey
+            </p>
+          </div>
+
+          {/* Form */}
+          <div className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  data-testid="input-email"
-                />
+                <Label htmlFor="email" className="text-slate-300">Email</Label>
+                <div className="relative group">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="pl-11 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                    data-testid="input-email"
+                  />
+                </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  data-testid="input-password"
-                />
+                <Label htmlFor="password" className="text-slate-300">Password</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pl-11 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                    data-testid="input-password"
+                  />
+                </div>
               </div>
+
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:opacity-90 text-white font-semibold py-6 shadow-lg shadow-emerald-600/20 hover:-translate-y-0.5 transition-all duration-300"
                 disabled={loginMutation.isPending}
                 data-testid="button-submit"
               >
-                {loginMutation.isPending ? "Signing in..." : "Sign in"}
+                {loginMutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 animate-spin" />
+                    Signing in...
+                  </span>
+                ) : (
+                  "Sign in"
+                )}
               </Button>
             </form>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <div className="text-sm text-center text-muted-foreground">
-              Don't have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline" data-testid="link-register">
-                Sign up
+
+            {/* Divider */}
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-slate-900 px-4 text-slate-500">
+                  New to SEEDx?
+                </span>
+              </div>
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="text-center">
+              <Link href="/register" data-testid="link-register">
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 hover:bg-white/10 text-white font-semibold py-6 hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  Create an account
+                </Button>
               </Link>
             </div>
-          </CardFooter>
-        </Card>
+          </div>
+
+          {/* Trust Badges */}
+          <div className="px-8 pb-8 pt-6 border-t border-white/10">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              {[
+                { icon: Shield, label: "Bank-Level Security" },
+                { icon: Zap, label: "Instant Access" },
+                { icon: Lock, label: "Encrypted Data" }
+              ].map((badge, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-2">
+                  <badge.icon className="w-5 h-5 text-emerald-400" />
+                  <span className="text-xs text-slate-500">{badge.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Footer Note */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.8 }}
+          className="text-center text-xs text-slate-500 mt-8"
+        >
+          By signing in, you agree to our Terms of Service and Privacy Policy
+        </motion.p>
       </div>
     </div>
   );
