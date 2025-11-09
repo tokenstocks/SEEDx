@@ -1548,9 +1548,7 @@ router.post("/wallets/:userId/activate", authenticate, requireAdmin, async (req,
     // After successful activation, sync XLM balance from Horizon API
     let xlmBalance = "0";
     try {
-      const horizonUrl = process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
-      const server = new StellarSdk.Horizon.Server(horizonUrl);
-      const account = await server.loadAccount(userWallet.cryptoWalletPublicKey!);
+      const account = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey!);
       
       // Find XLM (native) balance
       const nativeBalance = account.balances.find((b: any) => b.asset_type === "native");
@@ -2643,8 +2641,8 @@ router.patch(
         .from(wallets)
         .where(eq(wallets.id, fundingRequest.walletId));
 
-      if (!wallet) {
-        res.status(404).json({ error: "Wallet not found" });
+      if (!wallet || !wallet.cryptoWalletPublicKey) {
+        res.status(404).json({ error: "Wallet or public key not found" });
         return;
       }
 
@@ -2655,7 +2653,6 @@ router.patch(
           status: "approved",
           approvedBy: adminId,
           approvedAt: new Date(),
-          notes: notes,
         })
         .where(eq(regeneratorWalletFundingRequests.id, requestId));
 
@@ -2694,15 +2691,45 @@ router.patch(
           })
           .where(eq(regeneratorWalletFundingRequests.id, requestId));
 
-        console.log(`✅ Wallet funding request ${requestId} approved and activated`);
-        console.log(`  - Wallet: ${wallet.cryptoWalletPublicKey}`);
-        console.log(`  - Amount: ${fundingRequest.amountRequested} ${fundingRequest.currency}`);
-        console.log(`  - TX Hash: ${activationResult.txHash}`);
+        // Sync XLM balance from Stellar network
+        let xlmBalance = "0";
+        try {
+          const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
+          const nativeBalance = account.balances.find((b: any) => b.asset_type === "native");
+          if (nativeBalance) {
+            xlmBalance = nativeBalance.balance;
+          }
+
+          // Update cryptoBalances in database
+          await db
+            .update(wallets)
+            .set({
+              cryptoBalances: sql.raw(`
+                jsonb_set(
+                  COALESCE(crypto_balances, '{}'::jsonb),
+                  ARRAY['XLM'],
+                  to_jsonb('${xlmBalance}'::text)
+                )
+              `),
+              updatedAt: new Date(),
+            })
+            .where(eq(wallets.id, wallet.id));
+
+          console.log(`✅ Wallet funding request ${requestId} approved and activated`);
+          console.log(`  - Wallet: ${wallet.cryptoWalletPublicKey}`);
+          console.log(`  - Amount: ${fundingRequest.amountRequested} ${fundingRequest.currency}`);
+          console.log(`  - TX Hash: ${activationResult.txHash}`);
+          console.log(`  - XLM Balance synced: ${xlmBalance}`);
+        } catch (balanceError: any) {
+          console.error("⚠️ Failed to sync XLM balance after activation:", balanceError.message);
+          // Don't fail the request - activation was successful
+        }
 
         res.json({
           message: "Wallet funding approved and activated successfully",
           txHash: activationResult.txHash,
           walletPublicKey: wallet.cryptoWalletPublicKey,
+          xlmBalance,
         });
       } else {
         // Activation failed - update status to failed
