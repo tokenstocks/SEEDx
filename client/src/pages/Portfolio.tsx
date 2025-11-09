@@ -11,10 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins, RefreshCw, Clock, CheckCircle, XCircle } from "lucide-react";
+import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins, RefreshCw, Clock, CheckCircle, XCircle, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import type { RedemptionRequest } from "@/types/phase4";
 import AppHeader from "@/components/AppHeader";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface Investment {
   id: string;
@@ -183,16 +184,24 @@ export default function Portfolio() {
     return (gainLoss / invested) * 100;
   };
 
+  const prefersReducedMotion = useReducedMotion();
+
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <AppHeader />
       <div className="max-w-7xl mx-auto p-4 py-8">
-        <div className="mb-8">
+        {/* Header Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -200,103 +209,108 @@ export default function Portfolio() {
           </Link>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">My Portfolio</h1>
-              <p className="text-muted-foreground">
-                Track your agricultural investment performance
+              <div className="flex items-center gap-3 mb-3">
+                <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Portfolio Tracker
+                </Badge>
+              </div>
+              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                My Portfolio
+              </h1>
+              <p className="text-slate-400 text-lg">
+                Track your agricultural participation performance
               </p>
             </div>
             {user?.isLpInvestor && (
               <Link href="/lp-dashboard" data-testid="link-lp-dashboard">
-                <Button variant="default" className="gap-2">
+                <Button className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-600/20">
                   <TrendingUp className="w-4 h-4" />
                   LP Dashboard
                 </Button>
               </Link>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Summary Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(getTotalInvested().toFixed(2))}
+          {[
+            {
+              title: "Total Invested",
+              value: formatCurrency(getTotalInvested().toFixed(2)),
+              subtitle: `${stats?.investmentsCount || 0} investments`,
+              icon: DollarSign,
+              color: "text-blue-400",
+              bgGradient: "from-blue-500/10 to-blue-600/10"
+            },
+            {
+              title: "Portfolio Value",
+              value: formatCurrency(getTotalValue().toFixed(2)),
+              subtitle: "Current market value",
+              icon: TrendingUp,
+              color: "text-emerald-400",
+              bgGradient: "from-emerald-500/10 to-emerald-600/10"
+            },
+            {
+              title: "Gain/Loss",
+              value: `${calculateGainLoss() >= 0 ? '+' : ''}${formatCurrency(calculateGainLoss().toFixed(2))}`,
+              subtitle: `${calculateGainLoss() >= 0 ? '+' : ''}${calculateGainLossPercentage().toFixed(2)}%`,
+              icon: Package,
+              color: calculateGainLoss() >= 0 ? "text-green-400" : "text-red-400",
+              bgGradient: calculateGainLoss() >= 0 ? "from-green-500/10 to-green-600/10" : "from-red-500/10 to-red-600/10",
+              valueColor: calculateGainLoss() >= 0 ? "text-green-400" : "text-red-400"
+            },
+            {
+              title: "Projects",
+              value: stats?.projectsInvestedIn || 0,
+              subtitle: "Unique projects",
+              icon: Coins,
+              color: "text-amber-400",
+              bgGradient: "from-amber-500/10 to-amber-600/10"
+            }
+          ].map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: idx * 0.1 }}
+            >
+              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 h-full hover-elevate transition-all duration-300">
+                <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r ${stat.bgGradient}`} />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-slate-400">{stat.title}</h3>
+                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                </div>
+                <div className={`text-3xl font-bold mb-1 ${stat.valueColor || 'text-white'}`}>
+                  {stat.value}
+                </div>
+                <p className={`text-xs ${stat.valueColor || 'text-slate-500'}`}>
+                  {stat.subtitle}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stats?.investmentsCount || 0} investments
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(getTotalValue().toFixed(2))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Current market value
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Gain/Loss</CardTitle>
-              <Package className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${calculateGainLoss() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {calculateGainLoss() >= 0 ? '+' : ''}{formatCurrency(calculateGainLoss().toFixed(2))}
-              </div>
-              <p className={`text-xs mt-1 ${calculateGainLoss() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {calculateGainLoss() >= 0 ? '+' : ''}{calculateGainLossPercentage().toFixed(2)}%
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projects</CardTitle>
-              <Coins className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats?.projectsInvestedIn || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Unique projects
-              </p>
-            </CardContent>
-          </Card>
+            </motion.div>
+          ))}
         </div>
 
         {/* Token Holdings, Investment History & Redemptions */}
         <Tabs defaultValue="holdings" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
-            <TabsTrigger value="holdings" data-testid="tab-holdings">Token Holdings</TabsTrigger>
-            <TabsTrigger value="history" data-testid="tab-history">Investment History</TabsTrigger>
-            <TabsTrigger value="redemptions" data-testid="tab-redemptions">Redemptions</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-white/5 border-white/10">
+            <TabsTrigger value="holdings" data-testid="tab-holdings" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Token Holdings</TabsTrigger>
+            <TabsTrigger value="history" data-testid="tab-history" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Investment History</TabsTrigger>
+            <TabsTrigger value="redemptions" data-testid="tab-redemptions" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Redemptions</TabsTrigger>
           </TabsList>
 
           {/* Token Holdings Tab */}
           <TabsContent value="holdings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Token Holdings</CardTitle>
-                <CardDescription>
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-white mb-2">Token Holdings</h2>
+                <p className="text-slate-400 mb-6">
                   Consolidated view of your token holdings by project
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+                <div>
                 {portfolioLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
@@ -381,20 +395,21 @@ export default function Portfolio() {
                     </Link>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Investment History Tab */}
           <TabsContent value="history">
-            <Card>
-              <CardHeader>
-                <CardTitle>Investment History</CardTitle>
-                <CardDescription>
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-white mb-2">Investment History</h2>
+                <p className="text-slate-400 mb-6">
                   Complete history of all your investments
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+                <div>
                 {investmentsLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
@@ -450,20 +465,21 @@ export default function Portfolio() {
                     </Link>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Redemptions Tab */}
           <TabsContent value="redemptions">
-            <Card>
-              <CardHeader>
-                <CardTitle>Redemption History</CardTitle>
-                <CardDescription>
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-white mb-2">Redemption History</h2>
+                <p className="text-slate-400 mb-6">
                   Track your token redemption requests and their status
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+                <div>
                 {redemptionsLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
@@ -519,8 +535,9 @@ export default function Portfolio() {
                     </p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 

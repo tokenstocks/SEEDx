@@ -11,9 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, TrendingUp, TrendingDown, Plus } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Plus, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import AppHeader from "@/components/AppHeader";
+import { motion } from "framer-motion";
 
 export default function Marketplace() {
   const [, setLocation] = useLocation();
@@ -121,23 +122,36 @@ export default function Marketplace() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <AppHeader />
       <div className="max-w-7xl mx-auto p-4 py-8">
-        <div className="mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8"
+        >
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Token Marketplace</h1>
-          <p className="text-muted-foreground">
-            Trade project tokens with other investors at NAV-based prices
+          <div className="flex items-center gap-3 mb-3">
+            <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Token Trading
+            </Badge>
+          </div>
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+            Token Marketplace
+          </h1>
+          <p className="text-slate-400 text-lg">
+            Trade project tokens with other participants at NAV-based prices
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Trading Form */}
