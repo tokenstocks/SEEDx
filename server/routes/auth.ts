@@ -67,6 +67,8 @@ router.post("/register", async (req: Request, res: Response) => {
       .returning();
 
     // Create hybrid wallet with Stellar keypair for crypto operations
+    // Wallet is created locally but NOT activated on Stellar network
+    // User must request funding, admin approves, then activation job runs
     const walletKeypair = Keypair.random();
     const cryptoWalletPublicKey = walletKeypair.publicKey();
     const cryptoWalletSecretEncrypted = encrypt(walletKeypair.secret());
@@ -77,21 +79,8 @@ router.post("/register", async (req: Request, res: Response) => {
       cryptoBalances: {},
       cryptoWalletPublicKey,
       cryptoWalletSecretEncrypted,
+      activationStatus: 'created', // New: wallet created but not activated on-chain
     });
-
-    // Activate wallet account on Stellar testnet (async, non-blocking)
-    // If this fails, the user can still use the platform - account will be activated later
-    createAndFundAccount(cryptoWalletPublicKey, "2")
-      .then((result) => {
-        if (result.success) {
-          console.log(`✅ Wallet activated for user ${newUser.email}: ${result.txHash || 'already exists'}`);
-        } else {
-          console.warn(`⚠️  Failed to activate wallet for user ${newUser.email}: ${result.error}`);
-        }
-      })
-      .catch((error) => {
-        console.error(`❌ Error activating wallet for user ${newUser.email}:`, error);
-      });
 
     // Generate JWT token
     const token = generateToken({
