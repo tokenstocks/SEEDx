@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Wallet, Building2, Activity, Plus, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import PrimerContributionForm from "@/components/PrimerContributionForm";
+import PrimerHeader from "@/components/PrimerHeader";
 import { Badge } from "@/components/ui/badge";
 
 export default function PrimerDashboard() {
@@ -27,6 +28,7 @@ export default function PrimerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <PrimerHeader />
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <motion.div
