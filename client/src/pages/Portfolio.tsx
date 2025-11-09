@@ -14,7 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins, RefreshCw, Clock, CheckCircle, XCircle, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import type { RedemptionRequest } from "@/types/phase4";
-import AppHeader from "@/components/AppHeader";
+import RegeneratorHeader from "@/components/RegeneratorHeader";
 import { motion, useReducedMotion } from "framer-motion";
 
 interface Investment {
@@ -190,7 +190,7 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <AppHeader />
+      <RegeneratorHeader />
       <div className="max-w-7xl mx-auto p-4 py-8">
         {/* Header Section */}
         <motion.div 
