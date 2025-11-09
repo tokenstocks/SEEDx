@@ -24,6 +24,7 @@ export default function Register() {
     lastName: "",
     dateOfBirth: "",
     address: "",
+    isPrimer: false,
     isLpInvestor: false,
   });
 
@@ -47,6 +48,8 @@ export default function Register() {
       // Role-based redirect after registration
       if (data.user.role === 'admin') {
         setLocation("/admin");
+      } else if (data.user.isPrimer) {
+        setLocation("/primer-dashboard");
       } else if (data.user.isLpInvestor) {
         setLocation("/lp-dashboard");
       } else {
@@ -68,7 +71,14 @@ export default function Register() {
   };
 
   const handleChange = (field: string, value: string) => {
-    if (field === "isLpInvestor") {
+    if (field === "isPrimer") {
+      const isPrimer = value === "primer";
+      setFormData((prev) => ({ 
+        ...prev, 
+        isPrimer,
+        isLpInvestor: false // Clear legacy LP investor flag
+      }));
+    } else if (field === "isLpInvestor") {
       setFormData((prev) => ({ ...prev, [field]: value === "true" }));
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }));
@@ -239,8 +249,8 @@ export default function Register() {
               <div className="space-y-2">
                 <Label htmlFor="accountType" className="text-slate-300">Account Type</Label>
                 <Select
-                  value={formData.isLpInvestor ? "lp" : "regular"}
-                  onValueChange={(value) => handleChange("isLpInvestor", value === "lp" ? "true" : "false")}
+                  value={formData.isPrimer ? "primer" : "regenerator"}
+                  onValueChange={(value) => handleChange("isPrimer", value)}
                 >
                   <SelectTrigger 
                     id="accountType" 
@@ -250,16 +260,18 @@ export default function Register() {
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-white/10">
-                    <SelectItem value="regular" className="text-white hover:bg-white/10">
-                      Regenerator (Token Participant)
+                    <SelectItem value="regenerator" className="text-white hover:bg-white/10">
+                      Regenerator (Project Participant)
                     </SelectItem>
-                    <SelectItem value="lp" className="text-white hover:bg-white/10">
-                      Primer (Liquidity Provider)
+                    <SelectItem value="primer" className="text-white hover:bg-white/10">
+                      Primer (Institutional Partner)
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-slate-500">
-                  Primers seed liquidity pools and receive proportional cashflow distributions. Regenerators participate in tokenized projects.
+                  {formData.isPrimer 
+                    ? "Primers contribute grant/CSR capital to seed agricultural projects through the LP Pool."
+                    : "Regenerators buy and trade project tokens, participating in tokenized agricultural investments."}
                 </p>
               </div>
 

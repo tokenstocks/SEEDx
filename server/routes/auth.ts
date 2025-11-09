@@ -20,7 +20,7 @@ router.post("/register", async (req: Request, res: Response) => {
   try {
     // Validate input
     const validatedData = registerUserSchema.parse(req.body);
-    const { email, phone, password, firstName, lastName, isLpInvestor } = validatedData;
+    const { email, phone, password, firstName, lastName, isPrimer, isLpInvestor } = validatedData;
 
     // Check if user already exists
     const existingUserResult = await db.execute(sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`);
@@ -61,6 +61,7 @@ router.post("/register", async (req: Request, res: Response) => {
         kycStatus: "pending",
         stellarPublicKey,
         stellarSecretKeyEncrypted,
+        isPrimer: isPrimer || false,
         isLpInvestor: isLpInvestor || false,
       })
       .returning();
@@ -111,6 +112,7 @@ router.post("/register", async (req: Request, res: Response) => {
         role: newUser.role,
         kycStatus: newUser.kycStatus,
         stellarPublicKey: newUser.stellarPublicKey,
+        isPrimer: newUser.isPrimer,
         isLpInvestor: newUser.isLpInvestor,
         createdAt: newUser.createdAt,
       },
@@ -174,6 +176,7 @@ router.post("/login", async (req: Request, res: Response) => {
         role: user.role,
         kycStatus: user.kycStatus,
         stellarPublicKey: user.stellarPublicKey,
+        isPrimer: user.isPrimer,
         isLpInvestor: user.isLpInvestor,
         createdAt: user.createdAt,
       },
@@ -230,6 +233,7 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
         role: user.role,
         kycStatus: user.kycStatus,
         stellarPublicKey: user.stellarPublicKey,
+        isPrimer: user.isPrimer,
         isLpInvestor: user.isLpInvestor,
         kycDocuments: user.kycDocuments,
         createdAt: user.createdAt,

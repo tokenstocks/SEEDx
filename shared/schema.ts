@@ -26,6 +26,7 @@ export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "pro
 export const tokenLockTypeEnum = pgEnum("token_lock_type", ["none", "grant", "permanent", "time_locked"]);
 export const orderTypeEnum = pgEnum("order_type", ["buy", "sell"]);
 export const orderStatusEnum = pgEnum("order_status", ["open", "filled", "cancelled"]);
+export const primerContributionStatusEnum = pgEnum("primer_contribution_status", ["pending", "approved", "rejected", "completed"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -55,6 +56,7 @@ export const users = pgTable("users", {
   bankDetailsApprovedBy: uuid("bank_details_approved_by").references(() => users.id),
   totalInvestedNGN: decimal("total_invested_ngn", { precision: 18, scale: 2 }).notNull().default("0.00"),
   isSuspended: boolean("is_suspended").notNull().default(false),
+  isPrimer: boolean("is_primer").notNull().default(false),
   isLpInvestor: boolean("is_lp_investor").notNull().default(false),
   stellarPublicKey: text("stellar_public_key"),
   stellarSecretKeyEncrypted: text("stellar_secret_key_encrypted"),
@@ -423,6 +425,49 @@ export const lpCashflowAllocations = pgTable("lp_cashflow_allocations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Primer Contributions table - Track institutional LP Pool contributions
+export const primerContributions = pgTable("primer_contributions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  primerId: uuid("primer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transactionId: uuid("transaction_id").references(() => transactions.id),
+  amountNgnts: decimal("amount_ngnts", { precision: 18, scale: 2 }).notNull(),
+  status: primerContributionStatusEnum("status").notNull().default("pending"),
+  paymentProof: text("payment_proof"),
+  txHash: text("tx_hash"),
+  lpPoolShareSnapshot: decimal("lp_pool_share_snapshot", { precision: 5, scale: 2 }),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedReason: text("rejected_reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// LP Project Allocations table - Track admin allocation of LP funds to projects (header)
+export const lpProjectAllocations = pgTable("lp_project_allocations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  totalAmountNgnts: decimal("total_amount_ngnts", { precision: 18, scale: 2 }).notNull(),
+  allocatedBy: uuid("allocated_by").notNull().references(() => users.id),
+  allocationDate: timestamp("allocation_date").notNull().defaultNow(),
+  txHash: text("tx_hash"),
+  status: varchar("status", { length: 32 }).notNull().default("confirmed"),
+  replenishedAt: timestamp("replenished_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Primer Project Allocations table - Track which Primers funded which projects (detail)
+export const primerProjectAllocations = pgTable("primer_project_allocations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  primerId: uuid("primer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  allocationId: uuid("allocation_id").notNull().references(() => lpProjectAllocations.id, { onDelete: "cascade" }),
+  shareAmountNgnts: decimal("share_amount_ngnts", { precision: 18, scale: 2 }).notNull(),
+  sharePercent: decimal("share_percent", { precision: 5, scale: 2 }).notNull(),
+  poolOwnershipPercent: decimal("pool_ownership_percent", { precision: 5, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   wallets: many(wallets),
@@ -567,6 +612,44 @@ export const lpCashflowAllocationsRelations = relations(lpCashflowAllocations, (
   }),
 }));
 
+export const primerContributionsRelations = relations(primerContributions, ({ one }) => ({
+  primer: one(users, {
+    fields: [primerContributions.primerId],
+    references: [users.id],
+  }),
+  transaction: one(transactions, {
+    fields: [primerContributions.transactionId],
+    references: [transactions.id],
+  }),
+  approver: one(users, {
+    fields: [primerContributions.approvedBy],
+    references: [users.id],
+  }),
+}));
+
+export const lpProjectAllocationsRelations = relations(lpProjectAllocations, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [lpProjectAllocations.projectId],
+    references: [projects.id],
+  }),
+  allocator: one(users, {
+    fields: [lpProjectAllocations.allocatedBy],
+    references: [users.id],
+  }),
+  primerAllocations: many(primerProjectAllocations),
+}));
+
+export const primerProjectAllocationsRelations = relations(primerProjectAllocations, ({ one }) => ({
+  primer: one(users, {
+    fields: [primerProjectAllocations.primerId],
+    references: [users.id],
+  }),
+  allocation: one(lpProjectAllocations, {
+    fields: [primerProjectAllocations.allocationId],
+    references: [lpProjectAllocations.id],
+  }),
+}));
+
 // Schemas for validation
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email(),
@@ -588,6 +671,7 @@ export const registerUserSchema = z.object({
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  isPrimer: z.boolean().optional().default(false),
   isLpInvestor: z.boolean().optional().default(false),
 });
 
@@ -847,6 +931,43 @@ export const insertLpCashflowAllocationSchema = createInsertSchema(lpCashflowAll
   createdAt: true,
 });
 
+export const insertPrimerContributionSchema = createInsertSchema(primerContributions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedAt: true,
+  approvedBy: true,
+  status: true,
+});
+
+export const createPrimerContributionSchema = z.object({
+  amountNgnts: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  paymentProof: z.string().optional(),
+});
+
+export const approvePrimerContributionSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectedReason: z.string().optional(),
+});
+
+export const insertLpProjectAllocationSchema = createInsertSchema(lpProjectAllocations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  allocationDate: true,
+});
+
+export const createLpProjectAllocationSchema = z.object({
+  projectId: z.string().uuid(),
+  totalAmountNgnts: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  notes: z.string().optional(),
+});
+
+export const insertPrimerProjectAllocationSchema = createInsertSchema(primerProjectAllocations).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -912,3 +1033,12 @@ export type InsertTokenOrder = z.infer<typeof insertTokenOrderSchema>;
 export type CreateTokenOrder = z.infer<typeof createTokenOrderSchema>;
 export type LpCashflowAllocation = typeof lpCashflowAllocations.$inferSelect;
 export type InsertLpCashflowAllocation = z.infer<typeof insertLpCashflowAllocationSchema>;
+export type PrimerContribution = typeof primerContributions.$inferSelect;
+export type InsertPrimerContribution = z.infer<typeof insertPrimerContributionSchema>;
+export type CreatePrimerContribution = z.infer<typeof createPrimerContributionSchema>;
+export type ApprovePrimerContribution = z.infer<typeof approvePrimerContributionSchema>;
+export type LpProjectAllocation = typeof lpProjectAllocations.$inferSelect;
+export type InsertLpProjectAllocation = z.infer<typeof insertLpProjectAllocationSchema>;
+export type CreateLpProjectAllocation = z.infer<typeof createLpProjectAllocationSchema>;
+export type PrimerProjectAllocation = typeof primerProjectAllocations.$inferSelect;
+export type InsertPrimerProjectAllocation = z.infer<typeof insertPrimerProjectAllocationSchema>;
