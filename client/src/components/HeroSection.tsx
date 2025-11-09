@@ -184,26 +184,28 @@ export default function HeroSection({ heroImage, onGetStarted, onExplore }: Hero
           >
             <button
               onClick={onGetStarted}
-              className="group relative w-full sm:max-w-[340px] bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-[3px] active:translate-y-[-1px] shadow-[0_4px_12px_rgba(37,99,235,0.3),0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgba(37,99,235,0.4),0_4px_8px_rgba(0,0,0,0.15)]"
+              className="group relative w-full sm:max-w-[340px] bg-gradient-to-br from-blue-600 to-blue-800 text-white px-6 py-4 rounded-2xl overflow-hidden transition-all duration-300 shadow-[0_8px_24px_rgba(37,99,235,0.35),0_4px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_32px_rgba(37,99,235,0.45),0_8px_16px_rgba(0,0,0,0.2)]"
               data-testid="button-become-primer"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative flex flex-col gap-1">
-                <span className="text-[16px] sm:text-[17px] font-bold">Become a Primer</span>
-                <span className="text-[12px] sm:text-[13px] font-normal opacity-95 leading-relaxed">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              <div className="relative flex flex-col gap-1.5">
+                <span className="text-[17px] sm:text-[18px] font-bold tracking-tight">Become a Primer</span>
+                <span className="text-[13px] sm:text-[14px] font-normal opacity-90 leading-relaxed">
                   Fund agricultural deployment and participate in the regenerative cycle
                 </span>
               </div>
             </button>
             <button
               onClick={onExplore}
-              className="group relative w-full sm:max-w-[340px] bg-emerald-500 text-white px-5 py-3 sm:py-2.5 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-[3px] active:translate-y-[-1px] shadow-[0_4px_12px_rgba(16,185,129,0.3),0_2px_4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.4),0_4px_8px_rgba(0,0,0,0.15)]"
+              className="group relative w-full sm:max-w-[340px] bg-gradient-to-br from-emerald-500 to-emerald-700 text-white px-6 py-4 rounded-2xl overflow-hidden transition-all duration-300 shadow-[0_8px_24px_rgba(16,185,129,0.35),0_4px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.45),0_8px_16px_rgba(0,0,0,0.2)]"
               data-testid="button-become-regenerator"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative flex flex-col gap-1">
-                <span className="text-[16px] sm:text-[17px] font-bold">Become a Regenerator</span>
-                <span className="text-[12px] sm:text-[13px] font-normal opacity-95 leading-relaxed">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              <div className="relative flex flex-col gap-1.5">
+                <span className="text-[17px] sm:text-[18px] font-bold tracking-tight">Become a Regenerator</span>
+                <span className="text-[13px] sm:text-[14px] font-normal opacity-90 leading-relaxed">
                   Acquire and trade tokens backed by verified agricultural projects
                 </span>
               </div>
