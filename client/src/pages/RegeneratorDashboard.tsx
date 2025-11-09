@@ -15,6 +15,8 @@ import {
   Clock,
   Lock,
   Unlock,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import RegeneratorHeader from "@/components/RegeneratorHeader";
@@ -31,6 +33,7 @@ interface TimelineEvent {
   status?: string;
   orderType?: string;
   pricePerToken?: string;
+  currency?: string;
 }
 
 interface TokenHolding {
@@ -79,6 +82,10 @@ export default function RegeneratorDashboard() {
         return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
       case "market_order_cancelled":
         return <XCircle className="w-5 h-5 text-red-400" />;
+      case "wallet_deposit":
+        return <ArrowDownToLine className="w-5 h-5 text-green-400" />;
+      case "wallet_withdrawal":
+        return <ArrowUpFromLine className="w-5 h-5 text-orange-400" />;
       default:
         return <Activity className="w-5 h-5 text-slate-400" />;
     }
@@ -98,6 +105,10 @@ export default function RegeneratorDashboard() {
         return "bg-emerald-500/20 border-emerald-500/30";
       case "market_order_cancelled":
         return "bg-red-500/20 border-red-500/30";
+      case "wallet_deposit":
+        return "bg-green-500/20 border-green-500/30";
+      case "wallet_withdrawal":
+        return "bg-orange-500/20 border-orange-500/30";
       default:
         return "bg-slate-500/20 border-slate-500/30";
     }
@@ -123,10 +134,31 @@ export default function RegeneratorDashboard() {
     });
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-NG", {
+  const formatCurrency = (value: number, currency: string = "NGN") => {
+    // Map currency codes to appropriate locales
+    const localeMap: Record<string, string> = {
+      "NGN": "en-NG",
+      "USD": "en-US",
+      "USDC": "en-US",
+      "XLM": "en-US",
+    };
+
+    const locale = localeMap[currency] || "en-US";
+    
+    // For crypto currencies, show as USD equivalent with symbol override
+    if (currency === "USDC") {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+      }).format(value).replace("$", "USDC ");
+    } else if (currency === "XLM") {
+      return `${value.toFixed(7)} XLM`; // XLM typically shows 7 decimal places
+    }
+
+    return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: "NGN",
+      currency: currency,
       minimumFractionDigits: 2,
     }).format(value);
   };
@@ -209,6 +241,46 @@ export default function RegeneratorDashboard() {
             <p className="text-xs text-slate-400">
               {event.tokenSymbol} {event.orderType === "buy" ? "buy" : "sell"} order
             </p>
+          </div>
+        );
+      case "wallet_deposit":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Deposited {formatCurrency(parseFloat(event.amount || "0"), event.currency || "NGN")}
+            </p>
+            {event.txHash && (
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300"
+                data-testid={`link-tx-${event.txHash.substring(0, 8)}`}
+              >
+                View on Stellar
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            )}
+          </div>
+        );
+      case "wallet_withdrawal":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Withdrew {formatCurrency(parseFloat(event.amount || "0"), event.currency || "NGN")}
+            </p>
+            {event.txHash && (
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300"
+                data-testid={`link-tx-${event.txHash.substring(0, 8)}`}
+              >
+                View on Stellar
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            )}
           </div>
         );
       default:

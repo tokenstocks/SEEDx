@@ -240,6 +240,22 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
           projectName: tx.description,
           txHash: tx.stellarTxHash,
         });
+      } else if (tx.type === "deposit") {
+        timelineEvents.push({
+          type: "wallet_deposit",
+          timestamp: tx.createdAt,
+          amount: tx.amount,
+          currency: tx.currency,
+          txHash: tx.stellarTxHash,
+        });
+      } else if (tx.type === "withdrawal") {
+        timelineEvents.push({
+          type: "wallet_withdrawal",
+          timestamp: tx.createdAt,
+          amount: tx.amount,
+          currency: tx.currency,
+          txHash: tx.stellarTxHash,
+        });
       }
     });
 
