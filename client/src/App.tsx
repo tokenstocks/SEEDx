@@ -31,6 +31,7 @@ import RegeneratorProfile from "@/pages/RegeneratorProfile";
 import RegeneratorDashboard from "@/pages/RegeneratorDashboard";
 import WalletFundingRequest from "@/pages/WalletFundingRequest";
 import AdminPrimers from "@/pages/AdminPrimers";
+import AdminWalletFunding from "@/pages/AdminWalletFunding";
 import AdminLPAllocations from "@/pages/AdminLPAllocations";
 import Marketplace from "@/pages/Marketplace";
 import MultisigDemo from "@/pages/MultisigDemo";
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
       <Route path="/admin/primers" component={AdminPrimers} />
+      <Route path="/admin/wallet-funding" component={AdminWalletFunding} />
       <Route path="/admin/lp-allocations" component={AdminLPAllocations} />
       <Route path="/admin/multisig" component={MultisigDemo} />
       <Route path="/admin/deployment" component={DeploymentDemo} />

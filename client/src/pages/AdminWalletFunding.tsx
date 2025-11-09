@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -51,7 +52,8 @@ export default function AdminWalletFunding() {
         title: "Wallet Activated",
         description: data.txHash ? `TX: ${data.txHash.slice(0, 10)}...` : "Wallet successfully activated on Stellar",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "pending" }] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "processed" }] });
       setShowApprovalDialog(false);
       setSelectedRequest(null);
     },
@@ -76,7 +78,8 @@ export default function AdminWalletFunding() {
         title: "Request Rejected",
         description: "The user has been notified",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "pending" }] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "processed" }] });
       setShowRejectionDialog(false);
       setSelectedRequest(null);
     },
