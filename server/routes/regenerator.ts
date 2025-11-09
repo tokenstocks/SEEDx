@@ -55,7 +55,7 @@ router.get("/stats", authMiddleware, regeneratorMiddleware, async (req: Request,
 
     const userId = req.user.userId;
 
-    // Get total invested (sum of token_purchase transactions)
+    // Get total invested (sum of investment transactions)
     const [investmentStats] = await db
       .select({
         totalInvested: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
@@ -64,11 +64,11 @@ router.get("/stats", authMiddleware, regeneratorMiddleware, async (req: Request,
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.type, "token_purchase")
+          eq(transactions.type, "investment")
         )
       );
 
-    // Get total cashflow received (sum of cashflow_distribution transactions)
+    // Get total cashflow received (sum of return transactions)
     const [cashflowStats] = await db
       .select({
         totalCashflow: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
@@ -77,7 +77,7 @@ router.get("/stats", authMiddleware, regeneratorMiddleware, async (req: Request,
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.type, "cashflow_distribution")
+          eq(transactions.type, "return")
         )
       );
 
@@ -178,11 +178,10 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
         and(
           eq(transactions.userId, userId),
           or(
-            eq(transactions.type, "token_purchase"),
-            eq(transactions.type, "cashflow_distribution"),
-            eq(transactions.type, "token_sale"),
-            eq(transactions.type, "deposit"),
-            eq(transactions.type, "withdrawal")
+            eq(transactions.type, "investment"),  // Token purchases
+            eq(transactions.type, "return"),      // Cashflow distributions
+            eq(transactions.type, "deposit"),     // Wallet deposits
+            eq(transactions.type, "withdrawal")   // Wallet withdrawals
           )
         )
       )
@@ -213,7 +212,8 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
 
     // Add transaction events (flattened structure for frontend)
     transactionsData.forEach((tx) => {
-      if (tx.type === "token_purchase") {
+      if (tx.type === "investment") {
+        // Token purchase
         timelineEvents.push({
           type: "token_purchase",
           timestamp: tx.createdAt,
@@ -222,18 +222,10 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
           projectName: tx.description,
           txHash: tx.stellarTxHash,
         });
-      } else if (tx.type === "cashflow_distribution") {
+      } else if (tx.type === "return") {
+        // Cashflow distribution
         timelineEvents.push({
           type: "cashflow_received",
-          timestamp: tx.createdAt,
-          amount: tx.amount,
-          tokenSymbol: tx.tokenSymbol,
-          projectName: tx.description,
-          txHash: tx.stellarTxHash,
-        });
-      } else if (tx.type === "token_sale") {
-        timelineEvents.push({
-          type: "token_sale",
           timestamp: tx.createdAt,
           amount: tx.amount,
           tokenSymbol: tx.tokenSymbol,
