@@ -1,0 +1,1094 @@
+Complete Regenerator User Experience
+markdown
+Copy
+# Task: Build Complete Regenerator User Experience (6-Part Journey)
+
+## Overview
+Regenerators are token participants who invest in tokenized agricultural projects. They browse projects, purchase tokens, manage portfolios, trade on secondary markets, receive cashflow distributions, and redeem tokens - creating a complete regenerative capital cycle.
+
+## The Regenerative Cycle:
+Browse Projects → Purchase Tokens → Receive Cashflow →
+Trade/Hold/Redeem → Funds Return to LP Pool → New Projects Funded
+
+
+---
+
+## PART 1: Identity & Profile
+
+### Database Schema
+```sql
+-- User profile extensions for Regenerators
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS joined_date TIMESTAMP DEFAULT NOW();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS total_invested DECIMAL(20, 2) DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS total_cashflow_received DECIMAL(20, 2) DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS total_tokens_owned INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active_projects_count INTEGER DEFAULT 0;
+
+-- Wallet balances (multi-currency)
+CREATE TABLE IF NOT EXISTS regenerator_wallets (
+  id SERIAL PRIMARY KEY,
+  regenerator_id INTEGER REFERENCES users(id) UNIQUE,
+  balance_ngn DECIMAL(20, 2) DEFAULT 0,
+  balance_ngnts DECIMAL(20, 2) DEFAULT 0, -- Stellar NGNTS
+  balance_usdc DECIMAL(20, 2) DEFAULT 0,
+  balance_xlm DECIMAL(20, 7) DEFAULT 0,
+  stellar_address VARCHAR(56),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+API Endpoints
+Get Regenerator Profile
+javascript
+Copy
+// GET /api/regenerator/profile
+
+Response:
+{
+  user: {
+    id: 5,
+    fullName: "John Doe",
+    email: "john@example.com",
+    phone: "+234...",
+    profile_image_url: "https://...",
+    bio: "Impact investor passionate about regenerative agriculture",
+    location: "Lagos, Nigeria",
+    joined_date: "2025-09-15",
+    kyc_status: "approved",
+    wallet_activated: true,
+    stellar_address: "GXXXXXX..."
+  },
+  stats: {
+    total_invested: 5000000,
+    total_cashflow_received: 450000,
+    total_tokens_owned: 38500,
+    active_projects_count: 5,
+    portfolio_value: 5850000,
+    unrealized_gain: 850000,
+    gain_percentage: 17
+  },
+  wallets: {
+    ngn: 250000,
+    ngnts: 180000,
+    usdc: 1200,
+    xlm: 450
+  }
+}
+Update Profile
+javascript
+Copy
+// PUT /api/regenerator/profile
+{
+  fullName: "John Doe",
+  bio: "Impact investor...",
+  location: "Lagos, Nigeria",
+  profile_image_url: "https://..."
+}
+Frontend Component: Profile Header (Top Right)
+jsx
+Copy
+// components/ProfileHeader.jsx
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+
+export default function ProfileHeader() {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+  
+  const fetchProfile = async () => {
+    const res = await fetch('/api/regenerator/profile', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    setProfile(data);
+  };
+  
+  return (
+    <div className="relative">
+      <button 
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100"
+      >
+        <img 
+          src={profile?.user.profile_image_url || '/default-avatar.png'} 
+          alt="Profile"
+          className="w-10 h-10 rounded-full"
+        />
+        <div className="text-left">
+          <div className="font-semibold text-sm">{profile?.user.fullName}</div>
+          <div className="text-xs text-gray-500">
+            ₦{profile?.stats.portfolio_value.toLocaleString()}
+          </div>
+        </div>
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+      
+      {showDropdown && (
+        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border z-50">
+          <div className="p-4 border-b">
+            <div className="font-semibold">{profile?.user.fullName}</div>
+            <div className="text-sm text-gray-500">{profile?.user.email}</div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className={`px-2 py-1 text-xs rounded-full ${
+                profile?.user.kyc_status === 'approved' 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {profile?.user.kyc_status === 'approved' ? '✓ KYC Verified' : '⏳ KYC Pending'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="p-2">
+            <a href="/regenerator/profile" className="block px-4 py-2 hover:bg-gray-50 rounded">
+              👤 My Profile
+            </a>
+            <a href="/regenerator/dashboard" className="block px-4 py-2 hover:bg-gray-50 rounded">
+              📊 Dashboard
+            </a>
+            <a href="/regenerator/portfolio" className="block px-4 py-2 hover:bg-gray-50 rounded">
+              💼 Portfolio
+            </a>
+            <a href="/regenerator/wallet" className="block px-4 py-2 hover:bg-gray-50 rounded">
+              💰 Wallet
+            </a>
+            <a href="/regenerator/activity" className="block px-4 py-2 hover:bg-gray-50 rounded">
+              📱 Activity Feed
+            </a>
+            <hr className="my-2"/>
+            <button className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded text-red-600">
+              🚪 Logout
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+PART 2: Project Discovery & Investment
+Database Schema
+sql
+Copy
+-- Projects table (already exists, adding fields)
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS category VARCHAR(50); -- 'cassava', 'rice', 'maize', etc.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20); -- 'low', 'medium', 'high'
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS expected_roi DECIMAL(5, 2); -- Expected annual ROI %
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_duration_months INTEGER;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS images JSONB; -- Array of image URLs
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS documents JSONB; -- Array of document URLs
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS video_url VARCHAR(255);
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS min_investment DECIMAL(20, 2) DEFAULT 1000;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS max_investment DECIMAL(20, 2);
+
+-- Project impact metrics
+CREATE TABLE IF NOT EXISTS project_impact_metrics (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id),
+  metric_type VARCHAR(50), -- 'jobs_created', 'hectares', 'yield', 'co2_offset', etc.
+  metric_value VARCHAR(100),
+  metric_unit VARCHAR(50),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Project updates (for transparency)
+CREATE TABLE IF NOT EXISTS project_updates (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id),
+  update_type VARCHAR(50), -- 'milestone', 'harvest', 'cashflow', 'general'
+  title VARCHAR(255),
+  description TEXT,
+  images JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+API Endpoints
+Browse Projects (Marketplace)
+javascript
+Copy
+// GET /api/marketplace?category=cassava&sort=nav_asc&featured=true
+
+Response:
+{
+  projects: [
+    {
+      id: 1,
+      name: "Cassava Farm Cooperative - Ogun State",
+      description: "500-hectare cassava farm with modern processing facility",
+      token_symbol: "CASSAVA",
+      token_issuer: "GXXXXXX...",
+      category: "cassava",
+      location: "Ogun State, Nigeria",
+      
+      // Tokenization details
+      total_supply: 100000,
+      tokens_sold: 45000,
+      tokens_available: 55000,
+      nav_per_token: 13.20,
+      nav_change_percentage: 3.1, // This month
+      
+      // Investment details
+      min_investment: 1000,
+      max_investment: 50000,
+      expected_roi: 18.5, // Annual %
+      risk_level: "medium",
+      project_duration_months: 24,
+      
+      // Financial data
+      funding_received: 5000000,
+      cashflows_generated: 2000000,
+      next_cashflow_date: "2025-12-15",
+      
+      // Impact metrics
+      impact_metrics: {
+        jobs_created: 50,
+        hectares: 500,
+        yield: "5,000 tons/year",
+        farmers_supported: 120,
+        co2_offset: "200 tons/year"
+      },
+      
+      // Media
+      images: [
+        "https://example.com/farm1.jpg",
+        "https://example.com/farm2.jpg"
+      ],
+      video_url: "https://youtube.com/...",
+      
+      // Status
+      project_status: "active",
+      featured: true,
+      
+      // Social proof
+      investor_count: 85,
+      avg_rating: 4.7
+    }
+  ],
+  filters: {
+    categories: ["cassava", "rice", "maize", "poultry"],
+    risk_levels: ["low", "medium", "high"],
+    locations: ["Ogun", "Kano", "Kaduna"]
+  }
+}
+Get Project Details
+javascript
+Copy
+// GET /api/projects/:id
+
+Response:
+{
+  project: {
+    // All fields from marketplace +
+    detailed_description: "Long form description...",
+    team: [
+      {
+        name: "Adebayo Johnson",
+        role: "Farm Manager",
+        bio: "20 years experience...",
+        image: "https://..."
+      }
+    ],
+    timeline: [
+      {
+        phase: "Land Preparation",
+        status: "completed",
+        date: "2025-01-15"
+      },
+      {
+        phase: "Planting",
+        status: "in_progress",
+        date: "2025-03-01"
+      }
+    ],
+    documents: [
+      {
+        name: "Business Plan",
+        url: "https://...",
+        type: "pdf"
+      },
+      {
+        name: "Land Title",
+        url: "https://...",
+        type: "pdf"
+      }
+    ]
+  },
+  recent_updates: [
+    {
+      id: 1,
+      title: "First Harvest Completed!",
+      description: "We harvested 500 tons...",
+      images: ["https://..."],
+      created_at: "2025-11-01"
+    }
+  ],
+  price_history: [
+    { date: "2025-10-01", nav: 12.50 },
+    { date: "2025-11-01", nav: 13.20 }
+  ]
+}
+Purchase Tokens (Multi-Currency)
+javascript
+Copy
+// POST /api/tokens/buy
+{
+  project_id: 1,
+  token_amount: 1000,
+  payment_currency: "NGN", // or "USDC", "XLM", "NGNTS"
+  payment_method: "wallet" // or "bank_transfer"
+}
+
+Backend Process:
+1. Check KYC + wallet activation
+2. Calculate fees in selected currency
+3. Verify sufficient balance (if wallet payment)
+4. Establish trustline (if needed)
+5. Execute token swap on Stellar
+6. Update balances
+7. Add funds to LP Pool (converted to NGN)
+8. Create activity event
+9. Send confirmation
+
+Response:
+{
+  purchase_id: 123,
+  tokens_purchased: 1000,
+  price_per_token: 13.20,
+  payment_currency: "NGN",
+  total_paid: 13200,
+  platform_fee: 198,
+  network_fee: 0.36,
+  total_amount: 13398.36,
+  stellar_tx_hash: "a1b2c3d4...",
+  trustline_tx_hash: "f6e5d4...",
+  status: "confirmed",
+  lp_pool_replenished: 13200,
+  new_portfolio_value: 128000,
+  message: "Token purchase successful!"
+}
+Frontend Components
+A. Marketplace Grid
+jsx
+Copy
+// pages/Marketplace.jsx
+import { useState, useEffect } from 'react';
+import ProjectCard from '../components/ProjectCard';
+
+export default function Marketplace() {
+  const [projects, setProjects] = useState([]);
+  const [filters, setFilters] = useState({
+    category: 'all',
+    sort: 'featured',
+    risk_level: 'all'
+  });
+  
+  useEffect(() => {
+    fetchProjects();
+  }, [filters]);
+  
+  const fetchProjects = async () => {
+    const params = new URLSearchParams(filters);
+    const res = await fetch(`/api/marketplace?${params}`);
+    const data = await res.json();
+    setProjects(data.projects);
+  };
+  
+  return (
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Discover Projects</h1>
+        <p className="text-gray-600">
+          Invest in tokenized agricultural projects and earn cashflow
+        </p>
+      </div>
+      
+      {/* Filters */}
+      <div className="flex gap-4 mb-6">
+        <select 
+          value={filters.category}
+          onChange={(e) => setFilters({...filters, category: e.target.value})}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="all">All Categories</option>
+          <option value="cassava">Cassava</option>
+          <option value="rice">Rice</option>
+          <option value="maize">Maize</option>
+          <option value="poultry">Poultry</option>
+        </select>
+        
+        <select 
+          value={filters.risk_level}
+          onChange={(e) => setFilters({...filters, risk_level: e.target.value})}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="all">All Risk Levels</option>
+          <option value="low">Low Risk</option>
+          <option value="medium">Medium Risk</option>
+          <option value="high">High Risk</option>
+        </select>
+        
+        <select 
+          value={filters.sort}
+          onChange={(e) => setFilters({...filters, sort: e.target.value})}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="featured">Featured</option>
+          <option value="nav_asc">NAV: Low to High</option>
+          <option value="nav_desc">NAV: High to Low</option>
+          <option value="roi_desc">Highest ROI</option>
+          <option value="newest">Newest</option>
+        </select>
+      </div>
+      
+      {/* Project Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.map(project => (
+          <ProjectCard key={project.id} project={project} />
+        ))}
+      </div>
+    </div>
+  );
+}
+B. Project Card
+jsx
+Copy
+// components/ProjectCard.jsx
+export default function ProjectCard({ project }) {
+  return (
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition">
+      {/* Image */}
+      <div className="relative h-48">
+        <img 
+          src={project.images[0]} 
+          alt={project.name}
+          className="w-full h-full object-cover"
+        />
+        {project.featured && (
+          <span className="absolute top-3 right-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-semibold">
+            ⭐ Featured
+          </span>
+        )}
+        <span className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold ${
+          project.risk_level === 'low' ? 'bg-green-100 text-green-700' :
+          project.risk_level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+          'bg-red-100 text-red-700'
+        }`}>
+          {project.risk_level.toUpperCase()} RISK
+        </span>
+      </div>
+      
+      {/* Content */}
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="font-bold text-lg mb-1">{project.name}</h3>
+            <p className="text-sm text-gray-500">📍 {project.location}</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-green-600">
+              ₦{project.nav_per_token}
+            </div>
+            <div className="text-xs text-green-600">
+              +{project.nav_change_percentage}% ↑
+            </div>
+          </div>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>{project.tokens_sold.toLocaleString()} sold</span>
+            <span>{project.tokens_available.toLocaleString()} available</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-green-500 h-2 rounded-full"
+              style={{ width: `${(project.tokens_sold / project.total_supply) * 100}%` }}
+            />
+          </div>
+        </div>
+        
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+          <div className="bg-gray-50 rounded p-2">
+            <div className="text-xs text-gray-500">Expected ROI</div>
+            <div className="font-bold text-green-600">{project.expected_roi}%</div>
+          </div>
+          <div className="bg-gray-50 rounded p-2">
+            <div className="text-xs text-gray-500">Duration</div>
+            <div className="font-bold">{project.project_duration_months}mo</div>
+          </div>
+          <div className="bg-gray-50 rounded p-2">
+            <div className="text-xs text-gray-500">Investors</div>
+            <div className="font-bold">{project.investor_count}</div>
+          </div>
+        </div>
+        
+        {/* Impact Metrics */}
+        <div className="flex gap-2 mb-4 text-xs text-gray-600">
+          <span>👥 {project.impact_metrics.jobs_created} jobs</span>
+          <span>🌾 {project.impact_metrics.hectares} ha</span>
+        </div>
+        
+        {/* Actions */}
+        <div className="flex gap-2">
+          <a 
+            href={`/projects/${project.id}`}
+            className="flex-1 text-center px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 font-semibold"
+          >
+            View Details
+          </a>
+          <a 
+            href={`/projects/${project.id}/buy`}
+            className="flex-1 text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+          >
+            Buy Tokens
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+C. Buy Tokens Modal (Multi-Currency)
+jsx
+Copy
+// components/BuyTokensModal.jsx
+import { useState, useEffect } from 'react';
+
+export default function BuyTokensModal({ project, onClose }) {
+  const [tokenAmount, setTokenAmount] = useState('');
+  const [currency, setCurrency] = useState('NGN');
+  const [fees, setFees] = useState(null);
+  const [walletBalances, setWalletBalances] = useState({});
+  
+  useEffect(() => {
+    fetchWalletBalances();
+  }, []);
+  
+  useEffect(() => {
+    if (tokenAmount && !isNaN(tokenAmount)) {
+      calculateFees();
+    }
+  }, [tokenAmount, currency]);
+  
+  const fetchWalletBalances = async () => {
+    const res = await fetch('/api/regenerator/wallet');
+    const data = await res.json();
+    setWalletBalances(data.wallets);
+  };
+  
+  const calculateFees = async () => {
+    const res = await fetch('/api/tokens/calculate-fees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: project.id,
+        token_amount: parseFloat(tokenAmount),
+        currency
+      })
+    });
+    const data = await res.json();
+    setFees(data);
+  };
+  
+  const handlePurchase = async () => {
+    const res = await fetch('/api/tokens/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: project.id,
+        token_amount: parseFloat(tokenAmount),
+        payment_currency: currency,
+        payment_method: 'wallet'
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      alert('Purchase successful! Tokens are now in your wallet.');
+      onClose();
+      window.location.reload();
+    } else {
+      alert('Purchase failed: ' + data.error);
+    }
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">Buy {project.token_symbol} Tokens</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            ✕
+          </button>
+        </div>
+        
+        {/* Current NAV */}
+        <div className="bg-green-50 rounded-lg p-4 mb-4">
+          <div className="text-sm text-gray-600">Current NAV</div>
+          <div className="text-3xl font-bold text-green-600">
+            ₦{project.nav_per_token}
+          </div>
+          <div className="text-sm text-green-600">
+            +{project.nav_change_percentage}% this month
+          </div>
+        </div>
+        
+        {/* Token Amount */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">
+            Number of Tokens
+          </label>
+          <input
+            type="number"
+            value={tokenAmount}
+            onChange={(e) => setTokenAmount(e.target.value)}
+            min={project.min_investment}
+            max={Math.min(project.max_investment, project.tokens_available)}
+            className="w-full px-4 py-3 border rounded-lg text-lg"
+            placeholder="1000"
+          />
+          <div className="text-xs text-gray-500 mt-1">
+            Min: {project.min_investment.toLocaleString()} | 
+            Max: {Math.min(project.max_investment, project.tokens_available).toLocaleString()} | 
+            Available: {project.tokens_available.toLocaleString()}
+          </div>
+        </div>
+        
+        {/* Currency Selection */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">
+            Payment Currency
+          </label>
+          <div className="grid grid-cols-4 gap-2">
+            {['NGN', 'NGNTS', 'USDC', 'XLM'].map(curr => (
+              <button
+                key={curr}
+                onClick={() => setCurrency(curr)}
+                className={`px-4 py-2 rounded-lg font-semibold ${
+                  currency === curr
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {curr}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Your balance: {walletBalances[currency.toLowerCase()]?.toLocaleString() || '0'} {currency}
+          </div>
+        </div>
+        
+        {/* Fee Breakdown */}
+        {fees && (
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold mb-3">Fee Breakdown</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Token Cost:</span>
+                <span className="font-medium">{fees.baseAmount.toLocaleString()} {currency}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Platform Fee (1.5%):</span>
+                <span>{fees.platformFee.toLocaleString()} {currency}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Network Fee:</span>
+                <span>{fees.networkFee} {currency}</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between font-bold text-lg">
+                <span>Total:</span>
+                <span className="text-green-600">{fees.totalAmount.toLocaleString()} {currency}</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Benefits */}
+        <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm">
+          <div className="font-semibold mb-2">✅ What You Get:</div>
+          <ul className="space-y-1 text-gray-700">
+            <li>• Instant token delivery to your Stellar wallet</li>
+            <li>• Automated cashflow distributions (20% LP share)</li>
+            <li>• Liquid tokens - trade anytime on secondary market</li>
+            <li>• Real-time NAV tracking</li>
+            <li>• Redeem for NGNTS when needed</li>
+          </ul>
+        </div>
+        
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handlePurchase}
+            disabled={!fees || fees.totalAmount > walletBalances[currency.toLowerCase()]}
+            className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Buy Now
+          </button>
+        </div>
+        
+        {fees && fees.totalAmount > walletBalances[currency.toLowerCase()] && (
+          <div className="mt-3 text-sm text-red-600 text-center">
+            ⚠️ Insufficient balance. Please fund your wallet first.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+PART 3: Portfolio Management
+Database Schema
+sql
+Copy
+-- Portfolio snapshots (for historical tracking)
+CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+  id SERIAL PRIMARY KEY,
+  regenerator_id INTEGER REFERENCES users(id),
+  snapshot_date DATE,
+  total_value DECIMAL(20, 2),
+  total_invested DECIMAL(20, 2),
+  unrealized_gain DECIMAL(20, 2),
+  gain_percentage DECIMAL(5, 2),
+  total_tokens INTEGER,
+  active_projects INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+API Endpoints
+Get Dashboard
+javascript
+Copy
+// GET /api/regenerator/dashboard
+
+Response:
+{
+  summary: {
+    portfolio_value: 5850000,
+    total_invested: 5000000,
+    unrealized_gain: 850000,
+    gain_percentage: 17,
+    total_cashflow_received: 450000,
+    total_tokens: 38500,
+    liquid_tokens: 35000,
+    locked_tokens: 3500, // In sell orders
+    active_projects: 5
+  },
+  top_holdings: [
+    {
+      project_id: 1,
+      project_name: "Cassava Farm Cooperative",
+      token_symbol: "CASSAVA",
+      token_amount: 15000,
+      current_value: 1980000,
+      unrealized_gain: 180000,
+      gain_percentage: 10
+    }
+  ],
+  recent_activity: [
+    {
+      id: 1,
+      type: "token_purchase",
+      project_name: "Cassava Farm",
+      token_amount: 1000,
+      amount_ngn: 13200,
+      stellar_tx_hash: "a1b2c3...",
+      created_at: "2025-11-08T10:30:00Z"
+    },
+    {
+      id: 2,
+      type: "cashflow_received",
+      project_name: "Rice Farm",
+      amount_ngn: 25000,
+      stellar_tx_hash: "b2c3d4...",
+      created_at: "2025-11-07T14:20:00Z"
+    }
+  ],
+  performance_chart: [
+    { date: "2025-10-01", value: 5000000 },
+    { date: "2025-10-15", value: 5200000 },
+    { date: "2025-11-01", value: 5500000 },
+    { date: "2025-11-08", value: 5850000 }
+  ],
+  impact_contribution: {
+    jobs_supported: 125,
+    hectares_supported: 850,
+    farmers_supported: 320,
+    co2_offset: "1,200 tons/year",
+    cashflows_generated: 2500000
+  }
+}
+Get Portfolio
+javascript
+Copy
+// GET /api/regenerator/portfolio
+
+Response:
+{
+  holdings: [
+    {
+      project_id: 1,
+      project_name: "Cassava Farm Cooperative",
+      token_symbol: "CASSAVA",
+      token_issuer: "GXXXXXX...",
+      category: "cassava",
+      location: "Ogun State",
+      
+      // Holdings
+      token_amount: 15000,
+      liquid_tokens: 14000,
+      locked_tokens: 1000, // In sell orders
+      
+      // Financial
+      average_purchase_price: 12.00,
+      current_nav: 13.20,
+      purchase_value: 1800000,
+      current_value: 1980000,
+      unrealized_gain: 180000,
+      gain_percentage: 10,
+      
+      // Cashflow
+      total_cashflow_received: 120000,
+      last_cashflow_date: "2025-10-15",
+      next_cashflow_date: "2025-12-15",
+      
+      // Performance
+      nav_change_7d: 2.5,
+      nav_change_30d: 5.2,
+      nav_change_all_time: 10,
+      
+      // Actions
+      can_trade: true,
+      can_redeem: true,
+      
+      // Blockchain
+      stellar_balance: 15000, // Verified from Stellar
+      purchase_date: "2025-08-15",
+      purchase_tx_hash: "a1b2c3..."
+    }
+  ],
+  totals: {
+    portfolio_value: 5850000,
+    total_invested: 5000000,
+    total_gain: 850000,
+    gain_percentage: 17,
+    total_cashflow: 450000
+  },
+  allocation: [
+    { category: "cassava", percentage: 40, value: 2340000 },
+    { category: "rice", percentage: 30, value: 1755000 },
+    { category: "maize", percentage: 20, value: 1170000 },
+    { category: "poultry", percentage: 10, value: 585000 }
+  ]
+}
+Frontend Components
+A. Dashboard
+jsx
+Copy
+// pages/RegeneratorDashboard.jsx
+import { useState, useEffect } from 'react';
+import { Line } from 'react-chartjs-2';
+
+export default function RegeneratorDashboard() {
+  const [dashboard, setDashboard] = useState(null);
+  
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+  
+  const fetchDashboard = async () => {
+    const res = await fetch('/api/regenerator/dashboard');
+    const data = await res.json();
+    setDashboard(data);
+  };
+  
+  if (!dashboard) return <div>Loading...</div>;
+  
+  return (
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+        <p className="text-gray-600">Track your regenerative capital portfolio</p>
+      </div>
+      
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="text-sm text-gray-500 mb-1">Portfolio Value</div>
+          <div className="text-3xl font-bold text-green-600">
+            ₦{dashboard.summary.portfolio_value.toLocaleString()}
+          </div>
+          <div className="text-sm text-green-600 mt-1">
+            +{dashboard.summary.gain_percentage}% (₦{dashboard.summary.unrealized_gain.toLocaleString()})
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="text-sm text-gray-500 mb-1">Total Invested</div>
+          <div className="text-3xl font-bold">
+            ₦{dashboard.summary.total_invested.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-600 mt-1">
+            Across {dashboard.summary.active_projects} projects
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="text-sm text-gray-500 mb-1">Cashflow Received</div>
+          <div className="text-3xl font-bold text-blue-600">
+            ₦{dashboard.summary.total_cashflow_received.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-600 mt-1">
+            Lifetime earnings
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="text-sm text-gray-500 mb-1">Total Tokens</div>
+          <div className="text-3xl font-bold">
+            {dashboard.summary.total_tokens.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-600 mt-1">
+            {dashboard.summary.liquid_tokens.toLocaleString()} liquid
+          </div>
+        </div>
+      </div>
+      
+      {/* Performance Chart */}
+      <div className="bg-white rounded-xl shadow p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4">Portfolio Performance</h2>
+        <Line
+          data={{
+            labels: dashboard.performance_chart.map(d => d.date),
+            datasets: [{
+              label: 'Portfolio Value (₦)',
+              data: dashboard.performance_chart.map(d => d.value),
+              borderColor: 'rgb(34, 197, 94)',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              tension: 0.4
+            }]
+          }}
+          options={{
+            responsive: true,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                ticks: {
+                  callback: (value) => '₦' + value.toLocaleString()
+                }
+              }
+            }
+          }}
+        />
+      </div>
+      
+      {/* Top Holdings */}
+      <div className="bg-white rounded-xl shadow p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4">Top Holdings</h2>
+        <div className="space-y-4">
+          {dashboard.top_holdings.map(holding => (
+            <div key={holding.project_id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <div className="font-semibold">{holding.project_name}</div>
+                <div className="text-sm text-gray-600">
+                  {holding.token_amount.toLocaleString()} {holding.token_symbol}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-bold">₦{holding.current_value.toLocaleString()}</div>
+                <div className={`text-sm ${holding.gain_percentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {holding.gain_percentage >= 0 ? '+' : ''}{holding.gain_percentage}%
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Impact Contribution */}
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl shadow p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4">Your Impact Contribution</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600">
+              {dashboard.impact_contribution.jobs_supported}
+            </div>
+            <div className="text-sm text-gray-600">Jobs Supported</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600">
+              {dashboard.impact_contribution.hectares_supported}
+            </div>
+            <div className="text-sm text-gray-600">Hectares</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600">
+              {dashboard.impact_contribution.farmers_supported}
+            </div>
+            <div className="text-sm text-gray-600">Farmers</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600">
+              {dashboard.impact_contribution.co2_offset}
+            </div>
+            <div className="text-sm text-gray-600">CO₂ Offset</div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl shadow p-6">
+        <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
+        <div className="space-y-3">
+          {dashboard.recent_activity.map(activity => (
+            <div key={activity.id} className="flex items-center gap-4 p-3 border-l-4 border-green-500 bg-gray-50 rounded">
+              <div className="text-2xl">
+                {activity.type === 'token_purchase' && '🛒'}
+                {activity.type === 'cashflow_received' && '💰'}
+                {activity.type === 'secondary_trade' && '🔄'}
+                {activity.type === 'redemption' && '💵'}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold">{activity.project_name}</div>
+                <div className="text-sm text-gray-600">
+                  {activity.type === 'token_purchase' && `Purchased ${activity.token_amount} tokens`}
+                  {activity.type === 'cashflow_received' && `Received ₦${activity.amount_ngn.toLocaleString()} cashflow`}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-500">
+                  {new Date(activity.created_at).toLocaleDateString()}
+                </div>
+                <a 
+                  href={`https://stellar.expert/explorer/testnet/tx/${activity.stellar_tx_hash}`}
+                  target="_blank"
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  View TX
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
