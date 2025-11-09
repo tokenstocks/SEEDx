@@ -1,0 +1,231 @@
+Replit Prompt: Primer User Class - SEEDx Platform
+Project Overview
+Build the Primer user interface for SEEDx, a regenerative capital exchange platform. Primers are institutional partners (foundations, CSR programs, impact funds) who provide grant/CSR capital to seed agricultural projects. They receive permanently locked tokens as proof of contribution (non-tradeable, non-redeemable).
+
+Core Requirements
+1. Authentication & Onboarding
+Login/Registration Flow
+Email/password authentication
+Role: primer (distinct from grower and admin)
+JWT token storage
+First-time onboarding wizard explaining Primer role
+2. Primer Dashboard
+Display:
+
+Total Capital Contributed (lifetime sum in ₦)
+Active Projects Funded (count)
+Impact Metrics:
+Total tokens issued across projects
+Aggregate project cashflows generated
+Number of Growers (secondary investors) enabled
+Recent Activity Feed (contributions, project milestones)
+3. Project Discovery & Funding
+Browse Projects Page:
+
+Grid/list view of agricultural projects seeking funding
+Each project card shows:
+Project name, location, crop type
+Funding goal vs. current funding
+Expected impact metrics (jobs created, land cultivated)
+Project timeline
+"Fund This Project" CTA button
+Project Detail Page:
+
+Full project description
+Team/farmer profiles
+Financial projections
+Impact thesis
+Funding tiers (e.g., ₦500K, ₦1M, ₦5M)
+Contribution Form:
+Amount input (₦)
+Payment method selection (bank transfer, card - mock for MVP)
+Confirmation: "You will receive [X] permanently locked tokens"
+Legal disclaimer: "These tokens are non-tradeable and represent your contribution to regenerative agriculture"
+4. Contribution History
+Table/list showing:
+
+Date of contribution
+Project name
+Amount contributed (₦)
+Tokens received (permanently locked)
+Transaction ID
+Status (Pending, Confirmed, Completed)
+Download receipt button
+5. Portfolio View
+My Contributions:
+
+List of all projects funded
+For each project:
+Permanently locked token balance
+Lock policy badge (red "Permanent Grant" indicator)
+Project performance metrics:
+Current NAV (for reference only - cannot redeem)
+Total cashflows generated
+Regeneration cycles completed
+Impact dashboard (jobs created, yield data)
+Visual Design:
+
+Permanently locked tokens: Red badge with lock icon
+Clear messaging: "These tokens represent your impact contribution and cannot be traded or redeemed"
+6. Impact Reporting
+Impact Dashboard:
+
+Aggregate metrics across all funded projects:
+Total cashflows generated from your contributions
+Growers enabled (secondary investors who bought tokens)
+Regeneration multiplier (how many times capital has cycled)
+Environmental impact (hectares cultivated, CO2 offset)
+Downloadable Impact Report (PDF):
+Quarterly/annual summary
+Project-by-project breakdown
+Photos/stories from the field
+Suitable for CSR reporting
+7. Notifications & Updates
+Email + in-app notifications for:
+Contribution confirmed
+Project milestone reached
+Cashflow regeneration completed
+Impact report available
+New project opportunities matching interests
+Technical Specifications
+Frontend Stack
+Framework: React.js with TypeScript
+Styling: Tailwind CSS
+State Management: React Context API or Zustand
+Routing: React Router v6
+Forms: React Hook Form + Zod validation
+Charts: Recharts or Chart.js (for impact metrics)
+Icons: Lucide React or Heroicons
+Backend Integration
+API Endpoints Needed:
+POST   /api/auth/register (role: primer)
+POST   /api/auth/login
+GET    /api/primer/dashboard
+GET    /api/projects (filter: seeking_funding)
+GET    /api/projects/:id
+POST   /api/contributions (create new contribution)
+GET    /api/contributions (user's history)
+GET    /api/primer/portfolio
+GET    /api/primer/impact-report
+Database Schema (Reference):
+sql
+Copy
+users (id, email, password_hash, role: 'primer')
+
+contributions (
+  id, 
+  primer_id, 
+  project_id, 
+  amount_ngn, 
+  tokens_issued, 
+  lock_policy: 'permanent',
+  status: 'pending' | 'confirmed',
+  created_at
+)
+
+project_token_balances (
+  user_id,
+  project_id,
+  token_amount,
+  liquid_tokens: 0,
+  locked_tokens: token_amount,
+  lock_policy: 'permanent'
+)
+Mock Data for MVP
+javascript
+Copy
+const mockProjects = [
+  {
+    id: 1,
+    name: "Cassava Farm Cooperative",
+    location: "Ogun State, Nigeria",
+    crop: "Cassava",
+    funding_goal: 5000000, // ₦5M
+    current_funding: 3200000,
+    token_symbol: "CASSAVA",
+    nav_per_token: 12.80,
+    description: "Supporting 50 smallholder farmers...",
+    impact_metrics: {
+      jobs_created: 50,
+      hectares: 120,
+      expected_yield: "500 tons/year"
+    }
+  },
+  // Add 2-3 more projects
+];
+
+const mockContributions = [
+  {
+    id: 1,
+    date: "2025-10-15",
+    project: "Cassava Farm Cooperative",
+    amount: 1000000,
+    tokens_received: 78125, // amount / NAV
+    status: "Confirmed",
+    transaction_id: "TXN-2025-001"
+  }
+];
+UI/UX Guidelines
+Color Coding
+Permanently Locked Tokens: Red badges (#EF4444)
+Primary Actions: Green (#10B981) - "Fund Project"
+Impact Metrics: Blue (#3B82F6)
+Key Messaging
+Hero Section: "Become a Primer - Seed the Future of Agriculture"
+Value Prop: "Your grant capital unlocks liquidity for impact investors while creating lasting agricultural transformation"
+Disclaimer (always visible): "Primer contributions receive permanently locked tokens that represent impact, not investment returns. These tokens cannot be traded or redeemed."
+Accessibility
+WCAG 2.1 AA compliance
+Keyboard navigation
+Screen reader support
+High contrast mode
+Security & Compliance
+Regulatory Safety
+No Investment Language: Avoid "invest," "returns," "profit"
+Use Instead: "contribute," "fund," "support," "impact"
+Clear Disclaimers:
+"This is a grant contribution, not an investment"
+"Tokens are non-transferable and have no monetary value"
+"Suitable for CSR budgets and philanthropic capital"
+Data Protection
+Encrypt sensitive data (payment info)
+GDPR-compliant data handling
+Secure JWT implementation
+Rate limiting on API endpoints
+Testing Checklist
+Functional Tests:
+
+ Primer can register and login
+ Dashboard displays correct metrics
+ Can browse and filter projects
+ Contribution form validates inputs
+ Tokens issued with permanent lock policy
+ Portfolio shows all contributions
+ Impact report generates correctly
+ Cannot access Grower or Admin features
+Edge Cases:
+
+ Contribution amount exceeds project funding goal
+ Duplicate contribution submissions
+ Invalid payment methods
+ Network errors during contribution
+Deployment Notes
+Environment Variables:
+VITE_API_BASE_URL=https://api.seedx.io
+VITE_STELLAR_NETWORK=testnet
+VITE_ENABLE_MOCK_DATA=true (for MVP)
+Build Command: npm run build
+Start Command: npm run dev
+Success Criteria
+✅ Primer can complete full contribution flow in <3 minutes
+✅ Portfolio clearly distinguishes permanent locks from tradeable tokens
+✅ Impact metrics update in real-time after regeneration cycles
+✅ Zero confusion about non-redeemable nature of tokens
+✅ Mobile-responsive design (80% of users on mobile)
+
+Next Steps After MVP
+Integrate real payment gateway (Paystack/Flutterwave)
+Connect to Stellar blockchain for token issuance
+Build admin approval workflow for contributions
+Add project update feed (photos, videos from farmers)
+Implement referral program for Primers
