@@ -35,6 +35,7 @@ import { burnNgnts } from "../lib/ngntsOps";
 import { determineFundingSource } from "../lib/redemptionOps";
 import { auditActionWithState } from "../middleware/auditMiddleware";
 import { burnProjectToken, transferNgntsFromPlatformWallet } from "../lib/stellarOps";
+import { primerContributions, lpProjectAllocations, primerProjectAllocations } from "@shared/schema";
 
 const router = Router();
 
@@ -2318,6 +2319,257 @@ router.put(
     } catch (error: any) {
       console.error("Error processing redemption:", error);
       res.status(500).json({ error: "Failed to process redemption request" });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/primer-stats
+ * Get Primer contribution statistics
+ */
+router.get("/primer-stats", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const [stats] = await db
+      .select({
+        totalLpPoolCapital: sql<string>`COALESCE(SUM(${primerContributions.amountNgnts}), 0)`,
+        pendingContributions: count(),
+      })
+      .from(primerContributions)
+      .where(eq(primerContributions.status, "approved"));
+
+    const [pendingStats] = await db
+      .select({
+        pendingCount: count(),
+      })
+      .from(primerContributions)
+      .where(eq(primerContributions.status, "pending"));
+
+    const activePrimers = await db
+      .selectDistinct({ primerId: primerContributions.primerId })
+      .from(primerContributions)
+      .where(eq(primerContributions.status, "approved"));
+
+    res.json({
+      totalLpPoolCapital: parseFloat(stats?.totalLpPoolCapital || "0"),
+      pendingContributions: pendingStats?.pendingCount || 0,
+      activePrimers: activePrimers.length,
+    });
+  } catch (error) {
+    console.error("Get primer stats error:", error);
+    res.status(500).json({ error: "Failed to get primer statistics" });
+  }
+});
+
+/**
+ * GET /api/admin/primer-contributions
+ * Get Primer contributions with optional status filter
+ */
+router.get("/primer-contributions", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const status = req.query.status as string | undefined;
+
+    const baseQuery = db
+      .select({
+        id: primerContributions.id,
+        primerId: primerContributions.primerId,
+        primerEmail: users.email,
+        amountNgnts: primerContributions.amountNgnts,
+        status: primerContributions.status,
+        paymentProof: primerContributions.paymentProof,
+        txHash: primerContributions.txHash,
+        lpPoolShareSnapshot: primerContributions.lpPoolShareSnapshot,
+        createdAt: primerContributions.createdAt,
+        approvedAt: primerContributions.approvedAt,
+      })
+      .from(primerContributions)
+      .leftJoin(users, eq(primerContributions.primerId, users.id))
+      .$dynamic();
+
+    const contributions = status
+      ? await baseQuery.where(eq(primerContributions.status, status as any)).orderBy(desc(primerContributions.createdAt))
+      : await baseQuery.orderBy(desc(primerContributions.createdAt));
+
+    res.json(contributions);
+  } catch (error) {
+    console.error("Get primer contributions error:", error);
+    res.status(500).json({ error: "Failed to get primer contributions" });
+  }
+});
+
+/**
+ * POST /api/admin/primer-contributions/:id/approve
+ * Approve a Primer contribution (transfer NGNTS to LP Pool)
+ */
+router.post(
+  "/primer-contributions/:id/approve",
+  authenticate,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const contributionId = req.params.id;
+      const adminId = req.user!.userId;
+
+      // Get contribution details
+      const [contribution] = await db
+        .select()
+        .from(primerContributions)
+        .where(eq(primerContributions.id, contributionId));
+
+      if (!contribution) {
+        res.status(404).json({ error: "Contribution not found" });
+        return;
+      }
+
+      if (contribution.status !== "pending") {
+        res.status(400).json({ error: "Contribution has already been processed" });
+        return;
+      }
+
+      // Get LP Pool wallet
+      const [lpPool] = await db
+        .select()
+        .from(platformWallets)
+        .where(eq(platformWallets.walletType, "liquidity_pool"));
+
+      if (!lpPool) {
+        res.status(500).json({ error: "LP Pool wallet not found" });
+        return;
+      }
+
+      const contributionAmount = parseFloat(contribution.amountNgnts);
+      
+      // Get total LP Pool capital from ALL approved contributions
+      const [totalCapitalStats] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${primerContributions.amountNgnts}), 0)`,
+        })
+        .from(primerContributions)
+        .where(eq(primerContributions.status, "approved"));
+      
+      const existingCapital = parseFloat(totalCapitalStats?.total || "0");
+      const newTotalCapital = existingCapital + contributionAmount;
+      
+      // Calculate this Primer's cumulative share after this approval
+      const [primerPreviousContributions] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${primerContributions.amountNgnts}), 0)`,
+        })
+        .from(primerContributions)
+        .where(
+          and(
+            eq(primerContributions.primerId, contribution.primerId),
+            eq(primerContributions.status, "approved")
+          )
+        );
+      
+      const primerExistingContributions = parseFloat(primerPreviousContributions?.total || "0");
+      const primerNewTotal = primerExistingContributions + contributionAmount;
+      const lpPoolSharePercent = newTotalCapital > 0 ? (primerNewTotal / newTotalCapital) * 100 : 0;
+      
+      // Update LP Pool wallet balance (for liquidity tracking)
+      const currentBalance = parseFloat(lpPool.balanceNGNTS || "0");
+      const newBalance = currentBalance + contributionAmount;
+
+      // Simulate blockchain transfer (in production, transfer NGNTS to LP Pool)
+      const mockTxHash = `primer_contribution_${contributionId}_${Date.now()}`;
+
+      // Update contribution record
+      await db
+        .update(primerContributions)
+        .set({
+          status: "approved",
+          txHash: mockTxHash,
+          lpPoolShareSnapshot: lpPoolSharePercent.toFixed(4),
+          approvedAt: new Date(),
+        })
+        .where(eq(primerContributions.id, contributionId));
+
+      // Update LP Pool wallet balance (for liquidity tracking)
+      await db
+        .update(platformWallets)
+        .set({
+          balanceNGNTS: newBalance.toString(),
+        })
+        .where(eq(platformWallets.id, lpPool.id));
+
+      // Update transaction record to completed
+      await db
+        .update(transactions)
+        .set({
+          status: "completed",
+        })
+        .where(eq(transactions.id, contribution.transactionId));
+
+      console.log(`✅ Primer contribution ${contributionId} approved`);
+      console.log(`  - Amount: ₦${contributionAmount.toLocaleString()}`);
+      console.log(`  - LP Share: ${lpPoolSharePercent.toFixed(4)}%`);
+      console.log(`  - TX Hash: ${mockTxHash}`);
+
+      res.json({
+        message: "Contribution approved successfully",
+        txHash: mockTxHash,
+        lpPoolSharePercent: lpPoolSharePercent.toFixed(4),
+      });
+    } catch (error: any) {
+      console.error("Approve contribution error:", error);
+      res.status(500).json({ error: "Failed to approve contribution" });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/primer-contributions/:id/reject
+ * Reject a Primer contribution
+ */
+router.post(
+  "/primer-contributions/:id/reject",
+  authenticate,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const contributionId = req.params.id;
+      const adminId = req.user!.userId;
+
+      // Get contribution details
+      const [contribution] = await db
+        .select()
+        .from(primerContributions)
+        .where(eq(primerContributions.id, contributionId));
+
+      if (!contribution) {
+        res.status(404).json({ error: "Contribution not found" });
+        return;
+      }
+
+      if (contribution.status !== "pending") {
+        res.status(400).json({ error: "Contribution has already been processed" });
+        return;
+      }
+
+      // Update contribution record
+      await db
+        .update(primerContributions)
+        .set({
+          status: "rejected",
+        })
+        .where(eq(primerContributions.id, contributionId));
+
+      // Update transaction record to failed
+      await db
+        .update(transactions)
+        .set({
+          status: "failed",
+        })
+        .where(eq(transactions.id, contribution.transactionId));
+
+      console.log(`❌ Primer contribution ${contributionId} rejected`);
+
+      res.json({
+        message: "Contribution rejected successfully",
+      });
+    } catch (error: any) {
+      console.error("Reject contribution error:", error);
+      res.status(500).json({ error: "Failed to reject contribution" });
     }
   }
 );

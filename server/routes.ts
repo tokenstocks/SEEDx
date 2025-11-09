@@ -11,6 +11,7 @@ import exchangeRatesRoutes from "./routes/exchangeRates";
 import lpRoutes from "./routes/lp";
 import systemRoutes from "./routes/system";
 import marketplaceRoutes from "./routes/marketplace";
+import primerRoutes from "./routes/primer";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
@@ -30,6 +31,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register LP investor routes
   app.use("/api/lp", lpRoutes);
+  
+  // Register Primer routes
+  app.use("/api/primer", primerRoutes);
   
   // Register marketplace routes
   app.use("/api/marketplace", marketplaceRoutes);

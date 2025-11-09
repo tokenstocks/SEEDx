@@ -25,6 +25,8 @@ import AdminTreasury from "@/pages/AdminTreasury";
 import AdminCashflows from "@/pages/AdminCashflows";
 import AdminAudit from "@/pages/AdminAudit";
 import LPDashboard from "@/pages/LPDashboard";
+import PrimerDashboard from "@/pages/PrimerDashboard";
+import AdminPrimers from "@/pages/AdminPrimers";
 import Marketplace from "@/pages/Marketplace";
 import MultisigDemo from "@/pages/MultisigDemo";
 import DeploymentDemo from "@/pages/DeploymentDemo";
@@ -44,6 +46,7 @@ function Router() {
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/portfolio" component={Portfolio} />
       <Route path="/lp-dashboard" component={LPDashboard} />
+      <Route path="/primer-dashboard" component={PrimerDashboard} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/admin" component={Admin} />
@@ -53,6 +56,7 @@ function Router() {
       <Route path="/admin/treasury" component={AdminTreasury} />
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
+      <Route path="/admin/primers" component={AdminPrimers} />
       <Route path="/admin/multisig" component={MultisigDemo} />
       <Route path="/admin/deployment" component={DeploymentDemo} />
       <Route path="/admin/flow" component={FlowDemo} />
