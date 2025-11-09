@@ -10,12 +10,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Wallet, LayoutDashboard, Briefcase, Activity, LogOut } from "lucide-react";
+import { User, Wallet, LayoutDashboard, Briefcase, Activity, LogOut, ChevronDown, Fuel } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
+
+interface WalletBalances {
+  activated: boolean;
+  activationStatus: string;
+  publicKey: string;
+  balances: {
+    xlm: string;
+    usdc: string;
+    ngnts: string;
+  };
+}
 
 export default function RegeneratorHeader() {
   const [, navigate] = useLocation();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  // Fetch wallet balances
+  const { data: walletData } = useQuery<WalletBalances>({
+    queryKey: ["/api/regenerator/wallet/balances"],
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -30,6 +48,15 @@ export default function RegeneratorHeader() {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
     return email.substring(0, 2).toUpperCase();
+  };
+
+  const formatBalance = (balance: string) => {
+    const num = parseFloat(balance || "0");
+    if (num === 0) return "0.00";
+    if (num < 0.01) return "<0.01";
+    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(2)}K`;
+    return num.toFixed(2);
   };
 
   return (
@@ -53,26 +80,48 @@ export default function RegeneratorHeader() {
           </div>
 
           {/* Profile Section */}
-          <div className="flex items-center gap-4">
-            <div className="hidden md:block text-right">
-              <p className="text-sm font-medium text-white" data-testid="text-user-email">
-                {user.email || "Regenerator User"}
-              </p>
-              <p className="text-xs text-blue-400">Regenerator Account</p>
+          <div className="flex items-center gap-2">
+            {/* Wallet Balance Badges - Always visible, responsive sizing */}
+            <div className="flex flex-wrap items-center gap-1 md:gap-2">
+              <Badge
+                variant="outline"
+                className="bg-amber-950/30 border-amber-500/30 text-amber-400 px-1.5 py-0.5 md:px-2 md:py-1 gap-0.5 md:gap-1"
+                data-testid="badge-balance-xlm"
+              >
+                <Fuel className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                <span className="text-[9px] md:text-xs font-medium whitespace-nowrap">{formatBalance(walletData?.balances.xlm || "0")} XLM</span>
+              </Badge>
+              <Badge
+                variant="outline"
+                className="bg-blue-950/30 border-blue-500/30 text-blue-400 px-1.5 py-0.5 md:px-2 md:py-1 gap-0.5 md:gap-1"
+                data-testid="badge-balance-usdc"
+              >
+                <span className="text-[9px] md:text-xs font-medium whitespace-nowrap">{formatBalance(walletData?.balances.usdc || "0")} USDC</span>
+              </Badge>
+              <Badge
+                variant="outline"
+                className="bg-emerald-950/30 border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 md:px-2 md:py-1 gap-0.5 md:gap-1"
+                data-testid="badge-balance-ngnts"
+              >
+                <span className="text-[9px] md:text-xs font-medium whitespace-nowrap">₦{formatBalance(walletData?.balances.ngnts || "0")}</span>
+              </Badge>
             </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-10 w-10 rounded-full border-2 border-blue-500/30 hover:border-blue-500"
+                  className="flex items-center gap-2 h-10 px-3 rounded-full border border-blue-500/30 hover:border-blue-500 hover:bg-blue-950/30"
                   data-testid="button-profile-menu"
+                  aria-label="Open profile menu"
                 >
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-blue-600 text-white font-semibold">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-blue-600 text-white font-semibold text-xs">
                       {getInitials(user.email || "R")}
                     </AvatarFallback>
                   </Avatar>
+                  <span className="text-sm font-medium text-white">Menu</span>
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
