@@ -2574,4 +2574,203 @@ router.post(
   }
 );
 
+/**
+ * GET /api/admin/lp-allocation-stats
+ * Get LP Pool allocation statistics
+ */
+router.get("/lp-allocation-stats", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Get LP Pool wallet balance (available capital)
+    const [lpPool] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "liquidity_pool"))
+      .limit(1);
+
+    // Get total allocated amount
+    const [allocationStats] = await db
+      .select({
+        totalAllocated: sql<string>`COALESCE(SUM(${lpProjectAllocations.totalAmountNgnts}), 0)`,
+        activeAllocations: count(),
+      })
+      .from(lpProjectAllocations);
+
+    const availableCapital = parseFloat(lpPool?.balanceNGNTS || "0");
+    const totalAllocated = parseFloat(allocationStats?.totalAllocated || "0");
+
+    res.json({
+      availableCapital,
+      totalAllocated,
+      activeAllocations: allocationStats?.activeAllocations || 0,
+    });
+  } catch (error) {
+    console.error("Get LP allocation stats error:", error);
+    res.status(500).json({ error: "Failed to get allocation statistics" });
+  }
+});
+
+/**
+ * GET /api/admin/lp-allocations
+ * Get LP Pool allocation history
+ */
+router.get("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const allocationsList = await db
+      .select({
+        id: lpProjectAllocations.id,
+        projectId: lpProjectAllocations.projectId,
+        projectName: projects.name,
+        totalAmountNgnts: lpProjectAllocations.totalAmountNgnts,
+        purpose: lpProjectAllocations.purpose,
+        allocationDate: lpProjectAllocations.allocationDate,
+        primerCount: sql<number>`(
+          SELECT COUNT(DISTINCT primer_id) 
+          FROM primer_project_allocations 
+          WHERE allocation_id = ${lpProjectAllocations.id}
+        )`,
+      })
+      .from(lpProjectAllocations)
+      .leftJoin(projects, eq(lpProjectAllocations.projectId, projects.id))
+      .orderBy(desc(lpProjectAllocations.allocationDate));
+
+    res.json(allocationsList);
+  } catch (error) {
+    console.error("Get LP allocations error:", error);
+    res.status(500).json({ error: "Failed to get LP allocations" });
+  }
+});
+
+/**
+ * POST /api/admin/lp-allocations
+ * Create new LP Pool allocation to project
+ */
+router.post("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { projectId, amount, purpose } = req.body;
+
+    if (!projectId || !amount) {
+      res.status(400).json({ error: "Missing required fields: projectId, amount" });
+      return;
+    }
+
+    const allocationAmount = parseFloat(amount);
+    if (isNaN(allocationAmount) || allocationAmount <= 0) {
+      res.status(400).json({ error: "Invalid allocation amount" });
+      return;
+    }
+
+    // Get LP Pool wallet
+    const [lpPool] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "liquidity_pool"))
+      .limit(1);
+
+    if (!lpPool) {
+      res.status(500).json({ error: "LP Pool wallet not found" });
+      return;
+    }
+
+    const availableBalance = parseFloat(lpPool.balanceNGNTS || "0");
+    if (availableBalance < allocationAmount) {
+      res.status(400).json({ 
+        error: "Insufficient LP Pool balance",
+        available: availableBalance,
+        requested: allocationAmount,
+      });
+      return;
+    }
+
+    // Get project details
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    // Get all Primers with approved contributions
+    const primers = await db
+      .select({
+        primerId: primerContributions.primerId,
+        totalContributed: sql<string>`SUM(${primerContributions.amountNgnts})`,
+      })
+      .from(primerContributions)
+      .where(eq(primerContributions.status, "approved"))
+      .groupBy(primerContributions.primerId);
+
+    if (primers.length === 0) {
+      res.status(400).json({ error: "No approved Primer contributions found" });
+      return;
+    }
+
+    // Calculate total LP Pool capital (sum of all approved contributions)
+    const totalLpCapital = primers.reduce(
+      (sum, p) => sum + parseFloat(p.totalContributed),
+      0
+    );
+
+    // Create allocation header
+    const [allocation] = await db
+      .insert(lpProjectAllocations)
+      .values({
+        projectId,
+        totalAmountNgnts: allocationAmount.toString(),
+        purpose: purpose || null,
+        allocationDate: new Date(),
+      })
+      .returning();
+
+    // Create individual Primer allocations based on their LP share
+    const primerAllocations = primers.map((primer) => {
+      const primerContribution = parseFloat(primer.totalContributed);
+      const sharePercent = (primerContribution / totalLpCapital) * 100;
+      const shareAmount = (allocationAmount * sharePercent) / 100;
+
+      return {
+        allocationId: allocation.id,
+        primerId: primer.primerId,
+        sharePercent: sharePercent.toFixed(4),
+        shareAmountNgnts: shareAmount.toFixed(2),
+      };
+    });
+
+    await db.insert(primerProjectAllocations).values(primerAllocations);
+
+    // Deduct from LP Pool wallet balance
+    const newBalance = availableBalance - allocationAmount;
+    await db
+      .update(platformWallets)
+      .set({
+        balanceNGNTS: newBalance.toString(),
+      })
+      .where(eq(platformWallets.id, lpPool.id));
+
+    console.log(`✅ LP Pool allocation created`);
+    console.log(`  - Project: ${project.name}`);
+    console.log(`  - Amount: ₦${allocationAmount.toLocaleString()}`);
+    console.log(`  - Primers involved: ${primers.length}`);
+    console.log(`  - New LP balance: ₦${newBalance.toLocaleString()}`);
+
+    res.json({
+      message: "LP Pool allocation successful",
+      allocation: {
+        id: allocation.id,
+        projectId,
+        projectName: project.name,
+        amount: allocationAmount,
+        primersInvolved: primers.length,
+        newLpBalance: newBalance,
+      },
+    });
+  } catch (error: any) {
+    console.error("Create LP allocation error:", error);
+    res.status(500).json({ error: "Failed to create LP allocation" });
+  }
+});
+
 export default router;

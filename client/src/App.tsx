@@ -27,6 +27,7 @@ import AdminAudit from "@/pages/AdminAudit";
 import LPDashboard from "@/pages/LPDashboard";
 import PrimerDashboard from "@/pages/PrimerDashboard";
 import AdminPrimers from "@/pages/AdminPrimers";
+import AdminLPAllocations from "@/pages/AdminLPAllocations";
 import Marketplace from "@/pages/Marketplace";
 import MultisigDemo from "@/pages/MultisigDemo";
 import DeploymentDemo from "@/pages/DeploymentDemo";
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
       <Route path="/admin/primers" component={AdminPrimers} />
+      <Route path="/admin/lp-allocations" component={AdminLPAllocations} />
       <Route path="/admin/multisig" component={MultisigDemo} />
       <Route path="/admin/deployment" component={DeploymentDemo} />
       <Route path="/admin/flow" component={FlowDemo} />
