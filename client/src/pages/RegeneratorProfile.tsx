@@ -36,8 +36,17 @@ export default function RegeneratorProfile() {
     queryKey: ["/api/regenerator/stats"],
   });
 
-  const { data: walletData } = useQuery({
-    queryKey: ["/api/users/me/balances"],
+  const { data: walletData } = useQuery<{
+    activated: boolean;
+    activationStatus: string;
+    publicKey: string;
+    balances: {
+      xlm: string;
+      usdc: string;
+      ngnts: string;
+    };
+  }>({
+    queryKey: ["/api/regenerator/wallet/balances"],
   });
 
   const getKycStatusBadge = (status: string) => {
@@ -202,34 +211,72 @@ export default function RegeneratorProfile() {
                   <Wallet className="w-5 h-5 text-yellow-400" />
                   Wallet Balances
                 </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Your multi-currency wallet
+                <CardDescription className="text-slate-400 flex items-center justify-between">
+                  <span>Your multi-currency Stellar wallet</span>
+                  {walletData?.activationStatus && (
+                    <Badge
+                      className={
+                        walletData.activated
+                          ? "bg-emerald-600 text-white"
+                          : walletData.activationStatus === "pending"
+                          ? "bg-orange-500 text-white"
+                          : "bg-slate-600 text-white"
+                      }
+                      data-testid="badge-wallet-status"
+                    >
+                      {walletData.activated ? "Active" : walletData.activationStatus === "pending" ? "Funding Pending" : "Not Activated"}
+                    </Badge>
+                  )}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-ngn">
-                    <p className="text-xs text-slate-400">NGN (Naira)</p>
-                    <p className="text-lg font-semibold text-white">
-                      ₦{parseFloat(walletData?.fiatBalances?.NGN || "0").toLocaleString()}
+              <CardContent className="space-y-4">
+                {!walletData?.activated && (
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4" data-testid="alert-wallet-not-activated">
+                    <p className="text-sm text-orange-300 mb-3">
+                      <AlertCircle className="w-4 h-4 inline mr-2" />
+                      Your Stellar wallet needs activation funding. Request funding from admin to enable blockchain transactions.
                     </p>
+                    {walletData?.activationStatus !== "pending" && (
+                      <Button
+                        onClick={() => navigate("/wallet-funding-request")}
+                        className="bg-orange-600 hover:bg-orange-700 w-full"
+                        data-testid="button-request-funding"
+                      >
+                        Request Wallet Funding
+                      </Button>
+                    )}
+                    {walletData?.activationStatus === "pending" && (
+                      <p className="text-xs text-slate-400">
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        Funding request submitted. Awaiting admin approval.
+                      </p>
+                    )}
                   </div>
-                  <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-ngnts">
-                    <p className="text-xs text-slate-400">NGNTS (Stellar)</p>
+                )}
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-xlm">
+                    <p className="text-xs text-slate-400">XLM (Gas)</p>
                     <p className="text-lg font-semibold text-white">
-                      ₦{parseFloat(walletData?.cryptoBalances?.NGNTS || "0").toLocaleString()}
+                      {parseFloat(walletData?.balances?.xlm || "0").toFixed(2)} XLM
                     </p>
                   </div>
                   <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-usdc">
                     <p className="text-xs text-slate-400">USDC</p>
                     <p className="text-lg font-semibold text-white">
-                      ${parseFloat(walletData?.cryptoBalances?.USDC || "0").toLocaleString()}
+                      ${parseFloat(walletData?.balances?.usdc || "0").toLocaleString()}
                     </p>
                   </div>
-                  <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-xlm">
-                    <p className="text-xs text-slate-400">XLM (Lumens)</p>
+                  <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-ngnts">
+                    <p className="text-xs text-slate-400">NGNTS</p>
                     <p className="text-lg font-semibold text-white">
-                      {parseFloat(walletData?.cryptoBalances?.XLM || "0").toFixed(2)} XLM
+                      ₦{parseFloat(walletData?.balances?.ngnts || "0").toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="info-public-key">
+                    <p className="text-xs text-slate-400 mb-1">Public Key</p>
+                    <p className="text-[10px] font-mono text-blue-400 truncate" title={walletData?.publicKey}>
+                      {walletData?.publicKey?.substring(0, 8)}...{walletData?.publicKey?.substring(walletData.publicKey.length - 8)}
                     </p>
                   </div>
                 </div>
