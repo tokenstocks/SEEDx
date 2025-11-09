@@ -104,8 +104,8 @@ router.get("/stats", authMiddleware, regeneratorMiddleware, async (req: Request,
     res.json({
       totalInvested: parseFloat(investmentStats?.totalInvested || "0"),
       totalCashflowReceived: parseFloat(cashflowStats?.totalCashflow || "0"),
-      totalTokensOwned: Math.floor(totalTokensOwned),
-      activeProjectsCount,
+      totalTokensOwned: totalTokensOwned,
+      activeProjects: activeProjectsCount,
     });
   } catch (error) {
     console.error("Get Regenerator stats error:", error);
@@ -211,95 +211,68 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
     // Build timeline events array
     const timelineEvents: any[] = [];
 
-    // Add transaction events
+    // Add transaction events (flattened structure for frontend)
     transactionsData.forEach((tx) => {
       if (tx.type === "token_purchase") {
         timelineEvents.push({
-          id: `tx-purchase-${tx.id}`,
           type: "token_purchase",
           timestamp: tx.createdAt,
-          data: {
-            transactionId: tx.id,
-            amount: tx.amount,
-            currency: tx.currency,
-            tokenSymbol: tx.tokenSymbol,
-            description: tx.description,
-            txHash: tx.stellarTxHash,
-          },
+          amount: tx.amount,
+          tokenSymbol: tx.tokenSymbol,
+          projectName: tx.description,
+          txHash: tx.stellarTxHash,
         });
       } else if (tx.type === "cashflow_distribution") {
         timelineEvents.push({
-          id: `tx-cashflow-${tx.id}`,
           type: "cashflow_received",
           timestamp: tx.createdAt,
-          data: {
-            transactionId: tx.id,
-            amount: tx.amount,
-            currency: tx.currency,
-            tokenSymbol: tx.tokenSymbol,
-            description: tx.description,
-            txHash: tx.stellarTxHash,
-          },
+          amount: tx.amount,
+          tokenSymbol: tx.tokenSymbol,
+          projectName: tx.description,
+          txHash: tx.stellarTxHash,
         });
       } else if (tx.type === "token_sale") {
         timelineEvents.push({
-          id: `tx-sale-${tx.id}`,
           type: "token_sale",
           timestamp: tx.createdAt,
-          data: {
-            transactionId: tx.id,
-            amount: tx.amount,
-            currency: tx.currency,
-            tokenSymbol: tx.tokenSymbol,
-            description: tx.description,
-            txHash: tx.stellarTxHash,
-          },
-        });
-      } else if (tx.type === "deposit") {
-        timelineEvents.push({
-          id: `tx-deposit-${tx.id}`,
-          type: "wallet_deposit",
-          timestamp: tx.createdAt,
-          data: {
-            transactionId: tx.id,
-            amount: tx.amount,
-            currency: tx.currency,
-            description: tx.description,
-            txHash: tx.stellarTxHash,
-          },
-        });
-      } else if (tx.type === "withdrawal") {
-        timelineEvents.push({
-          id: `tx-withdrawal-${tx.id}`,
-          type: "wallet_withdrawal",
-          timestamp: tx.createdAt,
-          data: {
-            transactionId: tx.id,
-            amount: tx.amount,
-            currency: tx.currency,
-            description: tx.description,
-            txHash: tx.stellarTxHash,
-          },
+          amount: tx.amount,
+          tokenSymbol: tx.tokenSymbol,
+          projectName: tx.description,
+          txHash: tx.stellarTxHash,
         });
       }
     });
 
-    // Add marketplace order events
+    // Add marketplace order events (flattened structure for frontend)
     ordersData.forEach((order) => {
-      if (order.status === "completed" && order.completedAt) {
+      // Add order placed event
+      timelineEvents.push({
+        type: "market_order_placed",
+        timestamp: order.createdAt,
+        orderType: order.orderType,
+        tokenSymbol: order.tokenSymbol,
+        amount: order.amount,
+        pricePerToken: order.pricePerToken,
+        status: order.status,
+      });
+
+      // Add order filled event if completed
+      if (order.status === "filled" && order.completedAt) {
         timelineEvents.push({
-          id: `order-${order.id}`,
-          type: order.orderType === "buy" ? "marketplace_buy" : "marketplace_sell",
+          type: "market_order_filled",
           timestamp: order.completedAt,
-          data: {
-            orderId: order.id,
-            orderType: order.orderType,
-            tokenSymbol: order.tokenSymbol,
-            amount: order.amount,
-            pricePerToken: order.pricePerToken,
-            totalValue: parseFloat(order.amount || "0") * parseFloat(order.pricePerToken || "0"),
-            projectName: order.projectName,
-          },
+          orderType: order.orderType,
+          tokenSymbol: order.tokenSymbol,
+          amount: order.amount,
+          pricePerToken: order.pricePerToken,
+        });
+      } else if (order.status === "cancelled" && order.completedAt) {
+        timelineEvents.push({
+          type: "market_order_cancelled",
+          timestamp: order.completedAt,
+          orderType: order.orderType,
+          tokenSymbol: order.tokenSymbol,
+          amount: order.amount,
         });
       }
     });
