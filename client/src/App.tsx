@@ -26,6 +26,7 @@ import AdminCashflows from "@/pages/AdminCashflows";
 import AdminAudit from "@/pages/AdminAudit";
 import LPDashboard from "@/pages/LPDashboard";
 import Marketplace from "@/pages/Marketplace";
+import MultisigDemo from "@/pages/MultisigDemo";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/admin/treasury" component={AdminTreasury} />
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
+      <Route path="/admin/multisig" component={MultisigDemo} />
       <Route path="/about" component={About} />
       <Route path="/learn" component={Learn} />
       <Route path="/platform" component={Platform} />
