@@ -126,22 +126,10 @@ router.get("/portfolio", authMiddleware, regeneratorMiddleware, async (req: Requ
 
     const userId = req.user.userId;
 
-    // Get all token holdings with project details
-    const holdings = await db
-      .select({
-        tokenAmount: projectTokenBalances.tokenAmount,
-        liquidTokens: projectTokenBalances.liquidTokens,
-        lockedTokens: projectTokenBalances.lockedTokens,
-        projectId: projects.id,
-        projectName: projects.name,
-        projectLocation: projects.location,
-        projectStatus: projects.projectStatus,
-        tokenSymbol: projects.tokenSymbol,
-        tokenIssuer: projects.tokenIssuer,
-        currentNav: projects.navPerToken,
-      })
+    // Get token balances for this user
+    const balances = await db
+      .select()
       .from(projectTokenBalances)
-      .leftJoin(projects, eq(projectTokenBalances.projectId, projects.id))
       .where(
         and(
           eq(projectTokenBalances.userId, userId),
@@ -149,6 +137,28 @@ router.get("/portfolio", authMiddleware, regeneratorMiddleware, async (req: Requ
         )
       )
       .orderBy(desc(projectTokenBalances.tokenAmount));
+
+    // Get project details for each balance
+    const holdings = await Promise.all(
+      balances.map(async (balance) => {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, balance.projectId))
+          .limit(1);
+
+        return {
+          tokenSymbol: project?.tokenSymbol || "",
+          tokenAmount: balance.tokenAmount || "0",
+          liquidAmount: balance.liquidTokens || "0",
+          lockedAmount: balance.lockedTokens || "0",
+          navPerToken: project?.navPerToken || "0",
+          totalValue: (parseFloat(balance.tokenAmount || "0") * parseFloat(project?.navPerToken || "0")).toFixed(2),
+          projectName: project?.name || "Unknown Project",
+          projectLocation: project?.location || "",
+        };
+      })
+    );
 
     res.json(holdings);
   } catch (error) {
@@ -190,19 +200,8 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
 
     // Fetch marketplace orders (if any)
     const ordersData = await db
-      .select({
-        id: secondaryMarketOrders.id,
-        orderType: secondaryMarketOrders.orderType,
-        tokenSymbol: secondaryMarketOrders.tokenSymbol,
-        amount: secondaryMarketOrders.amount,
-        pricePerToken: secondaryMarketOrders.pricePerToken,
-        status: secondaryMarketOrders.status,
-        createdAt: secondaryMarketOrders.createdAt,
-        completedAt: secondaryMarketOrders.filledAt,
-        projectName: projects.name,
-      })
+      .select()
       .from(secondaryMarketOrders)
-      .leftJoin(projects, eq(secondaryMarketOrders.tokenSymbol, projects.tokenSymbol))
       .where(eq(secondaryMarketOrders.userId, userId))
       .orderBy(desc(secondaryMarketOrders.createdAt))
       .limit(20);
