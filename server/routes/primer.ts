@@ -133,6 +133,126 @@ router.get("/contributions", authMiddleware, primerMiddleware, async (req: Reque
 });
 
 /**
+ * GET /api/primer/timeline
+ * Get chronological activity feed for this Primer
+ */
+router.get("/timeline", authMiddleware, primerMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const primerId = req.user.userId;
+
+    // Fetch all contributions
+    const contributionsData = await db
+      .select()
+      .from(primerContributions)
+      .where(eq(primerContributions.primerId, primerId))
+      .orderBy(desc(primerContributions.createdAt));
+
+    // Fetch all project allocations with project details
+    const allocationsData = await db
+      .select({
+        id: primerProjectAllocations.id,
+        shareAmountNgnts: primerProjectAllocations.shareAmountNgnts,
+        sharePercent: primerProjectAllocations.sharePercent,
+        createdAt: primerProjectAllocations.createdAt,
+        projectName: projects.name,
+        projectLocation: projects.location,
+        allocationId: lpProjectAllocations.id,
+        totalAllocated: lpProjectAllocations.amountNgnts,
+      })
+      .from(primerProjectAllocations)
+      .leftJoin(
+        lpProjectAllocations,
+        eq(primerProjectAllocations.allocationId, lpProjectAllocations.id)
+      )
+      .leftJoin(projects, eq(lpProjectAllocations.projectId, projects.id))
+      .where(eq(primerProjectAllocations.primerId, primerId))
+      .orderBy(desc(primerProjectAllocations.createdAt));
+
+    // Build timeline events array
+    const timelineEvents: any[] = [];
+
+    // Add contribution events
+    contributionsData.forEach((contrib) => {
+      // Submission event (always shows as "pending" since it's the initial submission)
+      timelineEvents.push({
+        id: `contrib-submit-${contrib.id}`,
+        type: "contribution_submitted",
+        timestamp: contrib.createdAt,
+        data: {
+          contributionId: contrib.id,
+          amount: contrib.amountNgnts,
+          status: "pending", // Always pending at submission time
+          paymentProof: contrib.paymentProof,
+        },
+      });
+
+      // Approval event (if approved)
+      if (contrib.status === "approved" && contrib.approvedAt) {
+        timelineEvents.push({
+          id: `contrib-approve-${contrib.id}`,
+          type: "contribution_approved",
+          timestamp: contrib.approvedAt,
+          data: {
+            contributionId: contrib.id,
+            amount: contrib.amountNgnts,
+            txHash: contrib.txHash,
+            lpPoolShare: contrib.lpPoolShareSnapshot,
+          },
+        });
+      }
+
+      // Rejection event (if rejected)
+      if (contrib.status === "rejected" && contrib.updatedAt) {
+        timelineEvents.push({
+          id: `contrib-reject-${contrib.id}`,
+          type: "contribution_rejected",
+          timestamp: contrib.updatedAt,
+          data: {
+            contributionId: contrib.id,
+            amount: contrib.amountNgnts,
+            reason: contrib.rejectedReason,
+          },
+        });
+      }
+    });
+
+    // Add allocation events
+    allocationsData.forEach((allocation) => {
+      timelineEvents.push({
+        id: `allocation-${allocation.id}`,
+        type: "capital_allocated",
+        timestamp: allocation.createdAt,
+        data: {
+          allocationId: allocation.id,
+          projectName: allocation.projectName,
+          projectLocation: allocation.projectLocation,
+          shareAmount: allocation.shareAmountNgnts,
+          sharePercent: allocation.sharePercent,
+          totalAllocated: allocation.totalAllocated,
+        },
+      });
+    });
+
+    // Sort all events by timestamp (newest first)
+    timelineEvents.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return timeB - timeA;
+    });
+
+    res.json(timelineEvents);
+  } catch (error) {
+    console.error("Get Primer timeline error:", error);
+    res.status(500).json({ error: "Failed to get timeline" });
+  }
+});
+
+/**
  * GET /api/primer/allocations
  * Get project allocations funded through Primer's LP share
  */

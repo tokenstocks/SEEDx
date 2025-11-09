@@ -3,11 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Wallet, Building2, Activity, Plus, ExternalLink } from "lucide-react";
+import { 
+  TrendingUp, 
+  Wallet, 
+  Building2, 
+  Activity, 
+  Plus, 
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  Send,
+  ArrowRightLeft,
+  Clock,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import PrimerContributionForm from "@/components/PrimerContributionForm";
 import PrimerHeader from "@/components/PrimerHeader";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default function PrimerDashboard() {
   const [showContributionForm, setShowContributionForm] = useState(false);
@@ -25,6 +38,60 @@ export default function PrimerDashboard() {
   const { data: allocations } = useQuery({
     queryKey: ["/api/primer/allocations"],
   });
+
+  const { data: timeline, isLoading: timelineLoading } = useQuery({
+    queryKey: ["/api/primer/timeline"],
+  });
+
+  const getEventIcon = (type: string) => {
+    switch (type) {
+      case "contribution_submitted":
+        return <Send className="w-5 h-5 text-blue-400" />;
+      case "contribution_approved":
+        return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
+      case "contribution_rejected":
+        return <XCircle className="w-5 h-5 text-red-400" />;
+      case "capital_allocated":
+        return <ArrowRightLeft className="w-5 h-5 text-purple-400" />;
+      default:
+        return <Activity className="w-5 h-5 text-slate-400" />;
+    }
+  };
+
+  const getEventColor = (type: string) => {
+    switch (type) {
+      case "contribution_submitted":
+        return "bg-blue-500/20 border-blue-500/30";
+      case "contribution_approved":
+        return "bg-emerald-500/20 border-emerald-500/30";
+      case "contribution_rejected":
+        return "bg-red-500/20 border-red-500/30";
+      case "capital_allocated":
+        return "bg-purple-500/20 border-purple-500/30";
+      default:
+        return "bg-slate-500/20 border-slate-500/30";
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
@@ -284,13 +351,152 @@ export default function PrimerDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-slate-400">
-                  <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Timeline view coming soon</p>
-                  <p className="text-sm mt-2">
-                    Real-time capital flow visualization
-                  </p>
-                </div>
+                {timelineLoading ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <Activity className="w-12 h-12 mx-auto mb-4 opacity-50 animate-spin" />
+                    <p>Loading timeline...</p>
+                  </div>
+                ) : timeline && timeline.length > 0 ? (
+                  <div className="space-y-4">
+                    {timeline.map((event: any, index: number) => (
+                      <motion.div
+                        key={event.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        data-testid={`timeline-event-${event.id}`}
+                      >
+                        <div className="flex gap-4">
+                          {/* Timeline Line */}
+                          <div className="flex flex-col items-center">
+                            <div className={`p-2 rounded-full border ${getEventColor(event.type)}`}>
+                              {getEventIcon(event.type)}
+                            </div>
+                            {index < timeline.length - 1 && (
+                              <div className="w-0.5 h-full bg-white/10 mt-2" />
+                            )}
+                          </div>
+
+                          {/* Event Content */}
+                          <div className="flex-1 pb-6">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                {/* Event Title */}
+                                {event.type === "contribution_submitted" && (
+                                  <h4 className="font-medium text-white" data-testid="text-event-title">
+                                    LP Contribution Submitted
+                                  </h4>
+                                )}
+                                {event.type === "contribution_approved" && (
+                                  <h4 className="font-medium text-emerald-400" data-testid="text-event-title">
+                                    LP Contribution Approved ✓
+                                  </h4>
+                                )}
+                                {event.type === "contribution_rejected" && (
+                                  <h4 className="font-medium text-red-400" data-testid="text-event-title">
+                                    LP Contribution Rejected
+                                  </h4>
+                                )}
+                                {event.type === "capital_allocated" && (
+                                  <h4 className="font-medium text-purple-400" data-testid="text-event-title">
+                                    Capital Allocated to Project
+                                  </h4>
+                                )}
+
+                                {/* Timestamp */}
+                                <p className="text-xs text-slate-500 mt-0.5" data-testid="text-event-time">
+                                  {formatTimestamp(event.timestamp)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Event Details */}
+                            <div className="bg-white/5 rounded-lg border border-white/10 p-3 mt-2">
+                              {/* Contribution Events */}
+                              {(event.type === "contribution_submitted" || 
+                                event.type === "contribution_approved" || 
+                                event.type === "contribution_rejected") && (
+                                <>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm text-slate-400">Amount</span>
+                                    <span className="font-medium text-white" data-testid="text-event-amount">
+                                      ₦{parseFloat(event.data.amount).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  
+                                  {event.type === "contribution_approved" && event.data.txHash && (
+                                    <div className="mt-2 pt-2 border-t border-white/10">
+                                      <p className="text-xs text-slate-500 mb-1">Blockchain Transaction</p>
+                                      <code className="text-xs text-emerald-400 font-mono break-all" data-testid="text-event-txhash">
+                                        {event.data.txHash}
+                                      </code>
+                                      {event.data.lpPoolShare && (
+                                        <p className="text-xs text-slate-400 mt-2">
+                                          LP Share: {parseFloat(event.data.lpPoolShare).toFixed(2)}%
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {event.type === "contribution_rejected" && event.data.reason && (
+                                    <div className="mt-2 pt-2 border-t border-white/10">
+                                      <p className="text-xs text-red-400" data-testid="text-event-reason">
+                                        Reason: {event.data.reason}
+                                      </p>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+
+                              {/* Allocation Events */}
+                              {event.type === "capital_allocated" && (
+                                <>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-400">Project</span>
+                                      <span className="font-medium text-white" data-testid="text-event-project">
+                                        {event.data.projectName}
+                                      </span>
+                                    </div>
+                                    {event.data.projectLocation && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm text-slate-400">Location</span>
+                                        <span className="text-sm text-slate-300">
+                                          {event.data.projectLocation}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <Separator className="bg-white/10" />
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-400">Your Share</span>
+                                      <span className="font-medium text-purple-400" data-testid="text-event-share">
+                                        ₦{parseFloat(event.data.shareAmount).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-400">Share %</span>
+                                      <span className="text-sm text-slate-300">
+                                        {parseFloat(event.data.sharePercent).toFixed(2)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-slate-400">
+                    <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No activity yet</p>
+                    <p className="text-sm mt-2">
+                      Your contribution timeline will appear here
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
