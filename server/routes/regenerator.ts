@@ -12,6 +12,7 @@ import {
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
 import { eq, and, sql, desc, or } from "drizzle-orm";
+import { horizonServer } from "../lib/stellarConfig";
 
 const router = Router();
 
@@ -392,6 +393,90 @@ router.post("/wallet/request-funding", authMiddleware, regeneratorMiddleware, as
     } else {
       res.status(500).json({ error: "Failed to request wallet funding" });
     }
+  }
+});
+
+/**
+ * GET /api/regenerator/wallet/balances
+ * Get current wallet balances from Stellar network
+ */
+router.get("/wallet/balances", authMiddleware, regeneratorMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const userId = req.user.userId;
+
+    // Get user's wallet
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+
+    if (!wallet) {
+      res.status(404).json({ error: "Wallet not found" });
+      return;
+    }
+
+    // Check if wallet is activated
+    if (wallet.activationStatus !== 'active') {
+      res.json({
+        activated: false,
+        activationStatus: wallet.activationStatus,
+        publicKey: wallet.cryptoWalletPublicKey,
+        balances: {
+          xlm: "0",
+          usdc: "0",
+          ngnts: "0",
+        },
+      });
+      return;
+    }
+
+    try {
+      // Query Stellar network for account balances
+      const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
+      
+      // Initialize balances
+      let xlmBalance = "0";
+      let usdcBalance = "0";
+      let ngntsBalance = "0";
+
+      // Parse balances from account
+      account.balances.forEach((balance: any) => {
+        if (balance.asset_type === "native") {
+          xlmBalance = balance.balance;
+        } else if (balance.asset_code === "USDC") {
+          usdcBalance = balance.balance;
+        } else if (balance.asset_code === "NGNTS") {
+          ngntsBalance = balance.balance;
+        }
+      });
+
+      res.json({
+        activated: true,
+        activationStatus: wallet.activationStatus,
+        publicKey: wallet.cryptoWalletPublicKey,
+        balances: {
+          xlm: xlmBalance,
+          usdc: usdcBalance,
+          ngnts: ngntsBalance,
+        },
+      });
+    } catch (stellarError: any) {
+      // Account might not exist on Stellar network yet
+      console.error("Stellar balance query error:", stellarError.message);
+      res.status(500).json({ 
+        error: "Failed to fetch balances from Stellar network",
+        details: stellarError.message,
+      });
+    }
+  } catch (error: any) {
+    console.error("Get wallet balances error:", error);
+    res.status(500).json({ error: "Failed to get wallet balances" });
   }
 });
 
