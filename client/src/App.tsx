@@ -28,6 +28,7 @@ import LPDashboard from "@/pages/LPDashboard";
 import PrimerDashboard from "@/pages/PrimerDashboard";
 import PrimerProfile from "@/pages/PrimerProfile";
 import RegeneratorProfile from "@/pages/RegeneratorProfile";
+import RegeneratorDashboard from "@/pages/RegeneratorDashboard";
 import AdminPrimers from "@/pages/AdminPrimers";
 import AdminLPAllocations from "@/pages/AdminLPAllocations";
 import Marketplace from "@/pages/Marketplace";
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/primer-dashboard" component={PrimerDashboard} />
       <Route path="/primer-profile" component={PrimerProfile} />
       <Route path="/regenerator-profile" component={RegeneratorProfile} />
+      <Route path="/regenerator-dashboard" component={RegeneratorDashboard} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/admin" component={Admin} />

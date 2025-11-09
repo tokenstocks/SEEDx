@@ -33,10 +33,13 @@ export default function Login() {
       // Role-based redirect
       if (data.user.role === 'admin') {
         setLocation("/admin");
+      } else if (data.user.isPrimer) {
+        setLocation("/primer-dashboard");
       } else if (data.user.isLpInvestor) {
         setLocation("/lp-dashboard");
       } else {
-        setLocation("/dashboard");
+        // Regular Regenerator users
+        setLocation("/regenerator-dashboard");
       }
     },
     onError: (error: any) => {
