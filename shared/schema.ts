@@ -27,6 +27,8 @@ export const tokenLockTypeEnum = pgEnum("token_lock_type", ["none", "grant", "pe
 export const orderTypeEnum = pgEnum("order_type", ["buy", "sell"]);
 export const orderStatusEnum = pgEnum("order_status", ["open", "filled", "cancelled"]);
 export const primerContributionStatusEnum = pgEnum("primer_contribution_status", ["pending", "approved", "rejected", "completed"]);
+export const walletActivationStatusEnum = pgEnum("wallet_activation_status", ["created", "pending", "activating", "active", "failed"]);
+export const walletFundingRequestStatusEnum = pgEnum("wallet_funding_request_status", ["pending", "approved", "rejected", "funded"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -79,6 +81,13 @@ export const wallets = pgTable("wallets", {
   // Stellar wallet for all crypto assets
   cryptoWalletPublicKey: text("crypto_wallet_public_key"),
   cryptoWalletSecretEncrypted: text("crypto_wallet_secret_encrypted"),
+  // Wallet activation tracking
+  activationStatus: walletActivationStatusEnum("activation_status").notNull().default("created"),
+  activationRequestedAt: timestamp("activation_requested_at"),
+  activationApprovedAt: timestamp("activation_approved_at"),
+  activatedAt: timestamp("activated_at"),
+  activationTxHash: text("activation_tx_hash"),
+  activationNotes: text("activation_notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -468,19 +477,39 @@ export const primerProjectAllocations = pgTable("primer_project_allocations", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Regenerator Wallet Funding Requests table - Track wallet activation funding requests
+export const regeneratorWalletFundingRequests = pgTable("regenerator_wallet_funding_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletId: uuid("wallet_id").notNull().references(() => wallets.id, { onDelete: "cascade" }),
+  requestedBy: uuid("requested_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  amountRequested: decimal("amount_requested", { precision: 18, scale: 6 }).notNull().default("2.0"),
+  currency: currencyEnum("currency").notNull().default("XLM"),
+  status: walletFundingRequestStatusEnum("status").notNull().default("pending"),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedReason: text("rejected_reason"),
+  txHash: text("tx_hash"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   wallets: many(wallets),
   transactions: many(transactions),
   depositRequests: many(depositRequests),
   withdrawalRequests: many(withdrawalRequests),
+  walletFundingRequests: many(regeneratorWalletFundingRequests, { relationName: "requester" }),
+  approvedWalletFundingRequests: many(regeneratorWalletFundingRequests, { relationName: "approver" }),
 }));
 
-export const walletsRelations = relations(wallets, ({ one }) => ({
+export const walletsRelations = relations(wallets, ({ one, many }) => ({
   user: one(users, {
     fields: [wallets.userId],
     references: [users.id],
   }),
+  fundingRequests: many(regeneratorWalletFundingRequests),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -647,6 +676,23 @@ export const primerProjectAllocationsRelations = relations(primerProjectAllocati
   allocation: one(lpProjectAllocations, {
     fields: [primerProjectAllocations.allocationId],
     references: [lpProjectAllocations.id],
+  }),
+}));
+
+export const regeneratorWalletFundingRequestsRelations = relations(regeneratorWalletFundingRequests, ({ one }) => ({
+  wallet: one(wallets, {
+    fields: [regeneratorWalletFundingRequests.walletId],
+    references: [wallets.id],
+  }),
+  requester: one(users, {
+    fields: [regeneratorWalletFundingRequests.requestedBy],
+    references: [users.id],
+    relationName: "requester",
+  }),
+  approver: one(users, {
+    fields: [regeneratorWalletFundingRequests.approvedBy],
+    references: [users.id],
+    relationName: "approver",
   }),
 }));
 
@@ -968,6 +1014,25 @@ export const insertPrimerProjectAllocationSchema = createInsertSchema(primerProj
   createdAt: true,
 });
 
+export const insertRegeneratorWalletFundingRequestSchema = createInsertSchema(regeneratorWalletFundingRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedBy: true,
+  approvedAt: true,
+  status: true,
+});
+
+export const createWalletFundingRequestSchema = z.object({
+  amountRequested: z.string().regex(/^\d+(\.\d{1,6})?$/, "Amount must be a valid decimal").default("2.0"),
+  notes: z.string().optional(),
+});
+
+export const approveWalletFundingRequestSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectedReason: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -1042,3 +1107,7 @@ export type InsertLpProjectAllocation = z.infer<typeof insertLpProjectAllocation
 export type CreateLpProjectAllocation = z.infer<typeof createLpProjectAllocationSchema>;
 export type PrimerProjectAllocation = typeof primerProjectAllocations.$inferSelect;
 export type InsertPrimerProjectAllocation = z.infer<typeof insertPrimerProjectAllocationSchema>;
+export type RegeneratorWalletFundingRequest = typeof regeneratorWalletFundingRequests.$inferSelect;
+export type InsertRegeneratorWalletFundingRequest = z.infer<typeof insertRegeneratorWalletFundingRequestSchema>;
+export type CreateWalletFundingRequest = z.infer<typeof createWalletFundingRequestSchema>;
+export type ApproveWalletFundingRequest = z.infer<typeof approveWalletFundingRequestSchema>;
