@@ -235,15 +235,26 @@ export default function Projects() {
                         </div>
                       </div>
 
-                      {/* Token Info */}
+                      {/* Token Info - Enhanced NAV Display */}
                       <div className="grid grid-cols-2 gap-4 py-4 border-t border-white/10 mb-6">
                         <div>
-                          <p className="text-xs text-slate-500 mb-1">Price per Token</p>
-                          <p className="font-semibold text-white">{formatCurrency(project.pricePerToken)}</p>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <p className="text-xs text-slate-500">NAV per Token</p>
+                            <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-blue-500/30 text-blue-400 bg-blue-500/10">
+                              <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                              Live
+                            </Badge>
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-lg font-bold text-white" data-testid={`text-nav-${project.id}`}>
+                              {formatCurrency(project.pricePerToken)}
+                            </p>
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-slate-500 mb-1">Available</p>
-                          <p className="font-semibold text-white">
+                          <p className="text-xs text-slate-500 mb-1">Tokens Available</p>
+                          <p className="text-lg font-bold text-white">
                             {(parseFloat(project.tokensIssued) - parseFloat(project.tokensSold)).toLocaleString()}
                           </p>
                         </div>

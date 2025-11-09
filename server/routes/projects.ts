@@ -1,10 +1,10 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
 import { db } from "../db";
-import { projects } from "@shared/schema";
+import { projects, projectNavHistory } from "@shared/schema";
 import { authMiddleware, requireAdmin } from "../middleware/auth";
 import { uploadFile } from "../lib/supabase";
-import { eq } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -130,5 +130,94 @@ router.post(
     }
   }
 );
+
+/**
+ * GET /api/projects/:projectId/nav-history
+ * Get NAV history for a project
+ * Returns non-superseded NAV records ordered by date, plus the latest value
+ */
+router.get("/:projectId/nav-history", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+
+    // Verify project exists
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    // Fetch non-superseded NAV history ordered by effective date
+    const navHistory = await db
+      .select({
+        id: projectNavHistory.id,
+        navPerToken: projectNavHistory.navPerToken,
+        source: projectNavHistory.source,
+        effectiveAt: projectNavHistory.effectiveAt,
+        notes: projectNavHistory.notes,
+      })
+      .from(projectNavHistory)
+      .where(
+        and(
+          eq(projectNavHistory.projectId, projectId),
+          eq(projectNavHistory.isSuperseded, false)
+        )
+      )
+      .orderBy(asc(projectNavHistory.effectiveAt));
+
+    // Validate and convert decimal strings to numbers for frontend
+    const formattedHistory = navHistory
+      .filter(record => {
+        // Filter out records with missing required fields
+        if (!record.navPerToken || !record.effectiveAt) {
+          console.warn(`Skipping malformed NAV record ${record.id}: missing navPerToken or effectiveAt`);
+          return false;
+        }
+        return true;
+      })
+      .map(record => {
+        const value = parseFloat(record.navPerToken);
+        
+        // Validate parsed number
+        if (isNaN(value) || !isFinite(value)) {
+          console.warn(`Skipping NAV record ${record.id}: invalid navPerToken value`);
+          return null;
+        }
+
+        return {
+          id: record.id,
+          value: value,
+          date: record.effectiveAt.toISOString(),
+          source: record.source,
+          notes: record.notes,
+        };
+      })
+      .filter((record): record is NonNullable<typeof record> => record !== null);
+
+    // Get latest NAV value
+    const latestNav = formattedHistory.length > 0 
+      ? formattedHistory[formattedHistory.length - 1]
+      : null;
+
+    // Set cache control header (60 seconds)
+    res.setHeader('Cache-Control', 'public, max-age=60');
+
+    res.json({
+      projectId,
+      projectName: project.name,
+      history: formattedHistory,
+      latest: latestNav,
+      count: formattedHistory.length,
+    });
+  } catch (error: any) {
+    console.error("Error fetching NAV history:", error);
+    res.status(500).json({ error: "Failed to fetch NAV history" });
+  }
+});
 
 export default router;
