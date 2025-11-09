@@ -16,6 +16,7 @@ import {
   platformWallets,
   treasuryPoolSnapshots,
   redemptionRequests,
+  regeneratorWalletFundingRequests,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
@@ -23,6 +24,7 @@ import {
   createProjectSchema,
   suspendUserSchema,
   processRedemptionRequestSchema,
+  approveWalletFundingRequestSchema,
 } from "@shared/schema";
 import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
@@ -32,6 +34,7 @@ import { uploadFile } from "../lib/supabase";
 import { createProjectToken } from "../lib/stellarToken";
 import { issueNGNTS, mintNGNTS } from "../lib/platformToken";
 import { burnNgnts } from "../lib/ngntsOps";
+import { createAndFundAccount } from "../lib/stellarAccount";
 import { determineFundingSource } from "../lib/redemptionOps";
 import { auditActionWithState } from "../middleware/auditMiddleware";
 import { burnProjectToken, transferNgntsFromPlatformWallet } from "../lib/stellarOps";
@@ -2570,6 +2573,161 @@ router.post(
     } catch (error: any) {
       console.error("Reject contribution error:", error);
       res.status(500).json({ error: "Failed to reject contribution" });
+    }
+  }
+);
+
+/**
+ * PATCH /api/admin/wallet-funding/:id
+ * Approve or reject wallet funding request
+ */
+router.patch(
+  "/wallet-funding/:id",
+  authenticate,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const requestId = req.params.id;
+      const adminId = req.user!.userId;
+      
+      // Validate input
+      const validatedData = approveWalletFundingRequestSchema.parse(req.body);
+      const { action, rejectedReason, notes } = validatedData;
+
+      // Get funding request
+      const [fundingRequest] = await db
+        .select()
+        .from(regeneratorWalletFundingRequests)
+        .where(eq(regeneratorWalletFundingRequests.id, requestId));
+
+      if (!fundingRequest) {
+        res.status(404).json({ error: "Funding request not found" });
+        return;
+      }
+
+      if (fundingRequest.status !== "pending") {
+        res.status(400).json({ error: "Funding request has already been processed" });
+        return;
+      }
+
+      // Handle rejection
+      if (action === "reject") {
+        await db
+          .update(regeneratorWalletFundingRequests)
+          .set({
+            status: "rejected",
+            rejectedReason: rejectedReason || "No reason provided",
+          })
+          .where(eq(regeneratorWalletFundingRequests.id, requestId));
+
+        await db
+          .update(wallets)
+          .set({
+            activationStatus: "created",
+            activationRequestedAt: null,
+          })
+          .where(eq(wallets.id, fundingRequest.walletId));
+
+        console.log(`❌ Wallet funding request ${requestId} rejected`);
+
+        res.json({
+          message: "Wallet funding request rejected successfully",
+        });
+        return;
+      }
+
+      // Handle approval
+      // Get wallet
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.id, fundingRequest.walletId));
+
+      if (!wallet) {
+        res.status(404).json({ error: "Wallet not found" });
+        return;
+      }
+
+      // Update request to approved
+      await db
+        .update(regeneratorWalletFundingRequests)
+        .set({
+          status: "approved",
+          approvedBy: adminId,
+          approvedAt: new Date(),
+          notes: notes,
+        })
+        .where(eq(regeneratorWalletFundingRequests.id, requestId));
+
+      // Update wallet to activating status
+      await db
+        .update(wallets)
+        .set({
+          activationStatus: "activating",
+          activationApprovedAt: new Date(),
+        })
+        .where(eq(wallets.id, wallet.id));
+
+      // Activate wallet on Stellar network
+      const activationResult = await createAndFundAccount(
+        wallet.cryptoWalletPublicKey,
+        fundingRequest.amountRequested
+      );
+
+      if (activationResult.success) {
+        // Update wallet to active with tx hash
+        await db
+          .update(wallets)
+          .set({
+            activationStatus: "active",
+            activatedAt: new Date(),
+            activationTxHash: activationResult.txHash,
+          })
+          .where(eq(wallets.id, wallet.id));
+
+        // Update request to funded with tx hash
+        await db
+          .update(regeneratorWalletFundingRequests)
+          .set({
+            status: "funded",
+            txHash: activationResult.txHash,
+          })
+          .where(eq(regeneratorWalletFundingRequests.id, requestId));
+
+        console.log(`✅ Wallet funding request ${requestId} approved and activated`);
+        console.log(`  - Wallet: ${wallet.cryptoWalletPublicKey}`);
+        console.log(`  - Amount: ${fundingRequest.amountRequested} ${fundingRequest.currency}`);
+        console.log(`  - TX Hash: ${activationResult.txHash}`);
+
+        res.json({
+          message: "Wallet funding approved and activated successfully",
+          txHash: activationResult.txHash,
+          walletPublicKey: wallet.cryptoWalletPublicKey,
+        });
+      } else {
+        // Activation failed - update status to failed
+        await db
+          .update(wallets)
+          .set({
+            activationStatus: "failed",
+            activationNotes: activationResult.error,
+          })
+          .where(eq(wallets.id, wallet.id));
+
+        console.error(`❌ Wallet activation failed for request ${requestId}: ${activationResult.error}`);
+
+        res.status(500).json({
+          error: "Wallet activation failed",
+          details: activationResult.error,
+        });
+      }
+    } catch (error: any) {
+      console.error("Process wallet funding error:", error);
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Invalid input data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to process wallet funding request" });
+      }
     }
   }
 );

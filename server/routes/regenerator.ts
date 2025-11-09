@@ -6,6 +6,9 @@ import {
   projectTokenBalances,
   projects,
   secondaryMarketOrders,
+  wallets,
+  regeneratorWalletFundingRequests,
+  createWalletFundingRequestSchema,
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
 import { eq, and, sql, desc, or } from "drizzle-orm";
@@ -295,6 +298,100 @@ router.get("/timeline", authMiddleware, regeneratorMiddleware, async (req: Reque
   } catch (error) {
     console.error("Get Regenerator timeline error:", error);
     res.status(500).json({ error: "Failed to get timeline" });
+  }
+});
+
+/**
+ * POST /api/regenerator/wallet/request-funding
+ * Request wallet funding to activate Stellar account
+ */
+router.post("/wallet/request-funding", authMiddleware, regeneratorMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const userId = req.user.userId;
+    const validatedData = createWalletFundingRequestSchema.parse(req.body);
+
+    // Get user's wallet
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+
+    if (!wallet) {
+      res.status(404).json({ error: "Wallet not found" });
+      return;
+    }
+
+    // Check if wallet is already activated
+    if (wallet.activationStatus === 'active') {
+      res.status(400).json({ error: "Wallet is already activated" });
+      return;
+    }
+
+    // Check if there's already a pending request
+    const [existingRequest] = await db
+      .select()
+      .from(regeneratorWalletFundingRequests)
+      .where(
+        and(
+          eq(regeneratorWalletFundingRequests.walletId, wallet.id),
+          eq(regeneratorWalletFundingRequests.status, "pending")
+        )
+      )
+      .limit(1);
+
+    if (existingRequest) {
+      res.status(400).json({ 
+        error: "A pending funding request already exists for this wallet",
+        requestId: existingRequest.id 
+      });
+      return;
+    }
+
+    // Create funding request
+    const [newRequest] = await db
+      .insert(regeneratorWalletFundingRequests)
+      .values({
+        walletId: wallet.id,
+        requestedBy: userId,
+        amountRequested: validatedData.amountRequested || "2.0",
+        currency: validatedData.currency || "XLM",
+        notes: validatedData.notes,
+      })
+      .returning();
+
+    // Update wallet status to pending
+    await db
+      .update(wallets)
+      .set({ 
+        activationStatus: 'pending',
+        activationRequestedAt: new Date(),
+      })
+      .where(eq(wallets.id, wallet.id));
+
+    res.status(201).json({
+      message: "Wallet funding request submitted successfully",
+      request: {
+        id: newRequest.id,
+        walletId: newRequest.walletId,
+        amountRequested: newRequest.amountRequested,
+        currency: newRequest.currency,
+        status: newRequest.status,
+        createdAt: newRequest.createdAt,
+      },
+    });
+  } catch (error: any) {
+    console.error("Request wallet funding error:", error);
+    if (error.name === "ZodError") {
+      res.status(400).json({ error: "Invalid input data", details: error.errors });
+    } else {
+      res.status(500).json({ error: "Failed to request wallet funding" });
+    }
   }
 });
 
