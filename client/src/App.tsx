@@ -27,6 +27,8 @@ import AdminAudit from "@/pages/AdminAudit";
 import LPDashboard from "@/pages/LPDashboard";
 import Marketplace from "@/pages/Marketplace";
 import MultisigDemo from "@/pages/MultisigDemo";
+import DeploymentDemo from "@/pages/DeploymentDemo";
+import FlowDemo from "@/pages/FlowDemo";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -52,6 +54,8 @@ function Router() {
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
       <Route path="/admin/multisig" component={MultisigDemo} />
+      <Route path="/admin/deployment" component={DeploymentDemo} />
+      <Route path="/admin/flow" component={FlowDemo} />
       <Route path="/about" component={About} />
       <Route path="/learn" component={Learn} />
       <Route path="/platform" component={Platform} />
