@@ -1,8 +1,16 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   User,
   Mail,
@@ -16,15 +24,23 @@ import {
   Wallet,
   TrendingUp,
   Coins,
+  Copy,
+  Check,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import RegeneratorHeader from "@/components/RegeneratorHeader";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function RegeneratorProfile() {
   const [, navigate] = useLocation();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const prefersReducedMotion = useReducedMotion();
+  const { toast } = useToast();
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   const { data: kycData } = useQuery<{
     status: string;
@@ -55,6 +71,24 @@ export default function RegeneratorProfile() {
   }>({
     queryKey: ["/api/regenerator/wallet/balances"],
   });
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedAddress(true);
+      toast({
+        title: "Address Copied",
+        description: "Wallet address copied to clipboard",
+      });
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy address. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getKycStatusBadge = (status: string) => {
     switch (status) {
@@ -286,29 +320,62 @@ export default function RegeneratorProfile() {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Wallet Address */}
+                  <div className="p-4 bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg" data-testid="card-wallet-address">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-blue-300">Your Stellar Wallet Address</p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
+                        className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                        data-testid="button-copy-address"
+                      >
+                        {copiedAddress ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 mr-1" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs font-mono text-slate-300 break-all bg-black/20 p-2 rounded border border-white/5" data-testid="text-public-key">
+                      {walletData?.publicKey || "Loading..."}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setDepositDialogOpen(true)}
+                      className="w-full mt-3 border-blue-500/30 text-blue-300 hover:bg-blue-500/10"
+                      data-testid="button-deposit-instructions"
+                    >
+                      <Download className="w-3 h-3 mr-2" />
+                      How to Deposit Funds
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-xlm">
-                      <p className="text-xs text-slate-400">XLM (Gas)</p>
+                      <p className="text-xs text-slate-400">XLM</p>
                       <p className="text-lg font-semibold text-white">
-                        {parseFloat(walletData?.balances?.xlm || "0").toFixed(2)} XLM
+                        {parseFloat(walletData?.balances?.xlm || "0").toFixed(2)}
                       </p>
                     </div>
                     <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-usdc">
                       <p className="text-xs text-slate-400">USDC</p>
                       <p className="text-lg font-semibold text-white">
-                        ${parseFloat(walletData?.balances?.usdc || "0").toLocaleString()}
+                        {parseFloat(walletData?.balances?.usdc || "0").toFixed(2)}
                       </p>
                     </div>
                     <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-ngnts">
                       <p className="text-xs text-slate-400">NGNTS</p>
                       <p className="text-lg font-semibold text-white">
-                        ₦{parseFloat(walletData?.balances?.ngnts || "0").toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="info-public-key">
-                      <p className="text-xs text-slate-400 mb-1">Public Key</p>
-                      <p className="text-[10px] font-mono text-blue-400 truncate" title={walletData?.publicKey}>
-                        {walletData?.publicKey?.substring(0, 8)}...{walletData?.publicKey?.substring(walletData.publicKey.length - 8)}
+                        {parseFloat(walletData?.balances?.ngnts || "0").toFixed(0)}
                       </p>
                     </div>
                   </div>
@@ -440,6 +507,15 @@ export default function RegeneratorProfile() {
                   >
                     {kycData?.status === "approved" ? "View KYC" : "Complete KYC"}
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDepositDialogOpen(true)}
+                    className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                    data-testid="button-deposit-funds"
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Deposit Funds
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -485,6 +561,139 @@ export default function RegeneratorProfile() {
           </div>
         </div>
       </div>
+
+      {/* Deposit Funds Dialog */}
+      <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl" data-testid="dialog-deposit-funds">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Wallet className="w-6 h-6 text-emerald-400" />
+              How to Deposit Funds
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Fund your Stellar wallet to start participating in tokenized agricultural projects
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Wallet Address */}
+            <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-blue-300">Your Stellar Wallet Address</p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
+                  className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                  data-testid="button-copy-address-dialog"
+                >
+                  {copiedAddress ? (
+                    <>
+                      <Check className="w-3 h-3 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs font-mono text-slate-300 break-all bg-black/20 p-3 rounded border border-white/5">
+                {walletData?.publicKey || "Loading..."}
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Deposit Options</h3>
+              
+              {/* Option 1: External Wallet */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-emerald-500/20 p-2 rounded-lg">
+                    <Wallet className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-white mb-1">From External Stellar Wallet</h4>
+                    <p className="text-sm text-slate-400 mb-3">
+                      Send XLM, USDC, or NGNTS from any Stellar wallet (Lobstr, Freighter, etc.)
+                    </p>
+                    <ol className="text-sm text-slate-300 space-y-2 list-decimal list-inside">
+                      <li>Copy your wallet address above</li>
+                      <li>Open your external Stellar wallet app</li>
+                      <li>Select "Send" or "Transfer"</li>
+                      <li>Paste your SEEDx wallet address</li>
+                      <li>Enter amount and confirm transaction</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 2: Exchange */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-500/20 p-2 rounded-lg">
+                    <ExternalLink className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-white mb-1">From Cryptocurrency Exchange</h4>
+                    <p className="text-sm text-slate-400 mb-3">
+                      Withdraw directly from exchanges like Binance, Coinbase, or Kraken
+                    </p>
+                    <ol className="text-sm text-slate-300 space-y-2 list-decimal list-inside">
+                      <li>Log into your exchange account</li>
+                      <li>Go to "Withdraw" or "Send"</li>
+                      <li>Select XLM, USDC, or NGNTS</li>
+                      <li>Choose "Stellar Network" as the network</li>
+                      <li>Paste your SEEDx wallet address</li>
+                      <li>Enter amount and confirm withdrawal</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              {/* Important Notes */}
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-orange-300">Important Notes:</p>
+                    <ul className="text-sm text-orange-200 space-y-1 list-disc list-inside">
+                      <li>Always use the <strong>Stellar network</strong> when sending assets</li>
+                      <li>Minimum 1 XLM balance required for wallet activation</li>
+                      <li>Deposits typically appear within 5-10 seconds</li>
+                      <li>Double-check the address before sending</li>
+                      <li>NGNTS tokens must be acquired from the platform after depositing XLM or USDC</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                data-testid="button-copy-and-close"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy Address
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDepositDialogOpen(false)}
+                className="flex-1 border-white/10 text-white hover:bg-white/5"
+                data-testid="button-close-dialog"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

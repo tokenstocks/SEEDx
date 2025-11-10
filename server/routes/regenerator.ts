@@ -421,12 +421,12 @@ router.get("/wallet/balances", authMiddleware, regeneratorMiddleware, async (req
       return;
     }
 
-    // Check if wallet is activated
-    if (wallet.activationStatus !== 'active') {
+    // Check if wallet has a public key - graceful fallback
+    if (!wallet.cryptoWalletPublicKey) {
       res.json({
         activated: false,
-        activationStatus: wallet.activationStatus,
-        publicKey: wallet.cryptoWalletPublicKey,
+        activationStatus: wallet.activationStatus || 'not_activated',
+        publicKey: '',
         balances: {
           xlm: "0",
           usdc: "0",
@@ -436,6 +436,8 @@ router.get("/wallet/balances", authMiddleware, regeneratorMiddleware, async (req
       return;
     }
 
+    // Always try to fetch balances from Stellar network
+    // This allows users who manually funded their wallets to see balances
     try {
       // Query Stellar network for account balances
       const account = await horizonServer.loadAccount(wallet.cryptoWalletPublicKey);
@@ -456,9 +458,29 @@ router.get("/wallet/balances", authMiddleware, regeneratorMiddleware, async (req
         }
       });
 
+      // Auto-activate wallet if it has sufficient funding (>1 XLM) and is not yet activated
+      // This allows users who manually funded their wallets to bypass admin activation
+      const xlmBalanceNum = parseFloat(xlmBalance);
+      let currentActivationStatus = wallet.activationStatus;
+      
+      if (wallet.activationStatus !== 'active' && xlmBalanceNum > 1.0) {
+        console.log(`✅ Auto-activating wallet for user ${userId} - found ${xlmBalanceNum} XLM on Stellar (threshold: >1 XLM)`);
+        await db
+          .update(wallets)
+          .set({ 
+            activationStatus: 'active',
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.id, wallet.id));
+        currentActivationStatus = 'active';
+      }
+
+      // Return actual activation status based on database state and threshold
+      const isActivated = currentActivationStatus === 'active';
+
       res.json({
-        activated: true,
-        activationStatus: wallet.activationStatus,
+        activated: isActivated,
+        activationStatus: currentActivationStatus,
         publicKey: wallet.cryptoWalletPublicKey,
         balances: {
           xlm: xlmBalance,
@@ -467,11 +489,27 @@ router.get("/wallet/balances", authMiddleware, regeneratorMiddleware, async (req
         },
       });
     } catch (stellarError: any) {
-      // Account might not exist on Stellar network yet
-      console.error("Stellar balance query error:", stellarError.message);
-      res.status(500).json({ 
-        error: "Failed to fetch balances from Stellar network",
-        details: stellarError.message,
+      // Account doesn't exist on Stellar network yet, or Horizon is experiencing issues
+      // Return actual database activation status, not false
+      const isActivated = wallet.activationStatus === 'active';
+      
+      if (isActivated) {
+        // Wallet is marked active in DB but Horizon failed - likely network/Horizon issue
+        console.error(`⚠️  Horizon error for active wallet ${wallet.cryptoWalletPublicKey}: ${stellarError.message}`);
+      } else {
+        // Wallet not yet funded on Stellar network
+        console.log(`ℹ️  Wallet ${wallet.cryptoWalletPublicKey} not yet funded on Stellar: ${stellarError.message}`);
+      }
+      
+      res.json({
+        activated: isActivated,
+        activationStatus: wallet.activationStatus,
+        publicKey: wallet.cryptoWalletPublicKey,
+        balances: {
+          xlm: "0",
+          usdc: "0",
+          ngnts: "0",
+        },
       });
     }
   } catch (error: any) {
