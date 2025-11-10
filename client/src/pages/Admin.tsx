@@ -93,6 +93,28 @@ interface Wallet {
   updatedAt: string;
 }
 
+interface BankDeposit {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userFirstName: string;
+  userLastName: string;
+  amountNGN: string;
+  platformFee: string;
+  gasFee: string;
+  ngntsAmount: string;
+  status: "pending" | "approved" | "rejected" | "completed";
+  referenceCode: string;
+  proofUrl: string | null;
+  notes: string | null;
+  rejectedReason: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  txHash: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Admin Wallet Card Component
 function AdminWalletCard() {
   const { toast } = useToast();
@@ -318,6 +340,11 @@ export default function Admin() {
 
   const { data: withdrawals } = useQuery<{ withdrawals: WithdrawalRequest[] }>({
     queryKey: ["/api/admin/withdrawals?status=pending"],
+    enabled: !!user,
+  });
+
+  const { data: bankDeposits } = useQuery<{ deposits: BankDeposit[] }>({
+    queryKey: ["/api/admin/bank-deposits", { status: "pending" }],
     enabled: !!user,
   });
 

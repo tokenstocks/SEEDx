@@ -17,6 +17,7 @@ import {
   treasuryPoolSnapshots,
   redemptionRequests,
   regeneratorWalletFundingRequests,
+  regeneratorBankDeposits,
   platformSettings,
   approveDepositSchema,
   approveWithdrawalSchema,
@@ -3144,6 +3145,225 @@ router.put("/settings/bank-account", authenticate, requireAdmin, async (req, res
   } catch (error: any) {
     console.error("Update bank account settings error:", error);
     res.status(500).json({ error: "Failed to update bank account settings" });
+  }
+});
+
+/**
+ * GET /api/admin/bank-deposits
+ * List bank deposits with optional status filter (admin only)
+ */
+router.get("/bank-deposits", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let queryBuilder = db
+      .select({
+        id: regeneratorBankDeposits.id,
+        userId: regeneratorBankDeposits.userId,
+        amountNGN: regeneratorBankDeposits.amountNGN,
+        platformFee: regeneratorBankDeposits.platformFee,
+        gasFee: regeneratorBankDeposits.gasFee,
+        ngntsAmount: regeneratorBankDeposits.ngntsAmount,
+        status: regeneratorBankDeposits.status,
+        referenceCode: regeneratorBankDeposits.referenceCode,
+        proofUrl: regeneratorBankDeposits.proofUrl,
+        notes: regeneratorBankDeposits.notes,
+        rejectedReason: regeneratorBankDeposits.rejectedReason,
+        approvedBy: regeneratorBankDeposits.approvedBy,
+        approvedAt: regeneratorBankDeposits.approvedAt,
+        txHash: regeneratorBankDeposits.txHash,
+        createdAt: regeneratorBankDeposits.createdAt,
+        updatedAt: regeneratorBankDeposits.updatedAt,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+      })
+      .from(regeneratorBankDeposits)
+      .leftJoin(users, eq(regeneratorBankDeposits.userId, users.id));
+
+    if (status && typeof status === "string") {
+      queryBuilder = queryBuilder.where(eq(regeneratorBankDeposits.status, status as "pending" | "approved" | "rejected" | "completed"));
+    }
+
+    const deposits = await queryBuilder.orderBy(desc(regeneratorBankDeposits.createdAt));
+
+    res.json({ deposits });
+  } catch (error: any) {
+    console.error("List bank deposits error:", error);
+    res.status(500).json({ error: "Failed to fetch bank deposits" });
+  }
+});
+
+/**
+ * POST /api/admin/bank-deposits/:id/approve
+ * Approve a bank deposit and transfer NGNTS to user wallet (admin only)
+ */
+router.post("/bank-deposits/:id/approve", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    // @ts-ignore - userId is added by auth middleware
+    const adminId = req.userId as string;
+
+    // Fetch the deposit request
+    const [deposit] = await db
+      .select()
+      .from(regeneratorBankDeposits)
+      .where(eq(regeneratorBankDeposits.id, id))
+      .limit(1);
+
+    if (!deposit) {
+      return res.status(404).json({ error: "Bank deposit not found" });
+    }
+
+    if (deposit.status !== "pending") {
+      return res.status(400).json({ 
+        error: "Deposit has already been processed",
+        currentStatus: deposit.status,
+      });
+    }
+
+    // Get user wallet
+    const [userWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, deposit.userId))
+      .limit(1);
+
+    if (!userWallet || !userWallet.cryptoWalletPublicKey) {
+      return res.status(400).json({ error: "User wallet not found or not activated" });
+    }
+
+    // Transfer NGNTS from Distribution wallet to user wallet
+    let txHash: string;
+    try {
+      txHash = await transferNgntsFromPlatformWallet(
+        "distribution",
+        deposit.userId,
+        deposit.ngntsAmount.toString(),
+        `Bank deposit ${deposit.referenceCode}`
+      );
+    } catch (error: any) {
+      return res.status(500).json({ 
+        error: "Failed to transfer NGNTS on Stellar network",
+        details: error.message,
+      });
+    }
+
+    // Use database transaction for atomicity
+    await db.transaction(async (tx) => {
+      // Update deposit status
+      await tx
+        .update(regeneratorBankDeposits)
+        .set({
+          status: "approved",
+          approvedBy: adminId,
+          approvedAt: new Date(),
+          txHash,
+          updatedAt: new Date(),
+        })
+        .where(eq(regeneratorBankDeposits.id, id));
+
+      // Update user wallet NGNTS balance
+      const account = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey!);
+      
+      // Get Treasury wallet to identify NGNTS issuer
+      const [treasuryWallet] = await tx
+        .select()
+        .from(platformWallets)
+        .where(eq(platformWallets.walletType, "treasury"))
+        .limit(1);
+
+      if (!treasuryWallet) {
+        throw new Error("Treasury wallet not found");
+      }
+
+      // Find NGNTS balance
+      const ngntsBalance = account.balances.find(
+        (b: any) => b.asset_code === "NGNTS" && b.asset_issuer === treasuryWallet.publicKey
+      );
+      const newNgntsBalance = ngntsBalance ? ngntsBalance.balance : "0";
+
+      // Update wallet balance using atomic JSONB update
+      await tx
+        .update(wallets)
+        .set({
+          cryptoBalances: sql.raw(`
+            jsonb_set(
+              COALESCE(crypto_balances, '{}'::jsonb),
+              ARRAY['NGNTS'],
+              to_jsonb('${newNgntsBalance}'::text)
+            )
+          `),
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.userId, deposit.userId));
+    });
+
+    res.json({ 
+      message: "Bank deposit approved and NGNTS transferred successfully",
+      ngntsAmount: deposit.ngntsAmount,
+    });
+  } catch (error: any) {
+    console.error("Approve bank deposit error:", error);
+    res.status(500).json({ 
+      error: "Failed to approve bank deposit",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/bank-deposits/:id/reject
+ * Reject a bank deposit with a reason (admin only)
+ */
+router.post("/bank-deposits/:id/reject", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rejectedReason } = req.body;
+    // @ts-ignore - userId is added by auth middleware
+    const adminId = req.userId as string;
+
+    if (!rejectedReason || typeof rejectedReason !== "string") {
+      return res.status(400).json({ error: "Rejection reason is required" });
+    }
+
+    // Fetch the deposit request
+    const [deposit] = await db
+      .select()
+      .from(regeneratorBankDeposits)
+      .where(eq(regeneratorBankDeposits.id, id))
+      .limit(1);
+
+    if (!deposit) {
+      return res.status(404).json({ error: "Bank deposit not found" });
+    }
+
+    if (deposit.status !== "pending") {
+      return res.status(400).json({ 
+        error: "Deposit has already been processed",
+        currentStatus: deposit.status,
+      });
+    }
+
+    // Update deposit status
+    await db
+      .update(regeneratorBankDeposits)
+      .set({
+        status: "rejected",
+        rejectedReason,
+        updatedAt: new Date(),
+      })
+      .where(eq(regeneratorBankDeposits.id, id));
+
+    res.json({ 
+      message: "Bank deposit rejected successfully",
+    });
+  } catch (error: any) {
+    console.error("Reject bank deposit error:", error);
+    res.status(500).json({ 
+      error: "Failed to reject bank deposit",
+      details: error.message,
+    });
   }
 });
 
