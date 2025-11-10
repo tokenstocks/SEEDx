@@ -53,7 +53,7 @@ export default function Register() {
       } else if (data.user.isLpInvestor) {
         setLocation("/lp-dashboard");
       } else {
-        setLocation("/dashboard");
+        setLocation("/regenerator-dashboard");
       }
     },
     onError: (error: any) => {
