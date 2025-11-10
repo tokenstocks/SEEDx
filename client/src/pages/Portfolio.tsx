@@ -27,12 +27,15 @@ import {
   ShoppingBag,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Activity
+  Activity,
+  AlertCircle,
+  X
 } from "lucide-react";
 import { Link } from "wouter";
 import type { RedemptionRequest } from "@/types/phase4";
 import UnifiedHeader from "@/components/UnifiedHeader";
 import { motion, useReducedMotion } from "framer-motion";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface TimelineEvent {
   type: string;
@@ -82,6 +85,8 @@ export default function Portfolio() {
   const [redemptionDialogOpen, setRedemptionDialogOpen] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<TokenHolding | null>(null);
   const [tokensToRedeem, setTokensToRedeem] = useState("");
+  const [onboardingModalOpen, setOnboardingModalOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -95,6 +100,43 @@ export default function Portfolio() {
 
     setUser(JSON.parse(userData));
   }, [setLocation]);
+
+  const { data: kycData } = useQuery<{
+    status: string;
+    rejectionReason?: string;
+  }>({
+    queryKey: ["/api/users/me/kyc"],
+    enabled: !!user,
+  });
+
+  const { data: walletData } = useQuery<{
+    activated: boolean;
+    activationStatus: string;
+    publicKey: string;
+    balances: {
+      xlm: string;
+      usdc: string;
+      ngnts: string;
+    };
+  }>({
+    queryKey: ["/api/regenerator/wallet/balances"],
+    enabled: !!user,
+  });
+
+  const isOnboardingComplete = kycData?.status === "approved" && walletData?.activated;
+
+  useEffect(() => {
+    const hasSeenModal = sessionStorage.getItem("onboarding_modal_shown");
+    
+    if (!isOnboardingComplete && !hasSeenModal && user) {
+      const timer = setTimeout(() => {
+        setOnboardingModalOpen(true);
+        sessionStorage.setItem("onboarding_modal_shown", "true");
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOnboardingComplete, user]);
 
   const { data: portfolio, isLoading: portfolioLoading } = useQuery<Portfolio>({
     queryKey: ["/api/investments/portfolio"],
@@ -446,6 +488,53 @@ export default function Portfolio() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <UnifiedHeader />
       <div className="max-w-7xl mx-auto p-4 py-8">
+        {/* Onboarding Banner */}
+        {!isOnboardingComplete && !bannerDismissed && (
+          <Alert className="mb-6 bg-gradient-to-r from-emerald-900/30 to-blue-900/30 border-emerald-500/30" data-testid="alert-onboarding-banner">
+            <AlertCircle className="h-4 w-4 text-emerald-400" />
+            <AlertDescription className="flex items-center justify-between">
+              <div className="flex-1 text-white">
+                <span className="font-semibold">Complete Your Setup:</span>{" "}
+                {kycData?.status !== "approved" && "Get KYC verified"}
+                {kycData?.status !== "approved" && !walletData?.activated && " and "}
+                {!walletData?.activated && "activate your wallet"}
+                {" to start participating in projects."}
+              </div>
+              <div className="flex items-center gap-2">
+                {kycData?.status !== "approved" && (
+                  <Button
+                    size="sm"
+                    onClick={() => setLocation("/regenerator-profile")}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="button-complete-kyc"
+                  >
+                    Complete KYC
+                  </Button>
+                )}
+                {!walletData?.activated && (
+                  <Button
+                    size="sm"
+                    onClick={() => setLocation("/regenerator-profile")}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="button-activate-wallet"
+                  >
+                    Activate Wallet
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setBannerDismissed(true)}
+                  className="text-slate-400 hover:text-white"
+                  data-testid="button-dismiss-banner"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -914,6 +1003,131 @@ export default function Portfolio() {
               data-testid="button-submit-redeem"
             >
               {createRedemptionMutation.isPending ? "Submitting..." : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Onboarding Modal */}
+      <Dialog open={onboardingModalOpen} onOpenChange={setOnboardingModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-slate-900 border-emerald-500/30" data-testid="dialog-onboarding">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <DialogTitle className="text-2xl text-white">Welcome to SEEDx!</DialogTitle>
+            </div>
+            <DialogDescription className="text-slate-300 text-base">
+              Complete these steps to start participating in regenerative agricultural projects
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-start gap-4 p-4 rounded-lg border border-white/10 bg-white/5">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                kycData?.status === "approved" ? "bg-emerald-600" : "bg-slate-700"
+              }`}>
+                {kycData?.status === "approved" ? (
+                  <CheckCircle className="w-5 h-5 text-white" />
+                ) : (
+                  <span className="text-white font-semibold">1</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white mb-1">Complete KYC Verification</h3>
+                <p className="text-sm text-slate-400 mb-2">
+                  Submit your identity documents for verification. This typically takes 1-2 business days.
+                </p>
+                {kycData?.status !== "approved" && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setOnboardingModalOpen(false);
+                      setLocation("/regenerator-profile");
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="button-modal-kyc"
+                  >
+                    Start KYC
+                  </Button>
+                )}
+                {kycData?.status === "approved" && (
+                  <Badge className="bg-emerald-600" data-testid="badge-modal-kyc-complete">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Completed
+                  </Badge>
+                )}
+                {kycData?.status === "pending" && (
+                  <Badge variant="secondary" data-testid="badge-modal-kyc-pending">
+                    <Clock className="w-3 h-3 mr-1" />
+                    Under Review
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 rounded-lg border border-white/10 bg-white/5">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                walletData?.activated ? "bg-emerald-600" : "bg-slate-700"
+              }`}>
+                {walletData?.activated ? (
+                  <CheckCircle className="w-5 h-5 text-white" />
+                ) : (
+                  <span className="text-white font-semibold">2</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white mb-1">Activate Your Wallet</h3>
+                <p className="text-sm text-slate-400 mb-2">
+                  Set up your Stellar blockchain wallet to hold project tokens and receive cashflow.
+                </p>
+                {!walletData?.activated && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setOnboardingModalOpen(false);
+                      setLocation("/regenerator-profile");
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="button-modal-wallet"
+                  >
+                    Activate Wallet
+                  </Button>
+                )}
+                {walletData?.activated && (
+                  <Badge className="bg-emerald-600" data-testid="badge-modal-wallet-complete">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Activated
+                  </Badge>
+                )}
+                {walletData?.activationStatus === "pending" && (
+                  <Badge variant="secondary" data-testid="badge-modal-wallet-pending">
+                    <Clock className="w-3 h-3 mr-1" />
+                    Pending Approval
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 rounded-lg border border-white/10 bg-white/5">
+              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-semibold">3</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white mb-1">Browse & Participate</h3>
+                <p className="text-sm text-slate-400">
+                  Once verified, explore agricultural projects and acquire participation tokens.
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setOnboardingModalOpen(false)}
+              className="w-full bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700"
+              data-testid="button-modal-close"
+            >
+              Got it, thanks!
             </Button>
           </DialogFooter>
         </DialogContent>
