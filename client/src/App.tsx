@@ -27,7 +27,6 @@ import LPDashboard from "@/pages/LPDashboard";
 import PrimerDashboard from "@/pages/PrimerDashboard";
 import PrimerProfile from "@/pages/PrimerProfile";
 import RegeneratorProfile from "@/pages/RegeneratorProfile";
-import RegeneratorDashboard from "@/pages/RegeneratorDashboard";
 import WalletFundingRequest from "@/pages/WalletFundingRequest";
 import AdminPrimers from "@/pages/AdminPrimers";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
@@ -37,6 +36,16 @@ import MultisigDemo from "@/pages/MultisigDemo";
 import DeploymentDemo from "@/pages/DeploymentDemo";
 import FlowDemo from "@/pages/FlowDemo";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+
+function PortfolioRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/regenerator-dashboard");
+  }, [setLocation]);
+  return null;
+}
 
 function Router() {
   return (
@@ -48,12 +57,12 @@ function Router() {
       <Route path="/kyc" component={KYCVerification} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectDetail} />
-      <Route path="/portfolio" component={Portfolio} />
+      <Route path="/regenerator-dashboard" component={Portfolio} />
+      <Route path="/portfolio" component={PortfolioRedirect} />
       <Route path="/lp-dashboard" component={LPDashboard} />
       <Route path="/primer-dashboard" component={PrimerDashboard} />
       <Route path="/primer-profile" component={PrimerProfile} />
       <Route path="/regenerator-profile" component={RegeneratorProfile} />
-      <Route path="/regenerator-dashboard" component={RegeneratorDashboard} />
       <Route path="/wallet-funding-request" component={WalletFundingRequest} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />

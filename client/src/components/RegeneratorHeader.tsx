@@ -157,14 +157,6 @@ export default function RegeneratorHeader() {
                   Dashboard
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => navigate("/portfolio")}
-                  className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"
-                  data-testid="menu-portfolio"
-                >
-                  <Briefcase className="mr-2 h-4 w-4" />
-                  Portfolio
-                </DropdownMenuItem>
-                <DropdownMenuItem
                   onClick={() => navigate("/transactions")}
                   className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"
                   data-testid="menu-wallet"

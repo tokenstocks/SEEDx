@@ -11,11 +11,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TrendingUp, Package, DollarSign, ArrowLeft, ExternalLink, Coins, RefreshCw, Clock, CheckCircle, XCircle, Sparkles } from "lucide-react";
+import { 
+  TrendingUp, 
+  Package, 
+  DollarSign, 
+  ExternalLink, 
+  Coins, 
+  RefreshCw, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  Sparkles, 
+  Wallet,
+  Send,
+  ShoppingBag,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Activity
+} from "lucide-react";
 import { Link } from "wouter";
 import type { RedemptionRequest } from "@/types/phase4";
 import RegeneratorHeader from "@/components/RegeneratorHeader";
 import { motion, useReducedMotion } from "framer-motion";
+
+interface TimelineEvent {
+  type: string;
+  timestamp: string;
+  amount?: string;
+  tokenSymbol?: string;
+  projectName?: string;
+  txHash?: string;
+  status?: string;
+  orderType?: string;
+  pricePerToken?: string;
+  currency?: string;
+}
 
 interface Investment {
   id: string;
@@ -77,17 +107,22 @@ export default function Portfolio() {
   });
 
   const { data: stats } = useQuery<{
-    totalInvested: string;
-    totalTokensReceived: string;
-    projectsInvestedIn: number;
-    investmentsCount: number;
+    totalInvested: number;
+    totalCashflowReceived: number;
+    totalTokensOwned: number;
+    activeProjects: number;
   }>({
-    queryKey: ["/api/investments/stats"],
+    queryKey: ["/api/regenerator/stats"],
     enabled: !!user,
   });
 
   const { data: redemptions, isLoading: redemptionsLoading } = useQuery<{ redemptions: RedemptionRequest[] }>({
     queryKey: ["/api/investments/redemptions/list"],
+    enabled: !!user,
+  });
+
+  const { data: timeline = [], isLoading: timelineLoading } = useQuery<TimelineEvent[]>({
+    queryKey: ["/api/regenerator/timeline"],
     enabled: !!user,
   });
 
@@ -160,13 +195,232 @@ export default function Portfolio() {
     }
   };
 
-  const formatCurrency = (amount: string, currency: string = "NGN") => {
-    const symbol = currency === "NGN" ? "₦" : currency === "USDC" ? "$" : "";
-    return `${symbol}${parseFloat(amount).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const getEventIcon = (type: string) => {
+    switch (type) {
+      case "token_purchase":
+        return <ShoppingBag className="w-5 h-5 text-emerald-400" />;
+      case "token_sale":
+        return <Send className="w-5 h-5 text-blue-400" />;
+      case "cashflow_received":
+        return <TrendingUp className="w-5 h-5 text-purple-400" />;
+      case "market_order_placed":
+        return <Activity className="w-5 h-5 text-amber-400" />;
+      case "market_order_filled":
+        return <CheckCircle className="w-5 h-5 text-emerald-400" />;
+      case "market_order_cancelled":
+        return <XCircle className="w-5 h-5 text-red-400" />;
+      case "wallet_deposit":
+        return <ArrowDownToLine className="w-5 h-5 text-green-400" />;
+      case "wallet_withdrawal":
+        return <ArrowUpFromLine className="w-5 h-5 text-orange-400" />;
+      default:
+        return <Activity className="w-5 h-5 text-slate-400" />;
+    }
+  };
+
+  const getEventColor = (type: string) => {
+    switch (type) {
+      case "token_purchase":
+        return "bg-emerald-500/20 border-emerald-500/30";
+      case "token_sale":
+        return "bg-blue-500/20 border-blue-500/30";
+      case "cashflow_received":
+        return "bg-purple-500/20 border-purple-500/30";
+      case "market_order_placed":
+        return "bg-amber-500/20 border-amber-500/30";
+      case "market_order_filled":
+        return "bg-emerald-500/20 border-emerald-500/30";
+      case "market_order_cancelled":
+        return "bg-red-500/20 border-red-500/30";
+      case "wallet_deposit":
+        return "bg-green-500/20 border-green-500/30";
+      case "wallet_withdrawal":
+        return "bg-orange-500/20 border-orange-500/30";
+      default:
+        return "bg-slate-500/20 border-slate-500/30";
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
+  };
+
+  const formatCurrency = (amount: string | number, currency: string = "NGN") => {
+    const value = typeof amount === "string" ? parseFloat(amount) : amount;
+    
+    const localeMap: Record<string, string> = {
+      "NGN": "en-NG",
+      "USD": "en-US",
+      "USDC": "en-US",
+      "XLM": "en-US",
+    };
+
+    const locale = localeMap[currency] || "en-US";
+    
+    if (currency === "USDC") {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+      }).format(value).replace("$", "USDC ");
+    } else if (currency === "XLM") {
+      return `${value.toFixed(7)} XLM`;
+    }
+
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const renderEventDescription = (event: TimelineEvent) => {
+    switch (event.type) {
+      case "token_purchase":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Purchased {parseFloat(event.amount || "0").toLocaleString()} {event.tokenSymbol} tokens
+            </p>
+            <p className="text-xs text-slate-400">
+              Project: {event.projectName}
+            </p>
+            {event.txHash && (
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300"
+                data-testid={`link-tx-${event.txHash.substring(0, 8)}`}
+              >
+                View on Stellar
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            )}
+          </div>
+        );
+      case "token_sale":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Sold {parseFloat(event.amount || "0").toLocaleString()} {event.tokenSymbol} tokens
+            </p>
+            <p className="text-xs text-slate-400">
+              Project: {event.projectName}
+            </p>
+          </div>
+        );
+      case "cashflow_received":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Received {formatCurrency(parseFloat(event.amount || "0"))} cashflow distribution
+            </p>
+            <p className="text-xs text-slate-400">
+              Project: {event.projectName}
+            </p>
+          </div>
+        );
+      case "market_order_placed":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              {event.orderType === "buy" ? "Buy" : "Sell"} order placed for {event.tokenSymbol}
+            </p>
+            <p className="text-xs text-slate-400">
+              Amount: {parseFloat(event.amount || "0").toLocaleString()} @ {formatCurrency(parseFloat(event.pricePerToken || "0"))} per token
+            </p>
+          </div>
+        );
+      case "market_order_filled":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              {event.orderType === "buy" ? "Buy" : "Sell"} order filled
+            </p>
+            <p className="text-xs text-slate-400">
+              {parseFloat(event.amount || "0").toLocaleString()} {event.tokenSymbol} tokens
+            </p>
+          </div>
+        );
+      case "market_order_cancelled":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Order cancelled
+            </p>
+            <p className="text-xs text-slate-400">
+              {event.tokenSymbol} {event.orderType === "buy" ? "buy" : "sell"} order
+            </p>
+          </div>
+        );
+      case "wallet_deposit":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Deposited {formatCurrency(parseFloat(event.amount || "0"), event.currency || "NGN")}
+            </p>
+            {event.txHash && (
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300"
+                data-testid={`link-tx-${event.txHash.substring(0, 8)}`}
+              >
+                View on Stellar
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            )}
+          </div>
+        );
+      case "wallet_withdrawal":
+        return (
+          <div className="space-y-1">
+            <p className="text-sm text-white">
+              Withdrew {formatCurrency(parseFloat(event.amount || "0"), event.currency || "NGN")}
+            </p>
+            {event.txHash && (
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300"
+                data-testid={`link-tx-${event.txHash.substring(0, 8)}`}
+              >
+                View on Stellar
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            )}
+          </div>
+        );
+      default:
+        return (
+          <p className="text-sm text-slate-400">
+            Activity recorded
+          </p>
+        );
+    }
   };
 
   const getTotalInvested = () => {
-    return parseFloat(stats?.totalInvested || "0");
+    return stats?.totalInvested || 0;
   };
 
   const getTotalValue = () => {
@@ -199,20 +453,12 @@ export default function Portfolio() {
           transition={{ duration: 0.6 }}
           className="mb-8"
         >
-          <Link
-            href="/regenerator-dashboard"
-            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6"
-            data-testid="link-back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to dashboard
-          </Link>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Portfolio Tracker
+                  Regenerator Dashboard
                 </Badge>
               </div>
               <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
@@ -238,33 +484,33 @@ export default function Portfolio() {
           {[
             {
               title: "Total Invested",
-              value: formatCurrency(getTotalInvested().toFixed(2)),
-              subtitle: `${stats?.investmentsCount || 0} investments`,
-              icon: DollarSign,
+              value: formatCurrency(getTotalInvested()),
+              subtitle: "Across all projects",
+              icon: Wallet,
               color: "text-blue-400",
               bgGradient: "from-blue-500/10 to-blue-600/10"
             },
             {
               title: "Portfolio Value",
-              value: formatCurrency(getTotalValue().toFixed(2)),
-              subtitle: "Current market value",
+              value: formatCurrency(getTotalValue()),
+              subtitle: `${calculateGainLoss() >= 0 ? '+' : ''}${calculateGainLossPercentage().toFixed(2)}% ${calculateGainLoss() >= 0 ? 'Gain' : 'Loss'}`,
               icon: TrendingUp,
               color: "text-emerald-400",
-              bgGradient: "from-emerald-500/10 to-emerald-600/10"
+              bgGradient: "from-emerald-500/10 to-emerald-600/10",
+              subtitleColor: calculateGainLoss() >= 0 ? "text-emerald-400" : "text-red-400"
             },
             {
-              title: "Gain/Loss",
-              value: `${calculateGainLoss() >= 0 ? '+' : ''}${formatCurrency(calculateGainLoss().toFixed(2))}`,
-              subtitle: `${calculateGainLoss() >= 0 ? '+' : ''}${calculateGainLossPercentage().toFixed(2)}%`,
-              icon: Package,
-              color: calculateGainLoss() >= 0 ? "text-green-400" : "text-red-400",
-              bgGradient: calculateGainLoss() >= 0 ? "from-green-500/10 to-green-600/10" : "from-red-500/10 to-red-600/10",
-              valueColor: calculateGainLoss() >= 0 ? "text-green-400" : "text-red-400"
+              title: "Cashflow Received",
+              value: formatCurrency(stats?.totalCashflowReceived || 0),
+              subtitle: "Lifetime distributions",
+              icon: DollarSign,
+              color: "text-purple-400",
+              bgGradient: "from-purple-500/10 to-purple-600/10"
             },
             {
-              title: "Projects",
-              value: stats?.projectsInvestedIn || 0,
-              subtitle: "Unique projects",
+              title: "Active Projects",
+              value: stats?.activeProjects || 0,
+              subtitle: "Participating in",
               icon: Coins,
               color: "text-amber-400",
               bgGradient: "from-amber-500/10 to-amber-600/10"
@@ -276,16 +522,16 @@ export default function Portfolio() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: idx * 0.1 }}
             >
-              <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 h-full hover-elevate transition-all duration-300">
+              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 h-full hover-elevate transition-all duration-300">
                 <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r ${stat.bgGradient}`} />
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-slate-400">{stat.title}</h3>
                   <stat.icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
-                <div className={`text-3xl font-bold mb-1 ${stat.valueColor || 'text-white'}`}>
+                <div className="text-3xl font-bold mb-1 text-white">
                   {stat.value}
                 </div>
-                <p className={`text-xs ${stat.valueColor || 'text-slate-500'}`}>
+                <p className={`text-xs ${stat.subtitleColor || 'text-slate-500'}`}>
                   {stat.subtitle}
                 </p>
               </div>
@@ -293,12 +539,13 @@ export default function Portfolio() {
           ))}
         </div>
 
-        {/* Token Holdings, Investment History & Redemptions */}
+        {/* Token Holdings, Investment History, Redemptions & Timeline */}
         <Tabs defaultValue="holdings" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-white/5 border-white/10">
+          <TabsList className="grid w-full grid-cols-4 max-w-3xl bg-white/5 border-white/10">
             <TabsTrigger value="holdings" data-testid="tab-holdings" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Token Holdings</TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Investment History</TabsTrigger>
             <TabsTrigger value="redemptions" data-testid="tab-redemptions" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Redemptions</TabsTrigger>
+            <TabsTrigger value="timeline" data-testid="tab-timeline" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">Activity Timeline</TabsTrigger>
           </TabsList>
 
           {/* Token Holdings Tab */}
@@ -331,16 +578,16 @@ export default function Portfolio() {
                       return (
                         <div
                           key={holding.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
+                          className="flex items-center justify-between p-4 border border-white/10 rounded-lg hover-elevate bg-white/5"
                           data-testid={`holding-${holding.projectId}`}
                         >
                           <div className="flex items-center gap-4 flex-1">
-                            <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
-                              <Coins className="w-6 h-6 text-primary" />
+                            <div className="w-12 h-12 bg-emerald-500/10 rounded flex items-center justify-center flex-shrink-0">
+                              <Coins className="w-6 h-6 text-emerald-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold">{holding.projectName}</h4>
-                              <p className="text-sm text-muted-foreground">
+                              <h4 className="font-semibold text-white">{holding.projectName}</h4>
+                              <p className="text-sm text-slate-400">
                                 {parseFloat(holding.tokenAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 7 })} {holding.tokenSymbol}
                               </p>
                               {holding.stellarAssetCode && (
@@ -352,7 +599,7 @@ export default function Portfolio() {
                                     href={`https://stellar.expert/explorer/testnet/account/${holding.stellarIssuerPublicKey}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                                    className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
                                   >
                                     View on Stellar
                                     <ExternalLink className="w-3 h-3" />
@@ -363,10 +610,10 @@ export default function Portfolio() {
                           </div>
                           <div className="flex items-center gap-4 flex-shrink-0">
                             <div className="text-right">
-                              <div className="font-semibold">
+                              <div className="font-semibold text-white">
                                 {formatCurrency(currentValue.toFixed(2))}
                               </div>
-                              <div className="text-sm text-muted-foreground">
+                              <div className="text-sm text-slate-400">
                                 @ {formatCurrency(holding.pricePerToken)}/token
                               </div>
                             </div>
@@ -385,9 +632,9 @@ export default function Portfolio() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Coins className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No token holdings yet</h3>
-                    <p className="text-muted-foreground mb-4">
+                    <Coins className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-white">No token holdings yet</h3>
+                    <p className="text-slate-400 mb-4">
                       Start investing in agricultural projects to receive tokens
                     </p>
                     <Link href="/projects" data-testid="link-browse-projects-holdings">
@@ -428,25 +675,25 @@ export default function Portfolio() {
                     {investments.map((investment) => (
                       <div
                         key={investment.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5"
                         data-testid={`investment-${investment.id}`}
                       >
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
-                            <Package className="w-5 h-5 text-primary" />
+                          <div className="w-10 h-10 bg-blue-500/10 rounded flex items-center justify-center flex-shrink-0">
+                            <Package className="w-5 h-5 text-blue-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium">{investment.projectName}</h4>
-                            <p className="text-xs text-muted-foreground">
+                            <h4 className="font-medium text-white">{investment.projectName}</h4>
+                            <p className="text-xs text-slate-400">
                               {new Date(investment.createdAt).toLocaleDateString()} at {new Date(investment.createdAt).toLocaleTimeString()}
                             </p>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <div className="font-semibold">
+                          <div className="font-semibold text-white">
                             {formatCurrency(investment.amount)}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-slate-400">
                             +{parseFloat(investment.tokensReceived).toLocaleString(undefined, { maximumFractionDigits: 2 })} {investment.projectTokenSymbol}
                           </div>
                         </div>
@@ -455,9 +702,9 @@ export default function Portfolio() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No investments yet</h3>
-                    <p className="text-muted-foreground mb-4">
+                    <Package className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-white">No investments yet</h3>
+                    <p className="text-slate-400 mb-4">
                       Start investing in agricultural projects to build your portfolio
                     </p>
                     <Link href="/projects" data-testid="link-browse-projects-history">
@@ -498,29 +745,29 @@ export default function Portfolio() {
                     {redemptions.redemptions.map((redemption) => (
                       <div
                         key={redemption.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5"
                         data-testid={`redemption-${redemption.id}`}
                       >
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
-                            <RefreshCw className="w-5 h-5 text-primary" />
+                          <div className="w-10 h-10 bg-purple-500/10 rounded flex items-center justify-center flex-shrink-0">
+                            <RefreshCw className="w-5 h-5 text-purple-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium">{redemption.projectName || `Project ${redemption.projectId.slice(0, 8)}...`}</h4>
-                            <p className="text-xs text-muted-foreground">
+                            <h4 className="font-medium text-white">{redemption.projectName || `Project ${redemption.projectId.slice(0, 8)}...`}</h4>
+                            <p className="text-xs text-slate-400">
                               {parseFloat(redemption.tokensAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} tokens → {formatCurrency(redemption.redemptionValueNgnts)} NGNTS
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-slate-400">
                               Requested: {new Date(redemption.createdAt).toLocaleDateString()}
                             </p>
-                            {redemption.adminNotes && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Note: {redemption.adminNotes}
-                              </p>
-                            )}
                           </div>
                         </div>
-                        <div className="flex-shrink-0">
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <div className="font-semibold text-white">
+                              {formatCurrency(redemption.redemptionValueNgnts)}
+                            </div>
+                          </div>
                           {getRedemptionStatusBadge(redemption.status)}
                         </div>
                       </div>
@@ -528,10 +775,10 @@ export default function Portfolio() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <RefreshCw className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No redemption requests yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      You can redeem your project tokens for NGNTS anytime from the Token Holdings tab
+                    <RefreshCw className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-white">No redemptions yet</h3>
+                    <p className="text-slate-400 mb-4">
+                      Your redemption history will appear here when you redeem tokens
                     </p>
                   </div>
                 )}
@@ -539,91 +786,138 @@ export default function Portfolio() {
               </div>
             </div>
           </TabsContent>
-        </Tabs>
 
-        {/* Redemption Dialog */}
-        <Dialog open={redemptionDialogOpen} onOpenChange={setRedemptionDialogOpen}>
-          <DialogContent data-testid="dialog-redemption">
-            <DialogHeader>
-              <DialogTitle>Redeem Tokens</DialogTitle>
-              <DialogDescription>
-                Submit a request to sell your tokens back to the platform for NGNTS
-              </DialogDescription>
-            </DialogHeader>
-            {selectedHolding && (
-              <div className="space-y-4">
+          {/* Activity Timeline Tab */}
+          <TabsContent value="timeline">
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-white mb-2">Activity Timeline</h2>
+                <p className="text-slate-400 mb-6">Your complete participation history</p>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Project</Label>
-                  <p className="font-semibold">{selectedHolding.projectName}</p>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Available to Redeem</Label>
-                  <p className="font-semibold">
-                    {parseFloat(selectedHolding.tokenAmount).toLocaleString(undefined, { maximumFractionDigits: 7 })} {selectedHolding.tokenSymbol}
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="tokensToRedeem">Tokens to Redeem</Label>
-                  <Input
-                    id="tokensToRedeem"
-                    type="number"
-                    step="0.0001"
-                    placeholder="Enter amount"
-                    value={tokensToRedeem}
-                    onChange={(e) => setTokensToRedeem(e.target.value)}
-                    data-testid="input-tokens-to-redeem"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setTokensToRedeem(selectedHolding.tokenAmount)}
-                    className="mt-1 text-xs"
-                    data-testid="button-redeem-max"
-                  >
-                    Redeem All
-                  </Button>
-                </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-1">Estimated Value</div>
-                  <div className="text-lg font-semibold">
-                    {tokensToRedeem && !isNaN(parseFloat(tokensToRedeem))
-                      ? formatCurrency((parseFloat(tokensToRedeem) * parseFloat(selectedHolding.pricePerToken)).toFixed(2))
-                      : formatCurrency("0.00")} NGNTS
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Based on current NAV of {formatCurrency(selectedHolding.pricePerToken)}/token
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>• Your redemption request will be reviewed by an admin</p>
-                  <p>• NAV is locked at request time to prevent manipulation</p>
-                  <p>• Funds are transferred from project cashflow, treasury, or LP pool based on availability</p>
+                  {timelineLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Clock className="w-8 h-8 text-slate-500 animate-spin" />
+                    </div>
+                  ) : timeline.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Activity className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2 text-white">No activity yet</h3>
+                      <p className="text-slate-400 mb-4">
+                        Your participation and trading history will appear here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {timeline.map((event, index) => (
+                        <motion.div
+                          key={`${event.type}-${event.timestamp}-${index}`}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="flex gap-4"
+                          data-testid={`event-${event.type}-${index}`}
+                        >
+                          <div className={`flex-shrink-0 w-10 h-10 rounded-full border flex items-center justify-center ${getEventColor(event.type)}`}>
+                            {getEventIcon(event.type)}
+                          </div>
+                          <div className="flex-1 min-w-0 pb-4 border-b border-white/5 last:border-0">
+                            <div className="flex items-start justify-between gap-4 mb-2">
+                              <div className="flex-1 min-w-0">
+                                {renderEventDescription(event)}
+                              </div>
+                              <div className="text-xs text-slate-500 flex-shrink-0">
+                                {formatTimestamp(event.timestamp)}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setRedemptionDialogOpen(false);
-                  setSelectedHolding(null);
-                  setTokensToRedeem("");
-                }}
-                data-testid="button-cancel-redemption"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRedemptionSubmit}
-                disabled={createRedemptionMutation.isPending}
-                data-testid="button-submit-redemption"
-              >
-                {createRedemptionMutation.isPending ? "Submitting..." : "Submit Request"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Redemption Dialog */}
+      <Dialog open={redemptionDialogOpen} onOpenChange={setRedemptionDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Redeem Tokens</DialogTitle>
+            <DialogDescription>
+              Request to redeem your {selectedHolding?.tokenSymbol} tokens for cash value
+            </DialogDescription>
+          </DialogHeader>
+          {selectedHolding && (
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Project</span>
+                  <span className="font-medium">{selectedHolding.projectName}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <Label className="text-sm text-muted-foreground">Available to Redeem</Label>
+                  <p className="font-semibold">
+                    {parseFloat(selectedHolding.tokenAmount).toLocaleString()} {selectedHolding.tokenSymbol}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Price</span>
+                  <span className="font-medium">{formatCurrency(selectedHolding.pricePerToken)}/token</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tokens-amount">Tokens to Redeem</Label>
+                <Input
+                  id="tokens-amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  value={tokensToRedeem}
+                  onChange={(e) => setTokensToRedeem(e.target.value)}
+                  max={parseFloat(selectedHolding.tokenAmount)}
+                  step="0.01"
+                  data-testid="input-redeem-amount"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum: {parseFloat(selectedHolding.tokenAmount).toLocaleString()} tokens
+                </p>
+              </div>
+              {tokensToRedeem && parseFloat(tokensToRedeem) > 0 && (
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Estimated Value</span>
+                    <span className="font-semibold">
+                      {formatCurrency((parseFloat(tokensToRedeem) * parseFloat(selectedHolding.pricePerToken)).toFixed(2))}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRedemptionDialogOpen(false);
+                setTokensToRedeem("");
+              }}
+              data-testid="button-cancel-redeem"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRedemptionSubmit}
+              disabled={createRedemptionMutation.isPending}
+              data-testid="button-submit-redeem"
+            >
+              {createRedemptionMutation.isPending ? "Submitting..." : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
