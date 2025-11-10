@@ -20,16 +20,19 @@ The platform features an investor-grade presentation with Framer Motion animatio
 
 ### Technical Implementations
 - **Authentication & KYC:** JWT-based authentication, user registration (Primer/Regenerator), and an admin-reviewed KYC system.
-- **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool). Includes friendbot auto-activation for testnet operations and a robust wallet activation workflow with admin approval.
+- **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool). Includes friendbot auto-activation for testnet operations and a robust wallet activation workflow with admin approval requiring both NGNTS and USDC trustlines.
 - **Primer User Class & LP Pool:** Primers contribute capital to the Liquidity Pool via an admin-approved workflow, with their contributions and project allocations tracked on a dedicated dashboard and activity timeline.
 - **Regenerator User Class:** Regenerators purchase farm project tokens, with a dashboard displaying portfolio holdings, metrics, and a comprehensive activity timeline.
-- **Investment & Portfolio Management:** Supports multi-currency investments (NGN, USDC, XLM), trustline management, and atomic database updates.
+- **Investment & Portfolio Management:** Full on-chain settlement for multi-currency investments (NGN/NGNTS, USDC, XLM). Investment flow: (1) Establish project token trustline, (2) Transfer payment from user to project on-chain, (3) Transfer project tokens from project to user, (4) Update database atomically. Includes best-effort automatic refund if token delivery fails after payment succeeds.
 - **Regenerative Capital Architecture:** A multi-pool system with NAV-based token pricing and automated cashflow distribution.
 - **Token Marketplace:** Internal peer-to-peer marketplace with order book, NAV-based price discovery, and atomic balance transfers.
 - **LP Lock Policy Controls:** Flexible token lock mechanisms and an auto-unlock job.
 - **NGNTS Burning:** NGNTS tokens are burned upon NGN withdrawal to maintain a 1:1 peg.
 - **Admin Dashboards:** APIs and UI for managing key platform operations, users, and transactions.
 - **Redemption System:** Allows users to sell project tokens for NGNTS, prioritizing funding from project cashflow, treasury, then liquidity pool.
+
+### Known Limitations (MVP)
+- **Investment Settlement Edge Cases:** The investment flow executes on-chain payment followed by token delivery. If token delivery fails, the system attempts an automatic refund. In rare cases where the refund also fails, funds remain with the project and require manual admin intervention. Full durable settlement system with retry queue deferred to post-MVP. All failure scenarios are logged with transaction hashes for reconciliation.
 
 ## External Dependencies
 
