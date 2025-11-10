@@ -49,6 +49,8 @@ export default function RegeneratorProfile() {
     rejectionReason?: string;
   }>({
     queryKey: ["/api/users/me/kyc"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: stats } = useQuery<{
@@ -72,6 +74,8 @@ export default function RegeneratorProfile() {
     };
   }>({
     queryKey: ["/api/regenerator/wallet/balances"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: bankAccountSettings } = useQuery<{
