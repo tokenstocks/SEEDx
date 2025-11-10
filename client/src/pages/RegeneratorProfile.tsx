@@ -104,6 +104,28 @@ export default function RegeneratorProfile() {
     queryKey: ["/api/settings/bank-account"],
   });
 
+  const { data: depositHistory } = useQuery<{
+    deposits: Array<{
+      id: string;
+      amountNGN: string;
+      platformFee: string;
+      gasFee: string;
+      ngntsAmount: string;
+      status: "pending" | "approved" | "rejected" | "completed";
+      referenceCode: string;
+      proofUrl: string | null;
+      notes: string | null;
+      rejectedReason: string | null;
+      approvedBy: string | null;
+      approvedAt: string | null;
+      txHash: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+  }>({
+    queryKey: ["/api/regenerator/bank-deposits"],
+  });
+
   // Fee preview effect (debounced)
   useEffect(() => {
     // Reset preview and error state
