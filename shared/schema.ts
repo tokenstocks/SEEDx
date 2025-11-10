@@ -29,6 +29,7 @@ export const orderStatusEnum = pgEnum("order_status", ["open", "filled", "cancel
 export const primerContributionStatusEnum = pgEnum("primer_contribution_status", ["pending", "approved", "rejected", "completed"]);
 export const walletActivationStatusEnum = pgEnum("wallet_activation_status", ["created", "pending", "activating", "active", "failed"]);
 export const walletFundingRequestStatusEnum = pgEnum("wallet_funding_request_status", ["pending", "approved", "rejected", "funded"]);
+export const bankDepositStatusEnum = pgEnum("bank_deposit_status", ["pending", "approved", "rejected", "completed"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -485,6 +486,26 @@ export const regeneratorWalletFundingRequests = pgTable("regenerator_wallet_fund
   amountRequested: decimal("amount_requested", { precision: 18, scale: 6 }).notNull().default("2.0"),
   currency: currencyEnum("currency").notNull().default("XLM"),
   status: walletFundingRequestStatusEnum("status").notNull().default("pending"),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedReason: text("rejected_reason"),
+  txHash: text("tx_hash"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Regenerator Bank Deposits table - Track NGN bank transfer deposits for NGNTS minting
+export const regeneratorBankDeposits = pgTable("regenerator_bank_deposits", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referenceCode: text("reference_code").notNull().unique(),
+  amountNGN: decimal("amount_ngn", { precision: 18, scale: 2 }).notNull(),
+  ngntsAmount: decimal("ngnts_amount", { precision: 18, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  gasFee: decimal("gas_fee", { precision: 18, scale: 6 }).notNull().default("0.00"),
+  status: bankDepositStatusEnum("status").notNull().default("pending"),
+  proofUrl: text("proof_url"),
   approvedBy: uuid("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   rejectedReason: text("rejected_reason"),
@@ -1033,6 +1054,26 @@ export const approveWalletFundingRequestSchema = z.object({
   rejectedReason: z.string().optional(),
 });
 
+export const insertRegeneratorBankDepositSchema = createInsertSchema(regeneratorBankDeposits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedBy: true,
+  approvedAt: true,
+  status: true,
+  txHash: true,
+});
+
+export const createBankDepositRequestSchema = z.object({
+  amountNGN: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
+  proofUrl: z.string().url("Proof URL must be a valid URL"),
+});
+
+export const approveBankDepositSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectedReason: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -1111,3 +1152,7 @@ export type RegeneratorWalletFundingRequest = typeof regeneratorWalletFundingReq
 export type InsertRegeneratorWalletFundingRequest = z.infer<typeof insertRegeneratorWalletFundingRequestSchema>;
 export type CreateWalletFundingRequest = z.infer<typeof createWalletFundingRequestSchema>;
 export type ApproveWalletFundingRequest = z.infer<typeof approveWalletFundingRequestSchema>;
+export type RegeneratorBankDeposit = typeof regeneratorBankDeposits.$inferSelect;
+export type InsertRegeneratorBankDeposit = z.infer<typeof insertRegeneratorBankDepositSchema>;
+export type CreateBankDepositRequest = z.infer<typeof createBankDepositRequestSchema>;
+export type ApproveBankDeposit = z.infer<typeof approveBankDepositSchema>;
