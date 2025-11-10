@@ -16,6 +16,8 @@ The platform uses a React and TypeScript frontend with Vite, Wouter, and TanStac
 ### UI/UX Decisions
 The platform features an investor-grade presentation with Framer Motion animations, dynamic typewriter headlines, premium CTA buttons, interactive trust badges, and comprehensive mobile responsiveness. SEC-compliant language is used throughout the platform to mitigate securities classification risk. The landing page follows a strategic flow with dual audience toggles, how-it-works sections, featured farms, benefits showcase, comprehensive FAQ, and conversion-focused CTAs. The "About" page includes animated stats, feature highlights, a company timeline, and calls to action.
 
+**Navigation System (Nov 2025):** Implemented UnifiedHeader component for consistent navigation across all authenticated pages. Features horizontal menu bar (no dropdowns), role-based navigation links (Admin: Dashboard + Browse Projects; Primer: Dashboard + Browse Projects + Profile; Regenerator: Dashboard + Browse Projects + Marketplace + Profile), wallet indicators for all roles (XLM, USDC, NGNTS balances with graceful fallbacks), and consistent logout placement. Layout: Logo (left) → Nav Links (centered) → Wallet Badges → Logout (far right).
+
 ### Technical Implementations
 - **Authentication & KYC:** JWT-based authentication, user registration (Primer/Regenerator), and an admin-reviewed KYC system.
 - **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool). Includes friendbot auto-activation for testnet operations and a robust wallet activation workflow with admin approval.
