@@ -25,7 +25,7 @@ export default function Footer() {
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   const platformLinks = [
-    { label: "Browse Farms", href: "/#featured-farms" },
+    { label: "Browse Projects", href: "/#featured-farms" },
     { label: "How It Works", href: "/how-it-works" },
     { label: "For Primers", href: "#" },
     { label: "For Regenerators", href: "#" },

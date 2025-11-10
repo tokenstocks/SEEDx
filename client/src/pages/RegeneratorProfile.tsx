@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import {
   Check,
   Download,
   ExternalLink,
+  Building2,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import RegeneratorHeader from "@/components/RegeneratorHeader";
@@ -70,6 +72,15 @@ export default function RegeneratorProfile() {
     };
   }>({
     queryKey: ["/api/regenerator/wallet/balances"],
+  });
+
+  const { data: bankAccountSettings } = useQuery<{
+    accountName: string;
+    bankName: string;
+    accountNumber: string;
+    routingCode: string;
+  }>({
+    queryKey: ["/api/settings/bank-account"],
   });
 
   const copyToClipboard = async (text: string) => {
@@ -564,18 +575,31 @@ export default function RegeneratorProfile() {
 
       {/* Deposit Funds Dialog */}
       <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
-        <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl" data-testid="dialog-deposit-funds">
+        <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-deposit-funds">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Wallet className="w-6 h-6 text-emerald-400" />
               How to Deposit Funds
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Fund your Stellar wallet to start participating in tokenized agricultural projects
+              Fund your wallet using cryptocurrency or bank transfer
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 mt-4">
+          <Tabs defaultValue="crypto" className="w-full mt-4">
+            <TabsList className="grid w-full grid-cols-2 bg-white/5">
+              <TabsTrigger value="crypto" className="data-[state=active]:bg-emerald-600" data-testid="tab-crypto">
+                <Coins className="w-4 h-4 mr-2" />
+                Crypto Deposit
+              </TabsTrigger>
+              <TabsTrigger value="fiat" className="data-[state=active]:bg-blue-600" data-testid="tab-fiat">
+                <Building2 className="w-4 h-4 mr-2" />
+                Bank Transfer
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Crypto Deposit Tab */}
+            <TabsContent value="crypto" className="space-y-6 mt-4">
             {/* Wallet Address */}
             <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
@@ -672,7 +696,7 @@ export default function RegeneratorProfile() {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Crypto Action Buttons */}
             <div className="flex gap-3">
               <Button
                 onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
@@ -691,7 +715,101 @@ export default function RegeneratorProfile() {
                 Close
               </Button>
             </div>
-          </div>
+            </TabsContent>
+
+            {/* Fiat Deposit Tab */}
+            <TabsContent value="fiat" className="space-y-6 mt-4">
+              {/* Bank Account Details */}
+              <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Building2 className="w-5 h-5 text-blue-400" />
+                  <p className="text-sm font-medium text-blue-300">SEEDx Bank Account Details</p>
+                </div>
+                {bankAccountSettings?.accountName ? (
+                  <div className="space-y-3 bg-black/20 p-4 rounded border border-white/5">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Account Name</p>
+                      <p className="text-sm font-semibold text-white">{bankAccountSettings.accountName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Bank Name</p>
+                      <p className="text-sm font-semibold text-white">{bankAccountSettings.bankName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Account Number</p>
+                      <p className="text-sm font-mono font-semibold text-white">{bankAccountSettings.accountNumber}</p>
+                    </div>
+                    {bankAccountSettings.routingCode && (
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Routing Code</p>
+                        <p className="text-sm font-mono font-semibold text-white">{bankAccountSettings.routingCode}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-slate-400">Bank account details not yet configured. Please contact support.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Fiat Instructions */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white">How to Deposit via Bank Transfer</h3>
+                
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-blue-500/20 p-2 rounded-lg">
+                      <Building2 className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-white mb-1">Bank Transfer Instructions</h4>
+                      <p className="text-sm text-slate-400 mb-3">
+                        Transfer NGN directly from your Nigerian bank account
+                      </p>
+                      <ol className="text-sm text-slate-300 space-y-2 list-decimal list-inside">
+                        <li>Log into your mobile banking app or visit your bank</li>
+                        <li>Select "Transfer" or "Send Money"</li>
+                        <li>Enter the account details shown above</li>
+                        <li>Enter your deposit amount in NGN</li>
+                        <li>Add your registered email or user ID as a reference</li>
+                        <li>Complete the transfer and save the confirmation</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Important Notes for Fiat */}
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-orange-300">Important Notes:</p>
+                      <ul className="text-sm text-orange-200 space-y-1 list-disc list-inside">
+                        <li>Include your registered email or user ID in the transfer reference</li>
+                        <li>Deposits typically take 1-2 business days to process</li>
+                        <li>Admin approval required - you'll be notified via email</li>
+                        <li>Only NGN deposits accepted for fiat transfers</li>
+                        <li>Keep your transfer confirmation for verification</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fiat Action Button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDepositDialogOpen(false)}
+                  className="border-white/10 text-white hover:bg-white/5"
+                  data-testid="button-close-fiat-dialog"
+                >
+                  Close
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, CheckCircle, XCircle, Clock, ArrowLeft, Building2, AlertCircle } from "lucide-react";
+import { Upload, CheckCircle, XCircle, Clock, ArrowLeft, Building2, AlertCircle, FileText, Eye } from "lucide-react";
 import { Link } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { queryClient } from "@/lib/queryClient";
@@ -60,6 +60,11 @@ export default function KYCVerification() {
     firstName: string;
     lastName: string;
     kycStatus: string;
+    kycDocuments?: {
+      idCard?: string;
+      selfie?: string;
+      addressProof?: string;
+    };
     bankDetails?: {
       accountName?: string;
       accountNumberEncrypted?: string;
@@ -269,12 +274,12 @@ export default function KYCVerification() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="mb-8">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -282,14 +287,14 @@ export default function KYCVerification() {
           </Link>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Verification Center</CardTitle>
-            <CardDescription>
+        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl">
+          <div className="p-6 border-b border-white/10">
+            <h1 className="text-2xl font-bold text-white mb-2">Verification Center</h1>
+            <p className="text-slate-400">
               Complete your identity and bank account verification
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="p-6">
             <Tabs defaultValue="identity" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="identity" data-testid="tab-identity">
@@ -303,8 +308,8 @@ export default function KYCVerification() {
               <TabsContent value="identity" className="space-y-6 mt-6">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div>
-                    <h3 className="text-lg font-semibold">KYC Documents</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="text-lg font-semibold text-white">KYC Documents</h3>
+                    <p className="text-sm text-slate-400">
                       Upload your identification documents to start investing
                     </p>
                   </div>
@@ -312,18 +317,18 @@ export default function KYCVerification() {
                 </div>
 
                 {user.kycStatus === "approved" ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">KYC Approved</h3>
-                    <p className="text-muted-foreground">
+                  <div className="text-center py-8 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl">
+                    <CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">KYC Approved</h3>
+                    <p className="text-slate-400">
                       Your identity has been verified. You can now invest in projects.
                     </p>
                   </div>
                 ) : user.kycStatus === "submitted" ? (
-                  <div className="text-center py-8">
-                    <Clock className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Under Review</h3>
-                    <p className="text-muted-foreground">
+                  <div className="text-center py-8 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl">
+                    <Clock className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Under Review</h3>
+                    <p className="text-slate-400">
                       Your documents are being reviewed. This usually takes 1-2 business days.
                     </p>
                   </div>
@@ -331,7 +336,7 @@ export default function KYCVerification() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="idCard">ID Card / Passport</Label>
+                        <Label htmlFor="idCard" className="text-white">ID Card / Passport</Label>
                         <Input
                           id="idCard"
                           type="file"
@@ -340,13 +345,13 @@ export default function KYCVerification() {
                           required
                           data-testid="input-idCard"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           Upload a clear photo of your government-issued ID or passport
                         </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="selfie">Selfie with ID</Label>
+                        <Label htmlFor="selfie" className="text-white">Selfie with ID</Label>
                         <Input
                           id="selfie"
                           type="file"
@@ -355,13 +360,13 @@ export default function KYCVerification() {
                           required
                           data-testid="input-selfie"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           Take a selfie holding your ID card next to your face
                         </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="addressProof">Proof of Address</Label>
+                        <Label htmlFor="addressProof" className="text-white">Proof of Address</Label>
                         <Input
                           id="addressProof"
                           type="file"
@@ -370,7 +375,7 @@ export default function KYCVerification() {
                           required
                           data-testid="input-addressProof"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           Utility bill, bank statement, or rental agreement (within last 3 months)
                         </p>
                       </div>
@@ -395,25 +400,78 @@ export default function KYCVerification() {
                 )}
 
                 {user.kycStatus === "rejected" && (
-                  <Card className="border-destructive">
-                    <CardHeader>
-                      <CardTitle className="text-destructive">KYC Rejected</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">
-                        Your KYC documents were not approved. Please ensure your documents are clear,
-                        valid, and match the information in your profile. You can resubmit your documents above.
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <div className="bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/20 rounded-xl p-4">
+                    <h3 className="text-lg font-semibold text-red-400 mb-2">KYC Rejected</h3>
+                    <p className="text-slate-400">
+                      Your KYC documents were not approved. Please ensure your documents are clear,
+                      valid, and match the information in your profile. You can resubmit your documents above.
+                    </p>
+                  </div>
+                )}
+
+                {/* Submitted Documents Section */}
+                {user.kycDocuments && (user.kycDocuments.idCard || user.kycDocuments.selfie || user.kycDocuments.addressProof) && (
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FileText className="w-5 h-5 text-blue-400" />
+                      <h3 className="text-lg font-semibold text-white">Submitted Documents</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {user.kycDocuments.idCard && (
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <p className="text-sm text-slate-400 mb-2">ID Card / Passport</p>
+                          <a
+                            href={user.kycDocuments.idCard}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                            data-testid="link-view-idcard"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Document
+                          </a>
+                        </div>
+                      )}
+                      {user.kycDocuments.selfie && (
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <p className="text-sm text-slate-400 mb-2">Selfie with ID</p>
+                          <a
+                            href={user.kycDocuments.selfie}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                            data-testid="link-view-selfie"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Document
+                          </a>
+                        </div>
+                      )}
+                      {user.kycDocuments.addressProof && (
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <p className="text-sm text-slate-400 mb-2">Proof of Address</p>
+                          <a
+                            href={user.kycDocuments.addressProof}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                            data-testid="link-view-addressproof"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Document
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </TabsContent>
 
               <TabsContent value="bank" className="space-y-6 mt-6">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div>
-                    <h3 className="text-lg font-semibold">Bank Account Verification</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="text-lg font-semibold text-white">Bank Account Verification</h3>
+                    <p className="text-sm text-slate-400">
                       Add your bank details for withdrawals
                     </p>
                   </div>
@@ -421,84 +479,78 @@ export default function KYCVerification() {
                 </div>
 
                 {user.kycStatus !== "approved" && (
-                  <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
-                    <CardContent className="flex items-start gap-3 p-4">
-                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mt-0.5" />
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-yellow-200">
                         Complete and get your KYC approved before submitting bank details
                       </p>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
 
                 {user.bankDetails && user.bankDetailsStatus !== "not_submitted" ? (
                   <div className="space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Current Bank Details</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-white mb-4">Current Bank Details</h3>
+                      <div className="space-y-3">
                         <div>
-                          <Label className="text-sm text-muted-foreground">Account Name</Label>
-                          <p className="font-medium" data-testid="text-existing-accountName">
+                          <Label className="text-sm text-slate-400">Account Name</Label>
+                          <p className="font-medium text-white" data-testid="text-existing-accountName">
                             {user.bankDetails.accountName}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-sm text-muted-foreground">Bank Name</Label>
-                          <p className="font-medium" data-testid="text-existing-bankName">
+                          <Label className="text-sm text-slate-400">Bank Name</Label>
+                          <p className="font-medium text-white" data-testid="text-existing-bankName">
                             {user.bankDetails.bankName}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-sm text-muted-foreground">Account Number</Label>
-                          <p className="font-mono font-medium" data-testid="text-existing-accountNumber">
+                          <Label className="text-sm text-slate-400">Account Number</Label>
+                          <p className="font-mono font-medium text-white" data-testid="text-existing-accountNumber">
                             {maskAccountNumber(user.bankDetails.accountNumberEncrypted || "")}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-sm text-muted-foreground">Status</Label>
+                          <Label className="text-sm text-slate-400">Status</Label>
                           <div className="mt-1">{getBankDetailsStatusBadge()}</div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {user.bankDetailsStatus === "pending" && (
-                      <div className="text-center py-4">
-                        <Clock className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground">
+                      <div className="text-center py-6 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl">
+                        <Clock className="w-12 h-12 text-blue-400 mx-auto mb-3" />
+                        <p className="text-sm text-slate-400">
                           Your bank details are under review by our team
                         </p>
                       </div>
                     )}
 
                     {user.bankDetailsStatus === "approved" && (
-                      <div className="text-center py-4">
-                        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground">
+                      <div className="text-center py-6 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl">
+                        <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
+                        <p className="text-sm text-slate-400">
                           Your bank details have been verified and approved
                         </p>
                       </div>
                     )}
 
                     {user.bankDetailsStatus === "rejected" && (
-                      <Card className="border-destructive">
-                        <CardHeader>
-                          <CardTitle className="text-destructive">Bank Details Rejected</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-muted-foreground">
-                            Your bank details were not approved. Please submit again with correct information.
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <div className="bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/20 rounded-xl p-4">
+                        <h3 className="text-lg font-semibold text-red-400 mb-2">Bank Details Rejected</h3>
+                        <p className="text-slate-400">
+                          Your bank details were not approved. Please submit again with correct information.
+                        </p>
+                      </div>
                     )}
                   </div>
                 ) : (
                   <form onSubmit={handleBankDetailsSubmit} className="space-y-6">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="accountName">Account Name</Label>
+                        <Label htmlFor="accountName" className="text-white">Account Name</Label>
                         <Input
                           id="accountName"
                           type="text"
@@ -507,13 +559,13 @@ export default function KYCVerification() {
                           required
                           data-testid="input-accountName"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           Full name as shown on your bank account
                         </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="accountNumber">Account Number</Label>
+                        <Label htmlFor="accountNumber" className="text-white">Account Number</Label>
                         <Input
                           id="accountNumber"
                           type="text"
@@ -524,13 +576,13 @@ export default function KYCVerification() {
                           required
                           data-testid="input-accountNumber"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           10-digit Nigerian bank account number (NUBAN)
                         </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="bankName">Bank Name</Label>
+                        <Label htmlFor="bankName" className="text-white">Bank Name</Label>
                         <Select
                           value={bankName}
                           onValueChange={(value) => {
@@ -556,7 +608,7 @@ export default function KYCVerification() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="bankCode">Bank Code</Label>
+                        <Label htmlFor="bankCode" className="text-white">Bank Code</Label>
                         <Input
                           id="bankCode"
                           type="text"
@@ -564,15 +616,15 @@ export default function KYCVerification() {
                           readOnly
                           required
                           data-testid="input-bankCode"
-                          className="bg-muted"
+                          className="bg-white/5"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           Automatically filled when you select a bank
                         </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="verificationDoc">Verification Document</Label>
+                        <Label htmlFor="verificationDoc" className="text-white">Verification Document</Label>
                         <Input
                           id="verificationDoc"
                           type="file"
@@ -581,7 +633,7 @@ export default function KYCVerification() {
                           required
                           data-testid="input-verificationDoc"
                         />
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-400">
                           Upload a recent bank statement (max 5MB, image or PDF)
                         </p>
                       </div>
@@ -606,8 +658,8 @@ export default function KYCVerification() {
                 )}
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

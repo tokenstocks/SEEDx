@@ -17,6 +17,7 @@ import {
   treasuryPoolSnapshots,
   redemptionRequests,
   regeneratorWalletFundingRequests,
+  platformSettings,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
@@ -2955,6 +2956,100 @@ router.post("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
   } catch (error: any) {
     console.error("Create LP allocation error:", error);
     res.status(500).json({ error: "Failed to create LP allocation" });
+  }
+});
+
+/**
+ * GET /api/admin/settings/bank-account
+ * Get platform bank account details for fiat deposits
+ */
+router.get("/settings/bank-account", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const settingKeys = [
+      "bank_account_name",
+      "bank_name",
+      "bank_account_number",
+      "bank_routing_code",
+    ];
+
+    const settings = await db
+      .select()
+      .from(platformSettings)
+      .where(sql`${platformSettings.settingKey} IN (${sql.raw(settingKeys.map(() => '?').join(','))})`, ...settingKeys);
+
+    const bankAccount = {
+      accountName: settings.find(s => s.settingKey === "bank_account_name")?.settingValue || "",
+      bankName: settings.find(s => s.settingKey === "bank_name")?.settingValue || "",
+      accountNumber: settings.find(s => s.settingKey === "bank_account_number")?.settingValue || "",
+      routingCode: settings.find(s => s.settingKey === "bank_routing_code")?.settingValue || "",
+    };
+
+    res.json(bankAccount);
+  } catch (error: any) {
+    console.error("Get bank account settings error:", error);
+    res.status(500).json({ error: "Failed to get bank account settings" });
+  }
+});
+
+/**
+ * PUT /api/admin/settings/bank-account
+ * Update platform bank account details for fiat deposits
+ */
+router.put("/settings/bank-account", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { accountName, bankName, accountNumber, routingCode } = req.body;
+
+    if (!accountName || !bankName || !accountNumber) {
+      res.status(400).json({ error: "Account name, bank name, and account number are required" });
+      return;
+    }
+
+    const userId = req.userId;
+    const settingsToUpsert = [
+      { key: "bank_account_name", value: accountName, description: "Platform bank account name for fiat deposits" },
+      { key: "bank_name", value: bankName, description: "Bank name for fiat deposits" },
+      { key: "bank_account_number", value: accountNumber, description: "Bank account number for fiat deposits" },
+      { key: "bank_routing_code", value: routingCode || "", description: "Bank routing/sort code for fiat deposits" },
+    ];
+
+    for (const setting of settingsToUpsert) {
+      const existing = await db
+        .select()
+        .from(platformSettings)
+        .where(eq(platformSettings.settingKey, setting.key))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(platformSettings)
+          .set({
+            settingValue: setting.value,
+            updatedBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(platformSettings.settingKey, setting.key));
+      } else {
+        await db.insert(platformSettings).values({
+          settingKey: setting.key,
+          settingValue: setting.value,
+          description: setting.description,
+          updatedBy: userId,
+        });
+      }
+    }
+
+    res.json({
+      message: "Bank account settings updated successfully",
+      bankAccount: {
+        accountName,
+        bankName,
+        accountNumber,
+        routingCode: routingCode || "",
+      },
+    });
+  } catch (error: any) {
+    console.error("Update bank account settings error:", error);
+    res.status(500).json({ error: "Failed to update bank account settings" });
   }
 });
 

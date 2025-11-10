@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield } from "lucide-react";
+import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield, Settings } from "lucide-react";
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 import PlatformWallets from "@/pages/PlatformWallets";
@@ -274,6 +274,14 @@ export default function Admin() {
   const [teaserDocument, setTeaserDocument] = useState<File | null>(null);
   const [projectDocuments, setProjectDocuments] = useState<FileList | null>(null);
   const [allUsersData, setAllUsersData] = useState<{ users: User[] } | null>(null);
+  
+  // Bank account settings state
+  const [bankSettings, setBankSettings] = useState({
+    accountName: "",
+    bankName: "",
+    accountNumber: "",
+    routingCode: "",
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -322,6 +330,23 @@ export default function Admin() {
     queryKey: ["/api/admin/users?kycStatus=submitted"],
     enabled: !!user,
   });
+
+  const { data: bankAccountSettings } = useQuery<{
+    accountName: string;
+    bankName: string;
+    accountNumber: string;
+    routingCode: string;
+  }>({
+    queryKey: ["/api/admin/settings/bank-account"],
+    enabled: !!user,
+  });
+
+  // Sync bank account settings from API
+  useEffect(() => {
+    if (bankAccountSettings) {
+      setBankSettings(bankAccountSettings);
+    }
+  }, [bankAccountSettings]);
 
   const processDepositMutation = useMutation({
     mutationFn: async ({ id, action, approvedAmount, adminNotes }: any) => {
@@ -478,6 +503,26 @@ export default function Admin() {
     onError: (error: Error) => {
       toast({
         title: "Activation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveBankSettingsMutation = useMutation({
+    mutationFn: async (settings: typeof bankSettings) => {
+      return await apiRequest('PUT', '/api/admin/settings/bank-account', settings);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Saved",
+        description: "Bank account details have been updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/bank-account"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Save Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -693,7 +738,7 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-4 md:grid-cols-8">
+          <TabsList className="grid w-full md:w-auto grid-cols-5 md:grid-cols-9">
             <TabsTrigger value="admin-wallet" data-testid="tab-admin-wallet">My Wallet</TabsTrigger>
             <TabsTrigger value="platform" data-testid="tab-platform">Platform</TabsTrigger>
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
@@ -702,6 +747,10 @@ export default function Admin() {
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
             <TabsTrigger value="wallets" data-testid="tab-wallets">Wallets</TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-settings">
+              <Settings className="w-4 h-4 mr-1" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           {/* Admin Wallet Tab */}
@@ -1013,6 +1062,75 @@ export default function Admin() {
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">No wallets found</p>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Platform Settings</CardTitle>
+                <CardDescription>Manage bank account details for fiat deposits</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Bank Account for Fiat Deposits</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="accountName">Account Name</Label>
+                        <Input
+                          id="accountName"
+                          placeholder="SEEDx Platform"
+                          value={bankSettings.accountName}
+                          onChange={(e) => setBankSettings({ ...bankSettings, accountName: e.target.value })}
+                          data-testid="input-account-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bankName">Bank Name</Label>
+                        <Input
+                          id="bankName"
+                          placeholder="First Bank of Nigeria"
+                          value={bankSettings.bankName}
+                          onChange={(e) => setBankSettings({ ...bankSettings, bankName: e.target.value })}
+                          data-testid="input-bank-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="accountNumber">Account Number</Label>
+                        <Input
+                          id="accountNumber"
+                          placeholder="0123456789"
+                          value={bankSettings.accountNumber}
+                          onChange={(e) => setBankSettings({ ...bankSettings, accountNumber: e.target.value })}
+                          data-testid="input-account-number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="routingCode">Routing/Sort Code (Optional)</Label>
+                        <Input
+                          id="routingCode"
+                          placeholder="011"
+                          value={bankSettings.routingCode}
+                          onChange={(e) => setBankSettings({ ...bankSettings, routingCode: e.target.value })}
+                          data-testid="input-routing-code"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => saveBankSettingsMutation.mutate(bankSettings)}
+                      disabled={saveBankSettingsMutation.isPending || !bankSettings.accountName || !bankSettings.bankName || !bankSettings.accountNumber}
+                      data-testid="button-save-settings"
+                    >
+                      {saveBankSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

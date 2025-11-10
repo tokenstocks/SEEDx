@@ -13,6 +13,7 @@ import systemRoutes from "./routes/system";
 import marketplaceRoutes from "./routes/marketplace";
 import primerRoutes from "./routes/primer";
 import regeneratorRoutes from "./routes/regenerator";
+import settingsRoutes from "./routes/settings";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
@@ -47,6 +48,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register system routes (admin only)
   app.use("/api/system", systemRoutes);
+  
+  // Register platform settings routes (authenticated users)
+  app.use("/api/settings", settingsRoutes);
   
   // Register setup/verification routes
   app.use("/api/setup", setupRoutes);
