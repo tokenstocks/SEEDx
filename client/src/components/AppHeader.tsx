@@ -65,8 +65,8 @@ export default function AppHeader() {
             </Link>
           </div>
 
-          {/* Center/Right: Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1 flex-1 justify-end">
+          {/* Center: Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
             {navLinks.map((link) => (
               <Link 
                 key={link.href} 

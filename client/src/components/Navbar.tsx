@@ -20,7 +20,7 @@ export default function Navbar() {
             />
           </Link>
 
-          <div className="hidden md:flex items-center gap-1 flex-1 justify-end">
+          <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
             <Link href="/learn" data-testid="link-nav-learn">
               <div className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200">
                 Learn
