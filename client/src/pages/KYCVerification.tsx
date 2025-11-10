@@ -130,13 +130,14 @@ export default function KYCVerification() {
       await response.json();
       
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me/kyc"] });
 
       toast({
-        title: "KYC documents uploaded!",
-        description: "Your documents are being reviewed. You'll be notified once approved.",
+        title: "Documents Submitted Successfully!",
+        description: "Your documents are under review. This typically takes 1-2 business days.",
       });
 
-      setTimeout(() => setLocation("/dashboard"), 2000);
+      setTimeout(() => setLocation("/regenerator-profile"), 2000);
     } catch (error: any) {
       toast({
         title: "Upload failed",
