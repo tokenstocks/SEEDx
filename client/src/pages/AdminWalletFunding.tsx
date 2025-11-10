@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -31,29 +32,38 @@ export default function AdminWalletFunding() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
-  const { data: pendingRequests, isLoading: loadingPending } = useQuery<any[]>({
-    queryKey: ["/api/admin/wallet-funding", { status: "pending" }],
+  const { data: pendingRequestsData, isLoading: loadingPending } = useQuery<{ requests: any[] }>({
+    queryKey: ["/api/admin/wallet-funding-requests", { status: "pending" }],
   });
 
-  const { data: processedRequests, isLoading: loadingProcessed } = useQuery<any[]>({
-    queryKey: ["/api/admin/wallet-funding", { status: "processed" }],
+  const { data: approvedRequestsData, isLoading: loadingApproved } = useQuery<{ requests: any[] }>({
+    queryKey: ["/api/admin/wallet-funding-requests", { status: "approved" }],
   });
+
+  const { data: rejectedRequestsData, isLoading: loadingRejected } = useQuery<{ requests: any[] }>({
+    queryKey: ["/api/admin/wallet-funding-requests", { status: "rejected" }],
+  });
+
+  const pendingRequests = pendingRequestsData?.requests || [];
+  const approvedRequests = approvedRequestsData?.requests || [];
+  const rejectedRequests = rejectedRequestsData?.requests || [];
+  const processedRequests = [...approvedRequests, ...rejectedRequests];
 
   const approveMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      const response = await apiRequest("PATCH", `/api/admin/wallet-funding/${requestId}`, {
-        action: "approve",
-      });
+    mutationFn: async (requestId: string) => {
+      const response = await apiRequest("POST", `/api/admin/wallet-funding-requests/${requestId}/approve`, {});
       return response.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Wallet Activated",
-        description: data.txHash ? `TX: ${data.txHash.slice(0, 10)}...` : "Wallet successfully activated on Stellar",
+        title: "Wallet Activated Successfully",
+        description: data.txHashes?.length 
+          ? `${data.txHashes.length} transactions completed` 
+          : "Wallet activated with auto-managed XLM",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "pending" }] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "processed" }] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding-requests"] });
       setShowApprovalDialog(false);
       setSelectedRequest(null);
     },
@@ -67,21 +77,21 @@ export default function AdminWalletFunding() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      const response = await apiRequest("PATCH", `/api/admin/wallet-funding/${requestId}`, {
-        action: "reject",
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      const response = await apiRequest("POST", `/api/admin/wallet-funding-requests/${requestId}/reject`, {
+        rejectedReason: reason,
       });
       return response.json();
     },
     onSuccess: () => {
       toast({
         title: "Request Rejected",
-        description: "The user has been notified",
+        description: "The activation request has been declined",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "pending" }] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding", { status: "processed" }] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-funding-requests"] });
       setShowRejectionDialog(false);
       setSelectedRequest(null);
+      setRejectionReason("");
     },
     onError: (error: any) => {
       toast({
@@ -109,8 +119,17 @@ export default function AdminWalletFunding() {
   };
 
   const confirmRejection = () => {
-    if (selectedRequest) {
-      rejectMutation.mutate(selectedRequest.id);
+    if (selectedRequest && rejectionReason.trim()) {
+      rejectMutation.mutate({ 
+        requestId: selectedRequest.id, 
+        reason: rejectionReason.trim()
+      });
+    } else {
+      toast({
+        title: "Rejection reason required",
+        description: "Please provide a reason for rejecting this request",
+        variant: "destructive",
+      });
     }
   };
 
@@ -122,9 +141,9 @@ export default function AdminWalletFunding() {
     });
   };
 
-  const pendingCount = pendingRequests?.length || 0;
-  const approvedCount = processedRequests?.filter(r => r.status === "approved")?.length || 0;
-  const rejectedCount = processedRequests?.filter(r => r.status === "rejected")?.length || 0;
+  const pendingCount = pendingRequests.length;
+  const approvedCount = approvedRequests.length;
+  const rejectedCount = rejectedRequests.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
@@ -140,7 +159,7 @@ export default function AdminWalletFunding() {
               Wallet Activation Requests
             </h1>
             <p className="text-slate-400 mt-1">
-              Review and approve Stellar wallet funding requests from Regenerators
+              Approve wallet activations with auto-managed XLM (2.0 XLM gas per activation)
             </p>
           </div>
         </motion.div>
@@ -216,7 +235,7 @@ export default function AdminWalletFunding() {
               <CardHeader>
                 <CardTitle className="text-white">Pending Wallet Activation Requests</CardTitle>
                 <CardDescription className="text-slate-400">
-                  Approve requests to fund and activate wallets on the Stellar network
+                  Activate wallets on Stellar with auto-managed XLM for gas and reserves
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -245,34 +264,38 @@ export default function AdminWalletFunding() {
                             <TableCell>
                               <div>
                                 <p className="text-white font-medium" data-testid={`text-user-${request.id}`}>
-                                  {request.userEmail}
+                                  {request.userEmail || 'Unknown'}
                                 </p>
-                                <p className="text-xs text-slate-500">ID: {request.userId}</p>
+                                <p className="text-xs text-slate-500">
+                                  {request.userFirstName} {request.userLastName}
+                                </p>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <code className="text-xs text-blue-400 bg-blue-950/30 px-2 py-1 rounded">
-                                  {request.publicKey?.substring(0, 12)}...{request.publicKey?.substring(request.publicKey.length - 8)}
+                                  {request.walletPublicKey?.substring(0, 12)}...{request.walletPublicKey?.substring(request.walletPublicKey.length - 8)}
                                 </code>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => copyToClipboard(request.publicKey)}
-                                  className="h-6 w-6"
-                                  data-testid={`button-copy-${request.id}`}
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
+                                {request.walletPublicKey && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => copyToClipboard(request.walletPublicKey)}
+                                    className="h-6 w-6"
+                                    data-testid={`button-copy-${request.id}`}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
                               <div>
                                 <p className="text-white text-sm">
-                                  {new Date(request.requestedAt).toLocaleDateString()}
+                                  {new Date(request.createdAt).toLocaleDateString()}
                                 </p>
                                 <p className="text-xs text-slate-500">
-                                  {new Date(request.requestedAt).toLocaleTimeString()}
+                                  {new Date(request.createdAt).toLocaleTimeString()}
                                 </p>
                               </div>
                             </TableCell>
@@ -336,7 +359,7 @@ export default function AdminWalletFunding() {
                           <TableHead className="text-slate-300">Public Key</TableHead>
                           <TableHead className="text-slate-300">Status</TableHead>
                           <TableHead className="text-slate-300">Processed</TableHead>
-                          <TableHead className="text-slate-300">TX Hash</TableHead>
+                          <TableHead className="text-slate-300">TX Hashes</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -348,13 +371,15 @@ export default function AdminWalletFunding() {
                           >
                             <TableCell>
                               <div>
-                                <p className="text-white font-medium">{request.userEmail}</p>
-                                <p className="text-xs text-slate-500">ID: {request.userId}</p>
+                                <p className="text-white font-medium">{request.userEmail || 'Unknown'}</p>
+                                <p className="text-xs text-slate-500">
+                                  {request.userFirstName} {request.userLastName}
+                                </p>
                               </div>
                             </TableCell>
                             <TableCell>
                               <code className="text-xs text-blue-400 bg-blue-950/30 px-2 py-1 rounded">
-                                {request.publicKey?.substring(0, 12)}...{request.publicKey?.substring(request.publicKey.length - 8)}
+                                {request.walletPublicKey?.substring(0, 12)}...{request.walletPublicKey?.substring(request.walletPublicKey.length - 8)}
                               </code>
                             </TableCell>
                             <TableCell>
@@ -373,17 +398,25 @@ export default function AdminWalletFunding() {
                             <TableCell>
                               <div>
                                 <p className="text-white text-sm">
-                                  {new Date(request.processedAt || request.requestedAt).toLocaleDateString()}
+                                  {new Date(request.approvedAt || request.createdAt).toLocaleDateString()}
                                 </p>
                                 <p className="text-xs text-slate-500">
-                                  {new Date(request.processedAt || request.requestedAt).toLocaleTimeString()}
+                                  {new Date(request.approvedAt || request.createdAt).toLocaleTimeString()}
                                 </p>
                               </div>
                             </TableCell>
                             <TableCell>
-                              {request.txHash ? (
+                              {request.txHashes && request.txHashes.length > 0 ? (
+                                <div className="flex flex-col gap-1">
+                                  {request.txHashes.map((hash: string, idx: number) => (
+                                    <code key={idx} className="text-xs text-emerald-400 bg-emerald-950/30 px-2 py-1 rounded block">
+                                      {hash.substring(0, 12)}...
+                                    </code>
+                                  ))}
+                                </div>
+                              ) : request.txHash ? (
                                 <code className="text-xs text-emerald-400 bg-emerald-950/30 px-2 py-1 rounded">
-                                  {request.txHash.substring(0, 10)}...
+                                  {request.txHash.substring(0, 12)}...
                                 </code>
                               ) : (
                                 <span className="text-slate-500 text-xs">N/A</span>
@@ -413,26 +446,27 @@ export default function AdminWalletFunding() {
             <DialogHeader>
               <DialogTitle className="text-white">Approve Wallet Activation</DialogTitle>
               <DialogDescription className="text-slate-400">
-                This will fund the wallet with 1.5 XLM from the Operations wallet and activate it on the Stellar network.
+                This will activate the wallet on Stellar with auto-managed XLM (2.0 XLM for reserves + gas) and set up NGNTS/USDC trustlines.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">User Email</Label>
+                <Label className="text-slate-300">User</Label>
                 <p className="text-white font-medium" data-testid="text-approval-user">
-                  {selectedRequest?.userEmail}
+                  {selectedRequest?.userFirstName} {selectedRequest?.userLastName}
                 </p>
+                <p className="text-xs text-slate-500">{selectedRequest?.userEmail}</p>
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Public Key</Label>
+                <Label className="text-slate-300">Wallet Public Key</Label>
                 <code className="text-xs text-blue-400 bg-blue-950/30 px-3 py-2 rounded block break-all">
-                  {selectedRequest?.publicKey}
+                  {selectedRequest?.walletPublicKey}
                 </code>
               </div>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                 <p className="text-sm text-blue-300">
                   <AlertCircle className="w-4 h-4 inline mr-2" />
-                  This action will deduct 1.5 XLM from the Operations wallet balance.
+                  XLM is auto-managed as gas. This activation will provide 2.0 XLM from the Operations wallet.
                 </p>
               </div>
             </div>
@@ -474,20 +508,31 @@ export default function AdminWalletFunding() {
             <DialogHeader>
               <DialogTitle className="text-white">Reject Wallet Activation</DialogTitle>
               <DialogDescription className="text-slate-400">
-                This will decline the wallet funding request. The user can submit a new request later.
+                This will decline the wallet activation request. The user can submit a new request later.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">User Email</Label>
+                <Label className="text-slate-300">User</Label>
                 <p className="text-white font-medium" data-testid="text-rejection-user">
-                  {selectedRequest?.userEmail}
+                  {selectedRequest?.userFirstName} {selectedRequest?.userLastName}
                 </p>
+                <p className="text-xs text-slate-500">{selectedRequest?.userEmail}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Rejection Reason *</Label>
+                <Textarea
+                  placeholder="Enter a reason for rejecting this request..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="bg-slate-950 border-white/10 text-white"
+                  data-testid="textarea-rejection-reason"
+                />
               </div>
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
                 <p className="text-sm text-red-300">
                   <XCircle className="w-4 h-4 inline mr-2" />
-                  The user will be able to submit a new funding request after rejection.
+                  The user will be able to submit a new activation request after rejection.
                 </p>
               </div>
             </div>

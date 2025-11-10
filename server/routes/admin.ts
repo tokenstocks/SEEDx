@@ -3420,7 +3420,8 @@ router.get("/wallet-funding-requests", authenticate, requireAdmin, async (req, r
 
 /**
  * POST /api/admin/wallet-funding-requests/:id/approve
- * Approve a wallet funding request and execute Stellar operations (admin only)
+ * Approve a wallet activation request and execute Stellar operations (admin only)
+ * Note: XLM is auto-managed as gas - wallet gets minimal XLM for reserves
  */
 router.post("/wallet-funding-requests/:id/approve", authenticate, requireAdmin, async (req, res) => {
   try {
@@ -3428,7 +3429,7 @@ router.post("/wallet-funding-requests/:id/approve", authenticate, requireAdmin, 
     // @ts-ignore - userId is added by auth middleware
     const adminId = req.userId as string;
 
-    // Fetch the funding request with wallet details in a transaction
+    // Fetch the funding request with wallet details
     const [request] = await db
       .select({
         request: regeneratorWalletFundingRequests,
@@ -3440,7 +3441,7 @@ router.post("/wallet-funding-requests/:id/approve", authenticate, requireAdmin, 
       .limit(1);
 
     if (!request || !request.request) {
-      return res.status(404).json({ error: "Wallet funding request not found" });
+      return res.status(404).json({ error: "Wallet activation request not found" });
     }
 
     if (request.request.status !== "pending") {
@@ -3450,174 +3451,127 @@ router.post("/wallet-funding-requests/:id/approve", authenticate, requireAdmin, 
       });
     }
 
-    if (!request.wallet) {
-      return res.status(400).json({ error: "Associated wallet not found" });
+    if (!request.wallet || !request.wallet.cryptoWalletPublicKey) {
+      return res.status(400).json({ error: "Wallet not found or missing public key" });
     }
 
     const wallet = request.wallet;
     const fundingRequest = request.request;
-
-    // Determine if this is a first-time activation
     const isFirstTimeActivation = wallet.activationStatus !== "active";
 
-    // Calculate fees server-side (never trust client)
-    const { calculateWalletFundingBreakdown } = await import("../lib/walletFundingFees");
-    const feeData = await calculateWalletFundingBreakdown(
-      fundingRequest.amountRequested.toString(),
-      isFirstTimeActivation,
-      2 // Default: NGNTS + USDC trustlines
-    );
-
-    // Validate that requested amount covers fees
-    if (parseFloat(feeData.netAmountXLMString) <= 0) {
-      return res.status(400).json({ 
-        error: "Requested amount is insufficient to cover platform and gas fees",
-        details: {
-          requested: feeData.requestedAmountXLMString,
-          totalFees: feeData.feeBreakdown.totalFeesXLM,
-          minimumRequired: feeData.feeBreakdown.totalFeesXLM,
-        },
-      });
-    }
-
-    // Execute Stellar operations in sequence
+    // Auto-managed XLM amount (minimal for Stellar reserves + gas)
+    const activationAmount = "2.0"; // 2 XLM standard for Stellar activation
     const txHashes: string[] = [];
-    let error: string | null = null;
 
     try {
       if (isFirstTimeActivation) {
-        // Step 1: Create and fund account
-        console.log(`Creating and funding Stellar account for wallet ${wallet.id}...`);
+        console.log(`Activating wallet ${wallet.id} for user ${fundingRequest.requestedBy}...`);
         
-        // For testnet, use friendbot; for mainnet, transfer from operations wallet
-        if (isTestnet) {
-          // Friendbot activation (testnet only)
-          const friendbotResponse = await fetch(
-            `https://friendbot.stellar.org?addr=${wallet.cryptoWalletPublicKey}`
-          );
-          if (!friendbotResponse.ok) {
-            throw new Error("Friendbot activation failed");
-          }
-          txHashes.push("friendbot-activation");
-        } else {
-          // Production: Transfer from operations wallet
-          const activationTxHash = await createAndFundAccount(
-            wallet.cryptoWalletPublicKey!,
-            feeData.netAmountXLMString
-          );
-          txHashes.push(activationTxHash);
+        // Activate account with minimal XLM
+        const activationResult = await createAndFundAccount(
+          wallet.cryptoWalletPublicKey,
+          activationAmount
+        );
+        
+        if (!activationResult.success) {
+          throw new Error(activationResult.error || "Account activation failed");
+        }
+        
+        if (activationResult.txHash) {
+          txHashes.push(activationResult.txHash);
         }
 
-        // Step 2: Setup trustlines for NGNTS and USDC
+        // Setup trustlines for NGNTS and USDC
         console.log(`Setting up trustlines for wallet ${wallet.id}...`);
+        
         try {
           const ngntsTrustlineTxHash = await ensureTrustline(
-            wallet.cryptoWalletPublicKey!,
-            wallet.cryptoWalletSecretKeyEncrypted!,
+            wallet.cryptoWalletPublicKey,
+            wallet.cryptoWalletSecretEncrypted!,
             "NGNTS"
           );
           if (ngntsTrustlineTxHash !== "TRUSTLINE_EXISTS") {
             txHashes.push(ngntsTrustlineTxHash);
           }
         } catch (trustlineError: any) {
-          console.warn("NGNTS trustline setup warning:", trustlineError.message);
+          console.warn("NGNTS trustline warning:", trustlineError.message);
         }
 
         try {
           const usdcTrustlineTxHash = await ensureTrustline(
-            wallet.cryptoWalletPublicKey!,
-            wallet.cryptoWalletSecretKeyEncrypted!,
+            wallet.cryptoWalletPublicKey,
+            wallet.cryptoWalletSecretEncrypted!,
             "USDC"
           );
           if (usdcTrustlineTxHash !== "TRUSTLINE_EXISTS") {
             txHashes.push(usdcTrustlineTxHash);
           }
         } catch (trustlineError: any) {
-          console.warn("USDC trustline setup warning:", trustlineError.message);
+          console.warn("USDC trustline warning:", trustlineError.message);
         }
 
-        // For testnet, transfer the net amount from operations wallet after friendbot activation
-        if (isTestnet && parseFloat(feeData.netAmountXLMString) > 0) {
-          const fundingTxHash = await transferXLMFromOperationsWallet(
-            wallet.cryptoWalletPublicKey!,
-            feeData.netAmountXLMString,
-            `Wallet funding request ${fundingRequest.id}`
-          );
-          txHashes.push(fundingTxHash);
-        }
+        console.log(`✅ Wallet ${wallet.id} activated successfully`);
       } else {
-        // Subsequent funding: Just transfer XLM
-        console.log(`Transferring XLM to existing wallet ${wallet.id}...`);
-        const transferTxHash = await transferXLMFromOperationsWallet(
-          wallet.cryptoWalletPublicKey!,
-          feeData.netAmountXLMString,
-          `Wallet funding request ${fundingRequest.id}`
-        );
-        txHashes.push(transferTxHash);
+        return res.status(400).json({ 
+          error: "Wallet is already activated",
+          details: "This wallet has already been activated and does not need re-activation.",
+        });
       }
     } catch (stellarError: any) {
-      error = stellarError.message || "Stellar operation failed";
-      console.error("Stellar operation error:", stellarError);
+      const errorMsg = stellarError.message || "Stellar operation failed";
+      console.error("Wallet activation error:", stellarError);
       
-      // Rollback: Update request to failed status with partial progress
+      // Mark as rejected with error details
       await db
         .update(regeneratorWalletFundingRequests)
         .set({
           status: "rejected",
-          rejectedReason: `Stellar operation failed: ${error}. Partial progress: ${txHashes.length} transactions completed.`,
+          rejectedReason: `Activation failed: ${errorMsg}. Partial progress: ${txHashes.length} operations completed.`,
           txHashes: txHashes.length > 0 ? txHashes : null,
           updatedAt: new Date(),
         })
         .where(eq(regeneratorWalletFundingRequests.id, id));
 
       return res.status(500).json({ 
-        error: "Stellar operation failed",
-        details: error,
+        error: "Wallet activation failed",
+        details: errorMsg,
         partialProgress: txHashes,
       });
     }
 
     // Success: Update request and wallet status atomically
     await db.transaction(async (tx) => {
-      // Update funding request
       await tx
         .update(regeneratorWalletFundingRequests)
         .set({
           status: "approved",
           approvedBy: adminId,
           approvedAt: new Date(),
-          platformFee: feeData.platformFeeXLMString,
-          gasFee: feeData.gasFeeXLMString,
-          netAmount: feeData.netAmountXLMString,
-          feeBreakdown: feeData.feeBreakdown,
-          txHash: txHashes[txHashes.length - 1], // Last tx hash for backward compatibility
+          netAmount: activationAmount,
+          txHash: txHashes[txHashes.length - 1] || null,
           txHashes: txHashes,
           updatedAt: new Date(),
         })
         .where(eq(regeneratorWalletFundingRequests.id, id));
 
-      // Update wallet activation status if first-time
-      if (isFirstTimeActivation) {
-        await tx
-          .update(wallets)
-          .set({
-            activationStatus: "active",
-            activationApprovedAt: new Date(),
-          })
-          .where(eq(wallets.id, wallet.id));
-      }
+      await tx
+        .update(wallets)
+        .set({
+          activationStatus: "active",
+          activationApprovedAt: new Date(),
+        })
+        .where(eq(wallets.id, wallet.id));
     });
 
     res.json({
-      message: "Wallet funding request approved successfully",
+      message: "Wallet activated successfully",
       txHashes,
-      feeBreakdown: feeData.feeBreakdown,
-      netAmountFunded: feeData.netAmountXLMString,
+      activationAmount,
     });
   } catch (error: any) {
-    console.error("Approve wallet funding request error:", error);
+    console.error("Approve wallet activation error:", error);
     res.status(500).json({ 
-      error: "Failed to approve wallet funding request",
+      error: "Failed to approve wallet activation",
       details: error.message,
     });
   }

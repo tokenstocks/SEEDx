@@ -17,6 +17,7 @@ import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCirc
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 import PlatformWallets from "@/pages/PlatformWallets";
+import AdminWalletFunding from "@/pages/AdminWalletFunding";
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -781,13 +782,14 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-5 md:grid-cols-10">
+          <TabsList className="grid w-full md:w-auto grid-cols-5 md:grid-cols-11">
             <TabsTrigger value="admin-wallet" data-testid="tab-admin-wallet">My Wallet</TabsTrigger>
             <TabsTrigger value="platform" data-testid="tab-platform">Platform</TabsTrigger>
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
             <TabsTrigger value="bank-deposits" data-testid="tab-bank-deposits">Bank Deposits</TabsTrigger>
+            <TabsTrigger value="wallet-activation" data-testid="tab-wallet-activation">Wallet Activation</TabsTrigger>
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
             <TabsTrigger value="wallets" data-testid="tab-wallets">Wallets</TabsTrigger>
@@ -916,6 +918,11 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Wallet Activation Tab */}
+          <TabsContent value="wallet-activation">
+            <AdminWalletFunding />
           </TabsContent>
 
           {/* Projects Tab */}
