@@ -3,8 +3,10 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Menu, X, Fuel } from "lucide-react";
+import { LogOut, Menu, X, Fuel, ChevronDown, Settings as SettingsIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
+import MembershipCard from "@/components/MembershipCard";
 
 interface WalletBalances {
   activated: boolean;
@@ -19,6 +21,7 @@ interface WalletBalances {
 
 export default function UnifiedHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMembershipOpen, setIsMembershipOpen] = useState(false);
   const [, setLocation] = useLocation();
   const [location] = useLocation();
 
@@ -107,6 +110,12 @@ export default function UnifiedHeader() {
     return num.toFixed(2);
   };
 
+  const getInitials = () => {
+    const first = user.firstName?.charAt(0) || "";
+    const last = user.lastName?.charAt(0) || "";
+    return (first + last).toUpperCase();
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4">
@@ -146,7 +155,7 @@ export default function UnifiedHeader() {
             ))}
           </div>
 
-          {/* Right: Wallet Balance Badges + Logout */}
+          {/* Right: Wallet Balance Badges + Member Account */}
           <div className="hidden md:flex items-center gap-2">
             {showWalletIndicators && (
               <>
@@ -175,16 +184,61 @@ export default function UnifiedHeader() {
               </>
             )}
             
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleLogout}
-              className="bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 transition-all duration-200"
-              data-testid="button-logout"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            {/* Member Account Dropdown */}
+            <Popover open={isMembershipOpen} onOpenChange={setIsMembershipOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
+                  data-testid="button-member-account"
+                >
+                  <div className="w-7 h-7 rounded-md bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center">
+                    <span className="text-xs font-bold text-white">{getInitials()}</span>
+                  </div>
+                  <span className="text-sm font-medium text-white">{user.firstName}</span>
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-auto p-0 bg-transparent border-0 shadow-none" 
+                align="end"
+                sideOffset={8}
+                data-testid="popover-membership-card"
+              >
+                <div className="space-y-3">
+                  <MembershipCard 
+                    user={user}
+                    walletActivated={walletData?.activated}
+                    activationStatus={walletData?.activationStatus}
+                  />
+                  {/* Quick Actions */}
+                  <div className="flex flex-col gap-2 p-3 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl">
+                    <Link href={getSettingsPath()}>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start text-slate-300 hover:text-white hover:bg-white/10"
+                        onClick={() => setIsMembershipOpen(false)}
+                        data-testid="button-settings"
+                      >
+                        <SettingsIcon className="w-4 h-4 mr-2" />
+                        Account Settings
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-slate-300 hover:text-white hover:bg-white/10"
+                      onClick={() => {
+                        setIsMembershipOpen(false);
+                        handleLogout();
+                      }}
+                      data-testid="button-logout"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Mobile Menu Button */}
@@ -200,10 +254,31 @@ export default function UnifiedHeader() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-white/10" data-testid="mobile-menu">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-4">
+              {/* Member Identity Card - Compact Version */}
+              <div className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-white/10 rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center">
+                    <span className="text-xl font-bold text-white">{getInitials()}</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-white" data-testid="text-mobile-member-name">
+                      {user.firstName} {user.lastName}
+                    </h3>
+                    <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                  <span className="text-xs text-slate-400">Member ID</span>
+                  <span className="text-xs font-mono font-semibold text-white">
+                    SDX-{user.id?.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
               {/* Wallet Balances */}
               {showWalletIndicators && (
-                <div className="flex flex-wrap items-center gap-2 pb-4 mb-4 border-b border-white/10">
+                <div className="flex flex-wrap items-center gap-2 pb-4 border-b border-white/10">
                   <Badge
                     variant="outline"
                     className="bg-amber-950/30 border-amber-500/30 text-amber-400 px-2 py-1 gap-1"
@@ -246,7 +321,20 @@ export default function UnifiedHeader() {
                   </div>
                 </Link>
               ))}
-              <div className="pt-2 mt-2 border-t border-white/10">
+              
+              {/* Actions */}
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                <Link href={getSettingsPath()}>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-slate-400 hover:text-white hover:bg-white/5"
+                    onClick={() => setIsMenuOpen(false)}
+                    data-testid="button-mobile-settings"
+                  >
+                    <SettingsIcon className="w-4 h-4 mr-2" />
+                    Account Settings
+                  </Button>
+                </Link>
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start text-slate-400 hover:text-white hover:bg-white/5" 
