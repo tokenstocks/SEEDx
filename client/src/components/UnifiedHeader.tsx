@@ -24,10 +24,11 @@ export default function UnifiedHeader() {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "admin";
-  const isPrimer = user?.role === "primer";
-  const isRegenerator = user?.role === "regenerator";
+  const isPrimer = Boolean(user?.isPrimer);
+  const isLpInvestor = Boolean(user?.isLpInvestor);
+  const isRegenerator = !isPrimer && !isLpInvestor && !isAdmin && !!user?.email; // Regular users are regenerators
 
-  console.log('UnifiedHeader - User role:', user?.role, { isAdmin, isPrimer, isRegenerator });
+  console.log('UnifiedHeader - User data:', { role: user?.role, isPrimer: user?.isPrimer, isLpInvestor: user?.isLpInvestor, computed: { isAdmin, isPrimer, isLpInvestor, isRegenerator } });
 
   // Fetch wallet balances (only for regenerators, others get placeholder data)
   const { data: walletData } = useQuery<WalletBalances>({
@@ -66,9 +67,9 @@ export default function UnifiedHeader() {
   };
 
   const getSettingsPath = () => {
-    const path = isPrimer ? "/primer-profile" : isRegenerator ? "/regenerator-profile" : "/profile";
-    console.log('UnifiedHeader - getSettingsPath:', { isPrimer, isRegenerator, path });
-    return path;
+    if (isPrimer) return "/primer-profile";
+    if (isRegenerator) return "/regenerator-profile";
+    return "/profile"; // Fallback for users without a specific role
   };
 
   // Role-based navigation links
