@@ -3367,4 +3367,333 @@ router.post("/bank-deposits/:id/reject", authenticate, requireAdmin, async (req,
   }
 });
 
+/**
+ * GET /api/admin/wallet-funding-requests
+ * List wallet funding requests with optional status filter (admin only)
+ */
+router.get("/wallet-funding-requests", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    let queryBuilder = db
+      .select({
+        id: regeneratorWalletFundingRequests.id,
+        walletId: regeneratorWalletFundingRequests.walletId,
+        requestedBy: regeneratorWalletFundingRequests.requestedBy,
+        amountRequested: regeneratorWalletFundingRequests.amountRequested,
+        currency: regeneratorWalletFundingRequests.currency,
+        netAmount: regeneratorWalletFundingRequests.netAmount,
+        platformFee: regeneratorWalletFundingRequests.platformFee,
+        gasFee: regeneratorWalletFundingRequests.gasFee,
+        status: regeneratorWalletFundingRequests.status,
+        approvedBy: regeneratorWalletFundingRequests.approvedBy,
+        approvedAt: regeneratorWalletFundingRequests.approvedAt,
+        rejectedReason: regeneratorWalletFundingRequests.rejectedReason,
+        txHash: regeneratorWalletFundingRequests.txHash,
+        txHashes: regeneratorWalletFundingRequests.txHashes,
+        feeBreakdown: regeneratorWalletFundingRequests.feeBreakdown,
+        notes: regeneratorWalletFundingRequests.notes,
+        createdAt: regeneratorWalletFundingRequests.createdAt,
+        updatedAt: regeneratorWalletFundingRequests.updatedAt,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        walletPublicKey: wallets.cryptoWalletPublicKey,
+        walletActivationStatus: wallets.activationStatus,
+      })
+      .from(regeneratorWalletFundingRequests)
+      .leftJoin(users, eq(regeneratorWalletFundingRequests.requestedBy, users.id))
+      .leftJoin(wallets, eq(regeneratorWalletFundingRequests.walletId, wallets.id));
+
+    if (status && typeof status === "string") {
+      queryBuilder = queryBuilder.where(eq(regeneratorWalletFundingRequests.status, status as "pending" | "approved" | "rejected"));
+    }
+
+    const requests = await queryBuilder.orderBy(desc(regeneratorWalletFundingRequests.createdAt));
+
+    res.json({ requests });
+  } catch (error: any) {
+    console.error("List wallet funding requests error:", error);
+    res.status(500).json({ error: "Failed to fetch wallet funding requests" });
+  }
+});
+
+/**
+ * POST /api/admin/wallet-funding-requests/:id/approve
+ * Approve a wallet funding request and execute Stellar operations (admin only)
+ */
+router.post("/wallet-funding-requests/:id/approve", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    // @ts-ignore - userId is added by auth middleware
+    const adminId = req.userId as string;
+
+    // Fetch the funding request with wallet details in a transaction
+    const [request] = await db
+      .select({
+        request: regeneratorWalletFundingRequests,
+        wallet: wallets,
+      })
+      .from(regeneratorWalletFundingRequests)
+      .leftJoin(wallets, eq(regeneratorWalletFundingRequests.walletId, wallets.id))
+      .where(eq(regeneratorWalletFundingRequests.id, id))
+      .limit(1);
+
+    if (!request || !request.request) {
+      return res.status(404).json({ error: "Wallet funding request not found" });
+    }
+
+    if (request.request.status !== "pending") {
+      return res.status(400).json({ 
+        error: "Request has already been processed",
+        currentStatus: request.request.status,
+      });
+    }
+
+    if (!request.wallet) {
+      return res.status(400).json({ error: "Associated wallet not found" });
+    }
+
+    const wallet = request.wallet;
+    const fundingRequest = request.request;
+
+    // Determine if this is a first-time activation
+    const isFirstTimeActivation = wallet.activationStatus !== "active";
+
+    // Calculate fees server-side (never trust client)
+    const { calculateWalletFundingBreakdown } = await import("../lib/walletFundingFees");
+    const feeData = await calculateWalletFundingBreakdown(
+      fundingRequest.amountRequested.toString(),
+      isFirstTimeActivation,
+      2 // Default: NGNTS + USDC trustlines
+    );
+
+    // Validate that requested amount covers fees
+    if (parseFloat(feeData.netAmountXLMString) <= 0) {
+      return res.status(400).json({ 
+        error: "Requested amount is insufficient to cover platform and gas fees",
+        details: {
+          requested: feeData.requestedAmountXLMString,
+          totalFees: feeData.feeBreakdown.totalFeesXLM,
+          minimumRequired: feeData.feeBreakdown.totalFeesXLM,
+        },
+      });
+    }
+
+    // Execute Stellar operations in sequence
+    const txHashes: string[] = [];
+    let error: string | null = null;
+
+    try {
+      if (isFirstTimeActivation) {
+        // Step 1: Create and fund account
+        console.log(`Creating and funding Stellar account for wallet ${wallet.id}...`);
+        
+        // For testnet, use friendbot; for mainnet, transfer from operations wallet
+        if (isTestnet) {
+          // Friendbot activation (testnet only)
+          const friendbotResponse = await fetch(
+            `https://friendbot.stellar.org?addr=${wallet.cryptoWalletPublicKey}`
+          );
+          if (!friendbotResponse.ok) {
+            throw new Error("Friendbot activation failed");
+          }
+          txHashes.push("friendbot-activation");
+        } else {
+          // Production: Transfer from operations wallet
+          const activationTxHash = await createAndFundAccount(
+            wallet.cryptoWalletPublicKey!,
+            feeData.netAmountXLMString
+          );
+          txHashes.push(activationTxHash);
+        }
+
+        // Step 2: Setup trustlines for NGNTS and USDC
+        console.log(`Setting up trustlines for wallet ${wallet.id}...`);
+        try {
+          const ngntsTrustlineTxHash = await ensureTrustline(
+            wallet.cryptoWalletPublicKey!,
+            wallet.cryptoWalletSecretKeyEncrypted!,
+            "NGNTS"
+          );
+          if (ngntsTrustlineTxHash !== "TRUSTLINE_EXISTS") {
+            txHashes.push(ngntsTrustlineTxHash);
+          }
+        } catch (trustlineError: any) {
+          console.warn("NGNTS trustline setup warning:", trustlineError.message);
+        }
+
+        try {
+          const usdcTrustlineTxHash = await ensureTrustline(
+            wallet.cryptoWalletPublicKey!,
+            wallet.cryptoWalletSecretKeyEncrypted!,
+            "USDC"
+          );
+          if (usdcTrustlineTxHash !== "TRUSTLINE_EXISTS") {
+            txHashes.push(usdcTrustlineTxHash);
+          }
+        } catch (trustlineError: any) {
+          console.warn("USDC trustline setup warning:", trustlineError.message);
+        }
+
+        // For testnet, transfer the net amount from operations wallet after friendbot activation
+        if (isTestnet && parseFloat(feeData.netAmountXLMString) > 0) {
+          const fundingTxHash = await transferXLMFromOperationsWallet(
+            wallet.cryptoWalletPublicKey!,
+            feeData.netAmountXLMString,
+            `Wallet funding request ${fundingRequest.id}`
+          );
+          txHashes.push(fundingTxHash);
+        }
+      } else {
+        // Subsequent funding: Just transfer XLM
+        console.log(`Transferring XLM to existing wallet ${wallet.id}...`);
+        const transferTxHash = await transferXLMFromOperationsWallet(
+          wallet.cryptoWalletPublicKey!,
+          feeData.netAmountXLMString,
+          `Wallet funding request ${fundingRequest.id}`
+        );
+        txHashes.push(transferTxHash);
+      }
+    } catch (stellarError: any) {
+      error = stellarError.message || "Stellar operation failed";
+      console.error("Stellar operation error:", stellarError);
+      
+      // Rollback: Update request to failed status with partial progress
+      await db
+        .update(regeneratorWalletFundingRequests)
+        .set({
+          status: "rejected",
+          rejectedReason: `Stellar operation failed: ${error}. Partial progress: ${txHashes.length} transactions completed.`,
+          txHashes: txHashes.length > 0 ? txHashes : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(regeneratorWalletFundingRequests.id, id));
+
+      return res.status(500).json({ 
+        error: "Stellar operation failed",
+        details: error,
+        partialProgress: txHashes,
+      });
+    }
+
+    // Success: Update request and wallet status atomically
+    await db.transaction(async (tx) => {
+      // Update funding request
+      await tx
+        .update(regeneratorWalletFundingRequests)
+        .set({
+          status: "approved",
+          approvedBy: adminId,
+          approvedAt: new Date(),
+          platformFee: feeData.platformFeeXLMString,
+          gasFee: feeData.gasFeeXLMString,
+          netAmount: feeData.netAmountXLMString,
+          feeBreakdown: feeData.feeBreakdown,
+          txHash: txHashes[txHashes.length - 1], // Last tx hash for backward compatibility
+          txHashes: txHashes,
+          updatedAt: new Date(),
+        })
+        .where(eq(regeneratorWalletFundingRequests.id, id));
+
+      // Update wallet activation status if first-time
+      if (isFirstTimeActivation) {
+        await tx
+          .update(wallets)
+          .set({
+            activationStatus: "active",
+            activationApprovedAt: new Date(),
+          })
+          .where(eq(wallets.id, wallet.id));
+      }
+    });
+
+    res.json({
+      message: "Wallet funding request approved successfully",
+      txHashes,
+      feeBreakdown: feeData.feeBreakdown,
+      netAmountFunded: feeData.netAmountXLMString,
+    });
+  } catch (error: any) {
+    console.error("Approve wallet funding request error:", error);
+    res.status(500).json({ 
+      error: "Failed to approve wallet funding request",
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/admin/wallet-funding-requests/:id/reject
+ * Reject a wallet funding request (admin only)
+ */
+router.post("/wallet-funding-requests/:id/reject", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rejectedReason } = req.body;
+
+    if (!rejectedReason || typeof rejectedReason !== "string") {
+      return res.status(400).json({ error: "Rejection reason is required" });
+    }
+
+    // Fetch the funding request
+    const [fundingRequest] = await db
+      .select()
+      .from(regeneratorWalletFundingRequests)
+      .where(eq(regeneratorWalletFundingRequests.id, id))
+      .limit(1);
+
+    if (!fundingRequest) {
+      return res.status(404).json({ error: "Wallet funding request not found" });
+    }
+
+    if (fundingRequest.status !== "pending") {
+      return res.status(400).json({ 
+        error: "Request has already been processed",
+        currentStatus: fundingRequest.status,
+      });
+    }
+
+    // Update request and potentially revert wallet status atomically
+    await db.transaction(async (tx) => {
+      // Update funding request status
+      await tx
+        .update(regeneratorWalletFundingRequests)
+        .set({
+          status: "rejected",
+          rejectedReason,
+          updatedAt: new Date(),
+        })
+        .where(eq(regeneratorWalletFundingRequests.id, id));
+
+      // Revert wallet activation status if it was pending
+      const [wallet] = await tx
+        .select()
+        .from(wallets)
+        .where(eq(wallets.id, fundingRequest.walletId))
+        .limit(1);
+
+      if (wallet && wallet.activationStatus === "pending") {
+        await tx
+          .update(wallets)
+          .set({
+            activationStatus: "not_activated",
+            activationRequestedAt: null,
+          })
+          .where(eq(wallets.id, wallet.id));
+      }
+    });
+
+    res.json({ 
+      message: "Wallet funding request rejected successfully",
+    });
+  } catch (error: any) {
+    console.error("Reject wallet funding request error:", error);
+    res.status(500).json({ 
+      error: "Failed to reject wallet funding request",
+      details: error.message,
+    });
+  }
+});
+
 export default router;

@@ -483,13 +483,29 @@ export const regeneratorWalletFundingRequests = pgTable("regenerator_wallet_fund
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   walletId: uuid("wallet_id").notNull().references(() => wallets.id, { onDelete: "cascade" }),
   requestedBy: uuid("requested_by").notNull().references(() => users.id, { onDelete: "cascade" }),
-  amountRequested: decimal("amount_requested", { precision: 18, scale: 6 }).notNull().default("2.0"),
+  amountRequested: decimal("amount_requested", { precision: 18, scale: 7 }).notNull().default("2.0000000"),
   currency: currencyEnum("currency").notNull().default("XLM"),
+  netAmount: decimal("net_amount", { precision: 18, scale: 7 }),
+  platformFee: decimal("platform_fee", { precision: 18, scale: 7 }).notNull().default("0.0000000"),
+  gasFee: decimal("gas_fee", { precision: 18, scale: 7 }).notNull().default("0.0000000"),
   status: walletFundingRequestStatusEnum("status").notNull().default("pending"),
   approvedBy: uuid("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   rejectedReason: text("rejected_reason"),
   txHash: text("tx_hash"),
+  txHashes: json("tx_hashes").$type<string[]>(),
+  feeBreakdown: json("fee_breakdown").$type<{
+    platformFeeXLM: string;
+    platformFeeNGN: string;
+    gasFeeXLM: string;
+    gasFeeNGN: string;
+    totalFeesXLM: string;
+    totalFeesNGN: string;
+    netAmountXLM: string;
+    netAmountNGN: string;
+    xlmNgnRate: string;
+    isFirstTimeActivation: boolean;
+  }>(),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
