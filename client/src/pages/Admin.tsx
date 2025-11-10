@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield, Settings } from "lucide-react";
+import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield, Settings, LogOut } from "lucide-react";
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 import PlatformWallets from "@/pages/PlatformWallets";
@@ -604,6 +604,12 @@ export default function Admin() {
     return `₦${parseFloat(amount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setLocation("/login");
+  };
+
   if (!user) return null;
 
   return (
@@ -623,12 +629,22 @@ export default function Admin() {
               <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
               <p className="text-muted-foreground">Manage platform operations</p>
             </div>
-            <Link href="/admin/onchain-verification">
-              <Button variant="outline" data-testid="button-onchain-verification">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                On-Chain Verification
+            <div className="flex items-center gap-2">
+              <Link href="/admin/onchain-verification">
+                <Button variant="outline" data-testid="button-onchain-verification">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  On-Chain Verification
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                data-testid="button-admin-logout"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
               </Button>
-            </Link>
+            </div>
           </div>
         </div>
 
