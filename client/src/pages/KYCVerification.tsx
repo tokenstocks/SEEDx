@@ -273,12 +273,14 @@ export default function KYCVerification() {
 
   if (!user) return null;
 
+  const dashboardPath = user.role === "primer" ? "/primer-dashboard" : "/regenerator-dashboard";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="mb-8">
           <Link
-            href="/dashboard"
+            href={dashboardPath}
             className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
             data-testid="link-back"
           >
