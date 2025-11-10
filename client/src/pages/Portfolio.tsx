@@ -200,7 +200,7 @@ export default function Portfolio() {
           className="mb-8"
         >
           <Link
-            href="/dashboard"
+            href="/regenerator-dashboard"
             className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6"
             data-testid="link-back"
           >

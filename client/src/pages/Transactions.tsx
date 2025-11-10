@@ -89,8 +89,8 @@ export default function Transactions() {
       <div className="max-w-5xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            href="/regenerator-dashboard"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />

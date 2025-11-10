@@ -7,7 +7,6 @@ import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Browse from "@/pages/Browse";
-import Dashboard from "@/pages/Dashboard";
 import About from "@/pages/About";
 import Learn from "@/pages/Learn";
 import Platform from "@/pages/Platform";
@@ -46,7 +45,6 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/browse" component={Browse} />
-      <Route path="/dashboard" component={Dashboard} />
       <Route path="/kyc" component={KYCVerification} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectDetail} />
