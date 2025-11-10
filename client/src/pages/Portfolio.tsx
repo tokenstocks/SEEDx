@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import type { RedemptionRequest } from "@/types/phase4";
-import RegeneratorHeader from "@/components/RegeneratorHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { motion, useReducedMotion } from "framer-motion";
 
 interface TimelineEvent {
@@ -444,7 +444,7 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <RegeneratorHeader />
+      <UnifiedHeader />
       <div className="max-w-7xl mx-auto p-4 py-8">
         {/* Header Section */}
         <motion.div 

@@ -15,7 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import PrimerHeader from "@/components/PrimerHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { useLocation } from "wouter";
 
 export default function PrimerProfile() {
@@ -64,7 +64,7 @@ export default function PrimerProfile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <PrimerHeader />
+      <UnifiedHeader />
 
       <div className="container mx-auto p-6 space-y-6">
         {/* Page Header */}

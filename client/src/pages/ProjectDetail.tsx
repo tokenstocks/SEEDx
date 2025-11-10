@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink, History, Leaf } from "lucide-react";
 import { Link } from "wouter";
 import type { NavEntry } from "@/types/phase4";
-import AppHeader from "@/components/AppHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { motion } from "framer-motion";
 
 interface Project {
@@ -276,7 +276,7 @@ export default function ProjectDetail() {
   if (isLoading || !project) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <AppHeader />
+        <UnifiedHeader />
         <div className="max-w-7xl mx-auto px-4 py-8">
           <Skeleton className="h-8 w-32 mb-8 bg-white/10" />
           <Skeleton className="h-64 md:h-96 w-full mb-6 bg-white/10 rounded-2xl" />
@@ -298,7 +298,7 @@ export default function ProjectDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <AppHeader />
+      <UnifiedHeader />
       
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Breadcrumb */}

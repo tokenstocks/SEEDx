@@ -32,7 +32,7 @@ import {
   Building2,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import RegeneratorHeader from "@/components/RegeneratorHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -136,7 +136,7 @@ export default function RegeneratorProfile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <RegeneratorHeader />
+      <UnifiedHeader />
 
       <div className="container mx-auto p-6 space-y-6">
         {/* Page Header */}

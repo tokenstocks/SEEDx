@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { TrendingUp, MapPin, Calendar, Search, Leaf, Sparkles } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { motion } from "framer-motion";
 
 interface Project {
@@ -64,7 +64,7 @@ export default function Projects() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <AppHeader />
+      <UnifiedHeader />
       
       {/* Hero Header */}
       <div className="relative border-b border-white/10 overflow-hidden">

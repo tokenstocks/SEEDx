@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft, TrendingUp, DollarSign, Clock } from "lucide-react";
 import { Link } from "wouter";
-import RegeneratorHeader from "@/components/RegeneratorHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { motion, useReducedMotion } from "framer-motion";
 
 interface Transaction {
@@ -87,7 +87,7 @@ export default function Transactions() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <RegeneratorHeader />
+      <UnifiedHeader />
       <div className="max-w-5xl mx-auto p-4 py-8 space-y-6">
         {/* Header Section */}
         <motion.div

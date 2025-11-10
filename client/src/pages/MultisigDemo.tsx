@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import AppHeader from "@/components/AppHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { MultisigProgress, PendingApprovalsList } from "@/components/MultisigInterface";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -73,7 +73,7 @@ export default function MultisigDemo() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <AppHeader />
+      <UnifiedHeader />
       
       <div className="max-w-7xl mx-auto p-4 py-8">
         {/* Header */}

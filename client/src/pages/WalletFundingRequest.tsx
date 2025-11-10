@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
-import RegeneratorHeader from "@/components/RegeneratorHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,7 +57,7 @@ export default function WalletFundingRequest() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <RegeneratorHeader />
+      <UnifiedHeader />
 
       <div className="container mx-auto p-6 max-w-3xl">
         {/* Back Button */}

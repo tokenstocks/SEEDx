@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import PrimerContributionForm from "@/components/PrimerContributionForm";
-import PrimerHeader from "@/components/PrimerHeader";
+import UnifiedHeader from "@/components/UnifiedHeader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -95,7 +95,7 @@ export default function PrimerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <PrimerHeader />
+      <UnifiedHeader />
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <motion.div
