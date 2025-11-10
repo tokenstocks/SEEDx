@@ -1065,14 +1065,26 @@ export const insertRegeneratorBankDepositSchema = createInsertSchema(regenerator
 });
 
 export const createBankDepositRequestSchema = z.object({
-  amountNGN: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
-  proofUrl: z.string().url("Proof URL must be a valid URL"),
+  amountNGN: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal with up to 2 decimal places"),
+  notes: z.string().optional(),
 });
 
 export const approveBankDepositSchema = z.object({
   action: z.enum(["approve", "reject"]),
   rejectedReason: z.string().optional(),
 });
+
+// Bank deposit fee preview response type
+export type BankDepositFeePreview = {
+  amountNGN: number;
+  platformFee: number;
+  platformFeePercent: number;
+  gasFeeXLM: number;
+  gasFeeNGN: number;
+  xlmNgnRate: number;
+  totalFeesNGN: number;
+  ngntsAmount: number;
+};
 
 // Types
 export type User = typeof users.$inferSelect;

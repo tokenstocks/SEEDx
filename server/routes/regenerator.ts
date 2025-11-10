@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import multer from "multer";
 import { db } from "../db";
 import {
   users,
@@ -9,10 +10,16 @@ import {
   wallets,
   regeneratorWalletFundingRequests,
   createWalletFundingRequestSchema,
+  regeneratorBankDeposits,
+  createBankDepositRequestSchema,
+  type BankDepositFeePreview,
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
 import { eq, and, sql, desc, or } from "drizzle-orm";
 import { horizonServer } from "../lib/stellarConfig";
+import { calculateDepositBreakdown } from "../lib/depositFees";
+import { generateBankReference } from "../lib/referenceGenerator";
+import { uploadFile } from "../lib/supabase";
 
 const router = Router();
 
@@ -517,5 +524,159 @@ router.get("/wallet/balances", authMiddleware, regeneratorMiddleware, async (req
     res.status(500).json({ error: "Failed to get wallet balances" });
   }
 });
+
+/**
+ * Multer configuration for deposit proof uploads
+ */
+const depositUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only JPEG, PNG, and PDF are allowed."));
+    }
+  },
+});
+
+/**
+ * POST /api/regenerator/bank-deposits/preview
+ * Preview fees for a bank deposit amount
+ */
+router.post("/bank-deposits/preview", authMiddleware, regeneratorMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { amountNGN } = req.body;
+
+    if (!amountNGN || isNaN(parseFloat(amountNGN))) {
+      res.status(400).json({ error: "Valid amount required" });
+      return;
+    }
+
+    const amount = parseFloat(amountNGN);
+    if (amount <= 0) {
+      res.status(400).json({ error: "Amount must be greater than 0" });
+      return;
+    }
+
+    // Calculate fee breakdown with live exchange rates
+    const breakdown = await calculateDepositBreakdown(amount);
+
+    const preview: BankDepositFeePreview = {
+      amountNGN: breakdown.amountNGN,
+      platformFee: breakdown.platformFee,
+      platformFeePercent: breakdown.platformFeePercent,
+      gasFeeXLM: breakdown.gasFeeXLM,
+      gasFeeNGN: breakdown.gasFeeNGN,
+      xlmNgnRate: breakdown.xlmNgnRate,
+      totalFeesNGN: breakdown.totalFeesNGN,
+      ngntsAmount: breakdown.ngntsAmount,
+    };
+
+    res.json(preview);
+  } catch (error: any) {
+    console.error("Bank deposit preview error:", error);
+    res.status(500).json({ error: "Failed to calculate fee preview" });
+  }
+});
+
+/**
+ * POST /api/regenerator/bank-deposits
+ * Create a new bank deposit request
+ */
+router.post(
+  "/bank-deposits",
+  authMiddleware,
+  regeneratorMiddleware,
+  depositUpload.single("proof"),
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      // Validate request body
+      const validation = createBankDepositRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        res.status(400).json({ error: "Invalid request data", details: validation.error.errors });
+        return;
+      }
+
+      const { amountNGN, notes } = validation.data;
+      const userId = req.user.userId;
+
+      // Check for uploaded proof
+      if (!req.file) {
+        res.status(400).json({ error: "Proof of payment is required" });
+        return;
+      }
+
+      // Calculate fees
+      const amount = parseFloat(amountNGN);
+      const breakdown = await calculateDepositBreakdown(amount);
+
+      // Upload proof to Supabase
+      let proofUrl: string;
+      try {
+        const file = req.file;
+        const path = `${userId}/deposit-proof-${Date.now()}.${file.mimetype.split("/")[1]}`;
+        proofUrl = await uploadFile("bank-deposits", path, file.buffer, file.mimetype);
+      } catch (uploadError: any) {
+        console.error("Proof upload failed:", uploadError);
+        res.status(500).json({ 
+          error: "Failed to upload proof of payment",
+          details: "Please ensure the file is a valid image or PDF under 5MB"
+        });
+        return;
+      }
+
+      // Generate unique reference code
+      const referenceCode = generateBankReference();
+
+      // Create deposit record
+      const [deposit] = await db
+        .insert(regeneratorBankDeposits)
+        .values({
+          userId,
+          referenceCode,
+          amountNGN: amountNGN,
+          ngntsAmount: breakdown.ngntsAmount.toFixed(2),
+          platformFee: breakdown.platformFee.toFixed(2),
+          gasFee: breakdown.gasFeeNGN.toFixed(6),
+          status: "pending",
+          proofUrl,
+          notes,
+        })
+        .returning();
+
+      res.status(201).json({
+        success: true,
+        deposit: {
+          id: deposit.id,
+          referenceCode: deposit.referenceCode,
+          amountNGN: deposit.amountNGN,
+          ngntsAmount: deposit.ngntsAmount,
+          platformFee: deposit.platformFee,
+          gasFee: deposit.gasFee,
+          status: deposit.status,
+          createdAt: deposit.createdAt,
+        },
+        feeBreakdown: breakdown,
+      });
+    } catch (error: any) {
+      console.error("Bank deposit creation error:", error);
+      res.status(500).json({ error: "Failed to create deposit request" });
+    }
+  }
+);
 
 export default router;
