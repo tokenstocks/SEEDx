@@ -37,6 +37,14 @@ export default function Marketplace() {
     setUser(JSON.parse(userData));
   }, [setLocation]);
 
+  const getDashboardPath = () => {
+    if (!user) return "/dashboard";
+    if (user.role === "admin") return "/admin";
+    if (user.role === "primer") return "/primer-dashboard";
+    if (user.role === "regenerator") return "/regenerator-dashboard";
+    return "/dashboard";
+  };
+
   const { data: projects } = useQuery<any[]>({
     queryKey: ["/api/projects"],
     enabled: !!user,
@@ -132,7 +140,7 @@ export default function Marketplace() {
           className="mb-8"
         >
           <Link
-            href="/dashboard"
+            href={getDashboardPath()}
             className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-6"
             data-testid="link-back"
           >
