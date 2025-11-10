@@ -271,7 +271,7 @@ export default function UnifiedHeader() {
                 <div className="flex items-center justify-between pt-3 border-t border-white/10">
                   <span className="text-xs text-slate-400">Member ID</span>
                   <span className="text-xs font-mono font-semibold text-white">
-                    SDX-{user.id?.slice(0, 8).toUpperCase()}
+                    {user.id ? `SDX-${user.id.slice(0, 8).toUpperCase()}` : "SDX-PENDING"}
                   </span>
                 </div>
               </div>

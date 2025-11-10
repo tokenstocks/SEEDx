@@ -70,6 +70,7 @@ export default function MembershipCard({ user, walletActivated, activationStatus
 
   const getMembershipId = () => {
     // Create a readable membership ID from the user's UUID
+    if (!user.id) return "SDX-PENDING";
     return `SDX-${user.id.slice(0, 8).toUpperCase()}`;
   };
 
