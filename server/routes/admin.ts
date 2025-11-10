@@ -2692,67 +2692,97 @@ router.patch(
           })
           .where(eq(regeneratorWalletFundingRequests.id, requestId));
 
-        // Establish trustlines for NGNTS and USDC
+        // Establish trustlines for NGNTS and USDC (MANDATORY)
         console.log(`🔗 Establishing trustlines for wallet...`);
         const trustlineResults: { asset: string; success: boolean; txHash?: string; error?: string }[] = [];
 
+        // Get Treasury wallet (NGNTS issuer)
+        const [treasuryWallet] = await db
+          .select()
+          .from(platformWallets)
+          .where(eq(platformWallets.walletType, "treasury"))
+          .limit(1);
+
+        if (!treasuryWallet) {
+          // Critical error - cannot proceed without treasury wallet
+          await db
+            .update(wallets)
+            .set({
+              activationStatus: "failed",
+              activationNotes: "Treasury wallet not found - cannot establish NGNTS trustline",
+            })
+            .where(eq(wallets.id, wallet.id));
+
+          console.error(`❌ Wallet activation failed: Treasury wallet not found`);
+          res.status(500).json({
+            error: "Wallet activation failed",
+            details: "Platform treasury wallet not configured",
+          });
+          return;
+        }
+
+        // Establish NGNTS trustline (MANDATORY)
         try {
-          // Get Treasury wallet (NGNTS issuer)
-          const [treasuryWallet] = await db
-            .select()
-            .from(platformWallets)
-            .where(eq(platformWallets.walletType, "treasury"))
-            .limit(1);
+          const ngntsTxHash = await ensureTrustline(
+            wallet.cryptoWalletPublicKey,
+            "NGNTS",
+            treasuryWallet.publicKey
+          );
+          trustlineResults.push({
+            asset: "NGNTS",
+            success: true,
+            txHash: ngntsTxHash === "EXISTING_TRUSTLINE" ? undefined : ngntsTxHash,
+          });
+          console.log(`   ✅ NGNTS trustline established`);
+        } catch (ngntsError: any) {
+          // NGNTS trustline is mandatory - fail activation
+          await db
+            .update(wallets)
+            .set({
+              activationStatus: "failed",
+              activationNotes: `NGNTS trustline failed: ${ngntsError.message}`,
+            })
+            .where(eq(wallets.id, wallet.id));
 
-          if (treasuryWallet) {
-            // Establish NGNTS trustline
-            try {
-              const ngntsTxHash = await ensureTrustline(
-                wallet.cryptoWalletPublicKey,
-                "NGNTS",
-                treasuryWallet.publicKey
-              );
-              trustlineResults.push({
-                asset: "NGNTS",
-                success: true,
-                txHash: ngntsTxHash === "EXISTING_TRUSTLINE" ? undefined : ngntsTxHash,
-              });
-              console.log(`   ✅ NGNTS trustline established`);
-            } catch (ngntsError: any) {
-              console.error(`   ⚠️ NGNTS trustline failed:`, ngntsError.message);
-              trustlineResults.push({
-                asset: "NGNTS",
-                success: false,
-                error: ngntsError.message,
-              });
-            }
-          }
+          console.error(`❌ Wallet activation failed: NGNTS trustline error:`, ngntsError.message);
+          res.status(500).json({
+            error: "Wallet activation failed",
+            details: `Failed to establish NGNTS trustline: ${ngntsError.message}`,
+          });
+          return;
+        }
 
-          // Establish USDC trustline (Stellar testnet USDC issuer)
-          // For testnet: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
-          const usdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
-          try {
-            const usdcTxHash = await ensureTrustline(
-              wallet.cryptoWalletPublicKey,
-              "USDC",
-              usdcIssuer
-            );
-            trustlineResults.push({
-              asset: "USDC",
-              success: true,
-              txHash: usdcTxHash === "EXISTING_TRUSTLINE" ? undefined : usdcTxHash,
-            });
-            console.log(`   ✅ USDC trustline established`);
-          } catch (usdcError: any) {
-            console.error(`   ⚠️ USDC trustline failed:`, usdcError.message);
-            trustlineResults.push({
-              asset: "USDC",
-              success: false,
-              error: usdcError.message,
-            });
-          }
-        } catch (trustlineError: any) {
-          console.error("⚠️ Trustline setup encountered errors:", trustlineError.message);
+        // Establish USDC trustline (MANDATORY)
+        // For testnet: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        const usdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+        try {
+          const usdcTxHash = await ensureTrustline(
+            wallet.cryptoWalletPublicKey,
+            "USDC",
+            usdcIssuer
+          );
+          trustlineResults.push({
+            asset: "USDC",
+            success: true,
+            txHash: usdcTxHash === "EXISTING_TRUSTLINE" ? undefined : usdcTxHash,
+          });
+          console.log(`   ✅ USDC trustline established`);
+        } catch (usdcError: any) {
+          // USDC trustline is mandatory - fail activation
+          await db
+            .update(wallets)
+            .set({
+              activationStatus: "failed",
+              activationNotes: `USDC trustline failed: ${usdcError.message}`,
+            })
+            .where(eq(wallets.id, wallet.id));
+
+          console.error(`❌ Wallet activation failed: USDC trustline error:`, usdcError.message);
+          res.status(500).json({
+            error: "Wallet activation failed",
+            details: `Failed to establish USDC trustline: ${usdcError.message}`,
+          });
+          return;
         }
 
         // Sync XLM balance from Stellar network
