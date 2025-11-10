@@ -38,7 +38,7 @@ import { burnNgnts } from "../lib/ngntsOps";
 import { createAndFundAccount } from "../lib/stellarAccount";
 import { determineFundingSource } from "../lib/redemptionOps";
 import { auditActionWithState } from "../middleware/auditMiddleware";
-import { burnProjectToken, transferNgntsFromPlatformWallet } from "../lib/stellarOps";
+import { burnProjectToken, transferNgntsFromPlatformWallet, ensureTrustline } from "../lib/stellarOps";
 import { primerContributions, lpProjectAllocations, primerProjectAllocations } from "@shared/schema";
 
 const router = Router();
@@ -2692,6 +2692,69 @@ router.patch(
           })
           .where(eq(regeneratorWalletFundingRequests.id, requestId));
 
+        // Establish trustlines for NGNTS and USDC
+        console.log(`🔗 Establishing trustlines for wallet...`);
+        const trustlineResults: { asset: string; success: boolean; txHash?: string; error?: string }[] = [];
+
+        try {
+          // Get Treasury wallet (NGNTS issuer)
+          const [treasuryWallet] = await db
+            .select()
+            .from(platformWallets)
+            .where(eq(platformWallets.walletType, "treasury"))
+            .limit(1);
+
+          if (treasuryWallet) {
+            // Establish NGNTS trustline
+            try {
+              const ngntsTxHash = await ensureTrustline(
+                wallet.cryptoWalletPublicKey,
+                "NGNTS",
+                treasuryWallet.publicKey
+              );
+              trustlineResults.push({
+                asset: "NGNTS",
+                success: true,
+                txHash: ngntsTxHash === "EXISTING_TRUSTLINE" ? undefined : ngntsTxHash,
+              });
+              console.log(`   ✅ NGNTS trustline established`);
+            } catch (ngntsError: any) {
+              console.error(`   ⚠️ NGNTS trustline failed:`, ngntsError.message);
+              trustlineResults.push({
+                asset: "NGNTS",
+                success: false,
+                error: ngntsError.message,
+              });
+            }
+          }
+
+          // Establish USDC trustline (Stellar testnet USDC issuer)
+          // For testnet: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+          const usdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+          try {
+            const usdcTxHash = await ensureTrustline(
+              wallet.cryptoWalletPublicKey,
+              "USDC",
+              usdcIssuer
+            );
+            trustlineResults.push({
+              asset: "USDC",
+              success: true,
+              txHash: usdcTxHash === "EXISTING_TRUSTLINE" ? undefined : usdcTxHash,
+            });
+            console.log(`   ✅ USDC trustline established`);
+          } catch (usdcError: any) {
+            console.error(`   ⚠️ USDC trustline failed:`, usdcError.message);
+            trustlineResults.push({
+              asset: "USDC",
+              success: false,
+              error: usdcError.message,
+            });
+          }
+        } catch (trustlineError: any) {
+          console.error("⚠️ Trustline setup encountered errors:", trustlineError.message);
+        }
+
         // Sync XLM balance from Stellar network
         let xlmBalance = "0";
         try {
@@ -2721,6 +2784,7 @@ router.patch(
           console.log(`  - Amount: ${fundingRequest.amountRequested} ${fundingRequest.currency}`);
           console.log(`  - TX Hash: ${activationResult.txHash}`);
           console.log(`  - XLM Balance synced: ${xlmBalance}`);
+          console.log(`  - Trustlines: ${trustlineResults.filter(t => t.success).length}/${trustlineResults.length} successful`);
         } catch (balanceError: any) {
           console.error("⚠️ Failed to sync XLM balance after activation:", balanceError.message);
           // Don't fail the request - activation was successful
