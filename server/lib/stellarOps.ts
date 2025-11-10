@@ -3,7 +3,7 @@ import { horizonServer, NETWORK_PASSPHRASE } from "./stellarConfig";
 import { decrypt } from "./encryption";
 import { db } from "../db";
 import { transactions, projectTokenLedger, wallets } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 /**
  * Ensure a trustline exists for a user account to accept a specific asset
@@ -157,6 +157,7 @@ export async function transferAsset(
     if (!amount || parseFloat(amount) <= 0) {
       throw new Error("Amount must be greater than 0");
     }
+    // Note: issuerPublicKey can be empty for native XLM, validated later if needed
 
     // Get sender's wallet secret key
     const [senderWallet] = await db
@@ -176,8 +177,17 @@ export async function transferAsset(
     // Load sender's account
     const senderAccount = await horizonServer.loadAccount(senderPublicKey);
 
-    // Create the asset
-    const asset = new StellarSdk.Asset(assetCode, issuerPublicKey);
+    // Create the asset (handle native XLM separately)
+    let asset: StellarSdk.Asset;
+    if (assetCode === "XLM" || assetCode === "native") {
+      asset = StellarSdk.Asset.native();
+    } else {
+      // Validate issuer for non-native assets
+      if (!issuerPublicKey || !issuerPublicKey.startsWith("G") || issuerPublicKey.length !== 56) {
+        throw new Error("Invalid issuer public key format for custom asset");
+      }
+      asset = new StellarSdk.Asset(assetCode, issuerPublicKey);
+    }
 
     // Build payment transaction
     const paymentTransaction = new StellarSdk.TransactionBuilder(senderAccount, {

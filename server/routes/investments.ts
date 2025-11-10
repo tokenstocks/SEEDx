@@ -11,7 +11,8 @@ import {
   insertInvestmentSchema,
   redemptionRequests,
   projectNavHistory,
-  createRedemptionRequestSchema
+  createRedemptionRequestSchema,
+  platformWallets
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -160,10 +161,11 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(`💰 Processing investment: ${userId.substring(0, 8)}... investing ₦${investmentAmount} in ${project.name}`);
+    console.log(`💰 Processing investment: ${userId.substring(0, 8)}... investing ${currencySymbol}${investmentAmount} in ${project.name}`);
 
     let trustlineTxHash: string | undefined;
-    let transferTxHash: string;
+    let paymentTxHash: string;
+    let tokenTransferTxHash: string;
 
     // Step 1: Ensure user has trustline for project token
     try {
@@ -187,9 +189,62 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       return;
     }
 
-    // Step 2: Transfer tokens from distribution account to user
+    // Step 2: Transfer payment from user to project (on-chain settlement)
+    // For NGN: Transfer NGNTS from user to project distribution wallet
+    // For USDC/XLM: Transfer the crypto asset from user to project distribution wallet
     try {
-      transferTxHash = await transferAsset(
+      // Determine payment asset based on project currency
+      let paymentAssetCode: string;
+      let paymentIssuerPublicKey: string;
+
+      if (projectCurrency === "NGN") {
+        // NGN investments use NGNTS token - need treasury wallet for issuer
+        const [treasuryWallet] = await db
+          .select()
+          .from(platformWallets)
+          .where(eq(platformWallets.walletType, "treasury"))
+          .limit(1);
+
+        if (!treasuryWallet) {
+          res.status(500).json({ error: "Platform treasury wallet not configured - required for NGN investments" });
+          return;
+        }
+
+        paymentAssetCode = "NGNTS";
+        paymentIssuerPublicKey = treasuryWallet.publicKey;
+      } else if (projectCurrency === "USDC") {
+        // USDC investments (testnet)
+        paymentAssetCode = "USDC";
+        paymentIssuerPublicKey = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+      } else {
+        // XLM investments (native asset)
+        paymentAssetCode = "XLM";
+        paymentIssuerPublicKey = ""; // Native asset has no issuer
+      }
+
+      console.log(`   💸 Transferring ${investmentAmount.toFixed(7)} ${paymentAssetCode} from user to project...`);
+
+      // Transfer payment from user wallet to project distribution wallet
+      paymentTxHash = await transferAsset(
+        userWallet.cryptoWalletPublicKey,
+        project.stellarDistributionPublicKey,
+        paymentAssetCode,
+        paymentIssuerPublicKey,
+        investmentAmount.toFixed(7)
+      );
+
+      console.log(`   ✓ Payment transferred: ${paymentTxHash}`);
+    } catch (error: any) {
+      console.error("❌ Payment transfer failed:", error);
+      res.status(500).json({ 
+        error: `Failed to transfer payment: ${error.message}` 
+      });
+      return;
+    }
+
+    // Step 3: Transfer project tokens from distribution account to user
+    try {
+      tokenTransferTxHash = await transferAsset(
         project.stellarDistributionPublicKey,
         userWallet.cryptoWalletPublicKey,
         project.stellarAssetCode,
@@ -197,16 +252,48 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
         tokensToReceive.toFixed(7) // Stellar uses 7 decimal places
       );
 
-      console.log(`   ✓ Tokens transferred: ${transferTxHash}`);
+      console.log(`   ✓ Project tokens transferred: ${tokenTransferTxHash}`);
     } catch (error: any) {
-      console.error("❌ Token transfer failed:", error);
-      res.status(500).json({ 
-        error: `Failed to transfer tokens: ${error.message}` 
-      });
-      return;
+      console.error("❌ Token transfer failed after payment:", error);
+      console.error(`   ⚠️  CRITICAL: Payment sent (TX: ${paymentTxHash}) but token delivery failed`);
+      console.error(`   🔄 Attempting to refund payment to user...`);
+      
+      // CRITICAL: Refund the payment to user since token delivery failed
+      try {
+        const refundTxHash = await transferAsset(
+          project.stellarDistributionPublicKey,
+          userWallet.cryptoWalletPublicKey,
+          paymentAssetCode,
+          paymentIssuerPublicKey,
+          investmentAmount.toFixed(7)
+        );
+        
+        console.log(`   ✅ Payment refunded to user: ${refundTxHash}`);
+        
+        res.status(500).json({ 
+          error: `Token delivery failed but your payment has been refunded. Refund transaction: ${refundTxHash}`,
+          paymentTxHash,
+          refundTxHash,
+          tokenDeliveryError: error.message
+        });
+        return;
+      } catch (refundError: any) {
+        console.error("❌❌ REFUND FAILED - DOUBLE CRITICAL:", refundError);
+        console.error(`   ⚠️⚠️  USER LOST FUNDS: Payment TX ${paymentTxHash}, Refund failed`);
+        console.error(`   ⚠️⚠️  Manual intervention REQUIRED for user ${userId}, project ${projectId}`);
+        
+        res.status(500).json({ 
+          error: `CRITICAL: Token delivery failed AND refund failed. Your payment is with the project. Please contact support immediately with these transaction hashes for urgent manual recovery.`,
+          paymentTxHash,
+          refundError: refundError.message,
+          criticalError: true,
+          urgentReconciliationRequired: true
+        });
+        return;
+      }
     }
 
-    // Step 3: Update database in a transaction
+    // Step 4: Update database in a transaction (after blockchain settlement)
     try {
       await db.transaction(async (tx) => {
         // Record trustline in database if new trustline was created (check for existing first to avoid duplicates)
@@ -336,14 +423,24 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
             });
         }
 
-        // Record transaction in ledger using the transaction context
+        // Record payment transaction in ledger
+        await tx.insert(projectTokenLedger).values({
+          projectId,
+          userId,
+          action: "transfer",
+          tokenAmount: "0", // This is the payment leg, not token leg
+          stellarTransactionHash: paymentTxHash,
+          notes: `Payment: ${currencySymbol}${investmentAmount.toFixed(2)} transferred to ${project.name}`,
+        });
+
+        // Record token transfer in ledger
         await tx.insert(projectTokenLedger).values({
           projectId,
           userId,
           action: "transfer",
           tokenAmount: tokensToReceive.toFixed(7),
-          stellarTransactionHash: transferTxHash,
-          notes: `Investment of ${currencySymbol}${investmentAmount.toFixed(2)} in ${project.name}`,
+          stellarTransactionHash: tokenTransferTxHash,
+          notes: `Investment: Received ${tokensToReceive.toFixed(2)} ${project.tokenSymbol} tokens from ${project.name}`,
         });
 
         // Store investment ID for response (accessible after transaction commits)
@@ -359,18 +456,20 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
           amount: investmentAmount,
           tokensReceived: tokensToReceive,
           trustlineTxHash,
-          transferTxHash,
+          paymentTxHash,
+          tokenTransferTxHash,
         },
         message: `Successfully invested ${currencySymbol}${investmentAmount.toFixed(2)} and received ${tokensToReceive.toFixed(2)} ${project.tokenSymbol} tokens`,
       });
     } catch (error: any) {
-      console.error("❌ Database transaction failed after successful Stellar transfer:", error);
-      console.error(`   ⚠️  CRITICAL: Tokens transferred on-chain (TX: ${transferTxHash}) but database not updated`);
+      console.error("❌ Database transaction failed after successful Stellar transfers:", error);
+      console.error(`   ⚠️  CRITICAL: Payment (TX: ${paymentTxHash}) and tokens (TX: ${tokenTransferTxHash}) transferred on-chain but database not updated`);
       console.error(`   ⚠️  Manual reconciliation required for user ${userId}, project ${projectId}`);
       
       res.status(500).json({ 
-        error: "Investment recorded on blockchain but database update failed. Your tokens are safe on Stellar. Please contact support with this transaction hash for reconciliation.",
-        txHash: transferTxHash,
+        error: "Investment recorded on blockchain but database update failed. Your payment and tokens are on Stellar. Please contact support with these transaction hashes for reconciliation.",
+        paymentTxHash,
+        tokenTransferTxHash,
         criticalError: true
       });
       return;
