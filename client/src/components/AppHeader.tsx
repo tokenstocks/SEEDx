@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Home, LogOut, User, Menu, X, ArrowLeft } from "lucide-react";
+import { Home, LogOut, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 import logoImage from "@assets/SEEDX_LOGO-removebg-preview_1762510980407.png";
 import {
@@ -25,49 +25,73 @@ export default function AppHeader() {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "admin";
+  const isPrimer = user?.role === "primer";
+  const isRegenerator = user?.role === "regenerator";
+
+  const getDashboardPath = () => {
+    if (isAdmin) return "/admin";
+    if (isPrimer) return "/primer-dashboard";
+    if (isRegenerator) return "/regenerator-dashboard";
+    return "/dashboard";
+  };
 
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/projects", label: "Projects" },
-    { href: "/portfolio", label: "Portfolio" },
-    { href: "/marketplace", label: "Marketplace" },
-    { href: "/transactions", label: "Transactions" },
+    { href: getDashboardPath(), label: "Dashboard" },
+    { href: "/projects", label: "Browse Projects" },
   ];
 
-  if (isAdmin) {
-    navLinks.push({ href: "/admin", label: "Admin" });
+  if (isRegenerator) {
+    navLinks.push(
+      { href: "/marketplace", label: "Marketplace" },
+      { href: "/regenerator-profile", label: "Profile" }
+    );
+  } else if (isPrimer) {
+    navLinks.push({ href: "/primer-profile", label: "Profile" });
+  } else if (!isAdmin) {
+    // Default user navigation
+    navLinks.push(
+      { href: "/portfolio", label: "Portfolio" },
+      { href: "/marketplace", label: "Marketplace" },
+      { href: "/transactions", label: "Transactions" }
+    );
   }
+  // Note: Admin dashboard link already included via getDashboardPath()
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md border-b bg-background/95 shadow-sm">
+    <nav className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link href={getDashboardPath()} className="flex items-center gap-2">
               <img 
                 src={logoImage} 
                 alt="SEEDx" 
-                className="h-10 w-auto transition-all duration-300 hover:scale-105 cursor-pointer"
+                className="h-11 w-auto transition-all duration-300 hover:scale-105 cursor-pointer"
                 data-testid="img-header-logo"
               />
             </Link>
           </div>
 
           {/* Center: Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link 
                 key={link.href} 
                 href={link.href}
-                className={`text-sm font-medium transition-colors ${
-                  location === link.href 
-                    ? "text-primary" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                data-testid={`link-nav-${link.label.toLowerCase()}`}
+                className="group relative"
+                data-testid={`link-nav-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
-                {link.label}
+                <div className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  location === link.href 
+                    ? "text-white bg-white/10" 
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}>
+                  {link.label}
+                </div>
+                {location === link.href && (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
+                )}
               </Link>
             ))}
           </div>
@@ -76,23 +100,32 @@ export default function AppHeader() {
           <div className="hidden md:flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" data-testid="button-user-menu">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                  data-testid="button-user-menu"
+                >
                   <User className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="bg-slate-900 border-white/10">
+                <DropdownMenuLabel className="text-white">
                   {user?.firstName || user?.email || "My Account"}
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard" data-testid="link-menu-dashboard">
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem asChild className="text-slate-300 hover:text-white focus:text-white focus:bg-white/10">
+                  <Link href={getDashboardPath()} data-testid="link-menu-dashboard">
                     <Home className="w-4 h-4 mr-2" />
                     Dashboard
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem 
+                  onClick={handleLogout} 
+                  className="text-slate-300 hover:text-white focus:text-white focus:bg-white/10"
+                  data-testid="button-logout"
+                >
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </DropdownMenuItem>
@@ -102,37 +135,37 @@ export default function AppHeader() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-foreground"
+            className="md:hidden text-white bg-white/5 hover:bg-white/10 p-2 rounded-lg border border-white/10 transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             data-testid="button-mobile-menu-toggle"
           >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t" data-testid="mobile-menu">
-            <div className="flex flex-col gap-3">
+          <div className="md:hidden py-4 border-t border-white/10" data-testid="mobile-menu">
+            <div className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link 
                   key={link.href} 
                   href={link.href}
-                  className={`text-sm font-medium px-2 py-1 rounded transition-colors ${
+                  className={`text-sm font-medium px-3 py-2 rounded-lg transition-all ${
                     location === link.href 
-                      ? "text-primary bg-primary/10" 
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "text-white bg-white/10" 
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
                   }`}
                   onClick={() => setIsMenuOpen(false)}
-                  data-testid={`link-mobile-${link.label.toLowerCase()}`}
+                  data-testid={`link-mobile-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-3 border-t">
+              <div className="pt-2 mt-2 border-t border-white/10">
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start" 
+                  className="w-full justify-start text-slate-400 hover:text-white hover:bg-white/5" 
                   onClick={() => {
                     setIsMenuOpen(false);
                     handleLogout();
