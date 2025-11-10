@@ -679,4 +679,38 @@ router.post(
   }
 );
 
+// Get regenerator's bank deposit history
+router.get("/bank-deposits", authMiddleware, regeneratorMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const deposits = await db
+      .select({
+        id: regeneratorBankDeposits.id,
+        amountNGN: regeneratorBankDeposits.amountNGN,
+        platformFee: regeneratorBankDeposits.platformFee,
+        gasFee: regeneratorBankDeposits.gasFee,
+        ngntsAmount: regeneratorBankDeposits.ngntsAmount,
+        status: regeneratorBankDeposits.status,
+        referenceCode: regeneratorBankDeposits.referenceCode,
+        proofUrl: regeneratorBankDeposits.proofUrl,
+        notes: regeneratorBankDeposits.notes,
+        rejectedReason: regeneratorBankDeposits.rejectedReason,
+        approvedBy: regeneratorBankDeposits.approvedBy,
+        approvedAt: regeneratorBankDeposits.approvedAt,
+        txHash: regeneratorBankDeposits.txHash,
+        createdAt: regeneratorBankDeposits.createdAt,
+        updatedAt: regeneratorBankDeposits.updatedAt,
+      })
+      .from(regeneratorBankDeposits)
+      .where(eq(regeneratorBankDeposits.userId, userId))
+      .orderBy(desc(regeneratorBankDeposits.createdAt));
+
+    res.json({ deposits });
+  } catch (error: any) {
+    console.error("Failed to fetch bank deposits:", error);
+    res.status(500).json({ error: "Failed to fetch deposit history" });
+  }
+});
+
 export default router;

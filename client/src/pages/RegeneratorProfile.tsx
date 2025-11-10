@@ -639,6 +639,153 @@ export default function RegeneratorProfile() {
                 </div>
               </div>
             </motion.div>
+
+            {/* Bank Deposit History */}
+            <motion.div
+              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+                <div className="p-6">
+                  <div className="mb-4">
+                    <h2 className="text-white text-xl font-semibold flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-blue-400" />
+                      Bank Deposit History
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">
+                      Track your NGN deposit requests and NGNTS credits
+                    </p>
+                  </div>
+
+                  {depositHistory?.deposits && depositHistory.deposits.length > 0 ? (
+                    <div className="space-y-3" data-testid="list-deposit-history">
+                      {depositHistory.deposits.map((deposit) => (
+                        <div
+                          key={deposit.id}
+                          className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-3"
+                          data-testid={`deposit-${deposit.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-xs font-mono text-blue-300" data-testid={`ref-${deposit.id}`}>
+                                  {deposit.referenceCode}
+                                </p>
+                                {deposit.status === "pending" && (
+                                  <Badge variant="secondary" className="text-orange-400 border-orange-400" data-testid={`status-${deposit.id}`}>
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Pending
+                                  </Badge>
+                                )}
+                                {deposit.status === "approved" && (
+                                  <Badge className="bg-emerald-600 text-white" data-testid={`status-${deposit.id}`}>
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Approved
+                                  </Badge>
+                                )}
+                                {deposit.status === "rejected" && (
+                                  <Badge variant="destructive" data-testid={`status-${deposit.id}`}>
+                                    <XCircle className="w-3 h-3 mr-1" />
+                                    Rejected
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {new Date(deposit.createdAt).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-white" data-testid={`amount-${deposit.id}`}>
+                                ₦{parseFloat(deposit.amountNGN).toLocaleString()}
+                              </p>
+                              {deposit.status === "approved" && (
+                                <p className="text-xs text-emerald-400">
+                                  +{parseFloat(deposit.ngntsAmount).toLocaleString()} NGNTS
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Fee breakdown */}
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="bg-black/20 p-2 rounded">
+                              <p className="text-slate-500">Platform Fee</p>
+                              <p className="text-slate-300">₦{parseFloat(deposit.platformFee).toFixed(2)}</p>
+                            </div>
+                            <div className="bg-black/20 p-2 rounded">
+                              <p className="text-slate-500">Gas Fee</p>
+                              <p className="text-slate-300">₦{parseFloat(deposit.gasFee).toFixed(2)}</p>
+                            </div>
+                            <div className="bg-black/20 p-2 rounded">
+                              <p className="text-slate-500">Net NGNTS</p>
+                              <p className="text-emerald-400">{parseFloat(deposit.ngntsAmount).toLocaleString()}</p>
+                            </div>
+                          </div>
+
+                          {/* Additional info */}
+                          {deposit.notes && (
+                            <div className="text-xs text-slate-400 bg-black/20 p-2 rounded" data-testid={`notes-${deposit.id}`}>
+                              <p className="text-slate-500 mb-1">Notes:</p>
+                              {deposit.notes}
+                            </div>
+                          )}
+
+                          {deposit.rejectedReason && (
+                            <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded" data-testid={`rejection-${deposit.id}`}>
+                              <p className="text-red-300 mb-1">Rejection Reason:</p>
+                              {deposit.rejectedReason}
+                            </div>
+                          )}
+
+                          {deposit.txHash && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <a
+                                href={`https://stellar.expert/explorer/${
+                                  import.meta.env.VITE_STELLAR_HORIZON_URL?.includes("testnet") ? "testnet" : "public"
+                                }/tx/${deposit.txHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                                data-testid={`tx-link-${deposit.id}`}
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                View Transaction
+                              </a>
+                            </div>
+                          )}
+
+                          {deposit.approvedAt && (
+                            <p className="text-xs text-slate-500">
+                              Approved on {new Date(deposit.approvedAt).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8" data-testid="empty-deposit-history">
+                      <Building2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400 text-sm">No deposit history yet</p>
+                      <p className="text-slate-500 text-xs mt-1">
+                        Your bank deposit requests will appear here
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           </div>
 
           {/* Quick Actions */}
