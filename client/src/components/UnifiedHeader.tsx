@@ -63,21 +63,25 @@ export default function UnifiedHeader() {
     return "/dashboard";
   };
 
+  const getSettingsPath = () => {
+    if (isPrimer) return "/primer-profile";
+    if (isRegenerator) return "/regenerator-profile";
+    return "/profile"; // Fallback for default users
+  };
+
   // Role-based navigation links
   const getNavLinks = () => {
     const links = [
-      { href: getDashboardPath(), label: "Dashboard" },
+      { href: getSettingsPath(), label: "Settings" },
       { href: "/projects", label: "Browse Projects" },
     ];
 
     if (isRegenerator) {
-      links.push(
-        { href: "/marketplace", label: "Marketplace" },
-        { href: "/regenerator-profile", label: "Profile" }
-      );
-    } else if (isPrimer) {
-      links.push({ href: "/primer-profile", label: "Profile" });
-    } else if (!isAdmin) {
+      links.push({ href: "/marketplace", label: "Marketplace" });
+    } else if (isAdmin) {
+      // Admin gets Dashboard link instead of Settings
+      links[0] = { href: "/admin", label: "Dashboard" };
+    } else if (!isPrimer && !isRegenerator && !isAdmin) {
       // Default user navigation
       links.push(
         { href: "/portfolio", label: "Portfolio" },
