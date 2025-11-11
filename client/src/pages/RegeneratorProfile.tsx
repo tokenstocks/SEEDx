@@ -1263,28 +1263,28 @@ export default function RegeneratorProfile() {
                     </CardContent>
                   </Card>
 
-                  {/* Bank Account Details */}
+                  {/* Bank Account Details - Enhanced Visibility */}
                   {wizardBankAccount && (
-                    <Card className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-blue-500/20">
+                    <Card className="bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-500/20 border-blue-400/40 border-2">
                       <CardContent className="p-6 space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-5 h-5 text-blue-400" />
-                          <p className="text-sm font-medium text-blue-300">Transfer to This Account</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="w-6 h-6 text-blue-300" />
+                          <p className="text-base font-bold text-blue-200">Transfer to This Account</p>
                         </div>
                         
-                        <div className="space-y-3 bg-black/20 p-4 rounded border border-white/5">
+                        <div className="space-y-4 bg-black/30 p-5 rounded-lg border border-blue-400/20">
                           <div>
-                            <p className="text-xs text-slate-400 mb-1">Account Title</p>
-                            <p className="text-sm font-semibold text-white">{wizardBankAccount.title}</p>
+                            <p className="text-xs text-slate-400 mb-1.5 uppercase tracking-wide">Account Title</p>
+                            <p className="text-base font-bold text-white">{wizardBankAccount.title}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-slate-400 mb-1">Bank Name</p>
-                            <p className="text-sm font-semibold text-white">{wizardBankAccount.bankName}</p>
+                            <p className="text-xs text-slate-400 mb-1.5 uppercase tracking-wide">Bank Name</p>
+                            <p className="text-base font-bold text-white">{wizardBankAccount.bankName}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-slate-400 mb-1">Account Number</p>
+                            <p className="text-xs text-slate-400 mb-1.5 uppercase tracking-wide">Account Number</p>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-mono font-semibold text-white flex-1">
+                              <p className="text-lg font-mono font-bold text-white flex-1">
                                 {wizardBankAccount.accountNumber}
                               </p>
                               <Button
@@ -1294,20 +1294,83 @@ export default function RegeneratorProfile() {
                                   navigator.clipboard.writeText(wizardBankAccount.accountNumber);
                                   toast({ title: "Copied!", description: "Account number copied" });
                                 }}
-                                className="h-7 text-blue-400 hover:bg-blue-500/10"
+                                className="h-8 text-blue-300 hover:bg-blue-500/20"
                               >
-                                <Copy className="w-3 h-3" />
+                                <Copy className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>
-                          {wizardFeeBreakdown && (
-                            <div>
-                              <p className="text-xs text-slate-400 mb-1">Amount to Transfer</p>
-                              <p className="text-lg font-bold text-emerald-400">
-                                ₦{wizardFeeBreakdown.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                          
+                          <div className="pt-3 border-t border-white/10">
+                            <p className="text-xs text-slate-400 mb-2 uppercase tracking-wide">Amount to Transfer</p>
+                            <p className="text-3xl font-bold text-emerald-400">
+                              ₦{parseFloat(depositAmount).toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Fee Breakdown & Amount You'll Receive */}
+                  {wizardFeeBreakdown && (
+                    <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+                      <CardContent className="p-6 space-y-4">
+                        <div>
+                          <p className="text-sm font-bold text-purple-300 mb-3 flex items-center gap-2">
+                            <Calculator className="w-4 h-4" />
+                            Fee Breakdown & NGNTS You'll Receive
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-3 bg-black/20 p-4 rounded-lg border border-white/5">
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-slate-300">Deposit Amount</p>
+                            <p className="text-sm font-semibold text-white">
+                              ₦{wizardFeeBreakdown.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                            </p>
+                          </div>
+                          
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-slate-400">Platform Fee (2%)</p>
+                            <p className="text-sm text-red-400">
+                              -₦{wizardFeeBreakdown.platformFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                            </p>
+                          </div>
+                          
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-slate-400">Stellar Gas Fee</p>
+                            <p className="text-sm text-red-400">
+                              -₦{wizardFeeBreakdown.gasFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                            </p>
+                          </div>
+                          
+                          {wizardFeeBreakdown.walletActivationFee > 0 && (
+                            <div className="flex justify-between items-center">
+                              <p className="text-sm text-slate-400">Wallet Activation Fee (one-time)</p>
+                              <p className="text-sm text-red-400">
+                                -₦{wizardFeeBreakdown.walletActivationFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                               </p>
                             </div>
                           )}
+                          
+                          <div className="border-t border-white/10 pt-3 mt-3">
+                            <div className="flex justify-between items-center">
+                              <p className="text-sm font-semibold text-slate-300">Total Fees</p>
+                              <p className="text-sm font-semibold text-red-400">
+                                -₦{wizardFeeBreakdown.totalFees.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mt-4">
+                            <div className="flex justify-between items-center">
+                              <p className="text-base font-bold text-emerald-300">You Will Receive</p>
+                              <p className="text-2xl font-bold text-emerald-400">
+                                {wizardFeeBreakdown.ngntsToCredit.toLocaleString('en-NG', {minimumFractionDigits: 2})} NGNTS
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
