@@ -16,12 +16,22 @@ import { createAndFundAccount } from "./stellarAccount";
  * This function:
  * 1. Activates user's Stellar account if not already activated
  * 2. Creates NGNTS trustline if not already exists
+ * 
+ * @returns Object containing trustline tx hash, activation status, and activation tx hash
  */
 export async function ensureNgntsTrustline(
   userPublicKey: string,
   userSecretEncrypted: string,
   treasuryPublicKey: string
-): Promise<string | null> {
+): Promise<{
+  trustlineTxHash: string | null;
+  accountActivated: boolean;
+  activationTxHash: string | null;
+}> {
+  // Track activation metadata
+  let accountActivated = false;
+  let activationTxHash: string | null = null;
+
   try {
     // Step 1: Ensure account is activated on Stellar blockchain
     let account;
@@ -38,7 +48,11 @@ export async function ensureNgntsTrustline(
           throw new Error(`Failed to activate user account: ${activationResult.error}`);
         }
         
-        console.log(`[NGNTS] User account activated: ${activationResult.txHash || 'already exists'}`);
+        // Track activation metadata
+        accountActivated = !activationResult.alreadyExists;  // True if account was newly created
+        activationTxHash = activationResult.txHash || null;
+        
+        console.log(`[NGNTS] User account activated: ${activationTxHash || 'already exists'}`);
         
         // Load the newly activated account
         account = await horizonServer.loadAccount(userPublicKey);
@@ -59,7 +73,11 @@ export async function ensureNgntsTrustline(
 
     if (ngntsBalance !== undefined) {
       console.log(`[NGNTS] Trustline already exists for ${userPublicKey.substring(0, 8)}...`);
-      return null; // Trustline exists
+      return {
+        trustlineTxHash: null,  // Trustline already existed
+        accountActivated,
+        activationTxHash,
+      };
     }
 
     // Step 3: Create trustline
@@ -87,7 +105,11 @@ export async function ensureNgntsTrustline(
     const result = await horizonServer.submitTransaction(transaction);
 
     console.log(`[NGNTS] Trustline created: ${result.hash}`);
-    return result.hash;
+    return {
+      trustlineTxHash: result.hash,  // Trustline was just created
+      accountActivated,
+      activationTxHash,
+    };
   } catch (error: any) {
     console.error("[NGNTS] Trustline creation failed:", error);
     throw new Error(`Failed to create NGNTS trustline: ${error.message}`);
@@ -220,10 +242,10 @@ export async function creditNgntsDeposit(
       throw new Error("Treasury wallet not found");
     }
 
-    // Step 1: Ensure trustline exists
-    let trustlineTxHash: string | null = null;
+    // Step 1: Ensure trustline exists (and account is activated if needed)
+    let activationMetadata;
     try {
-      trustlineTxHash = await ensureNgntsTrustline(
+      activationMetadata = await ensureNgntsTrustline(
         userWallet.cryptoWalletPublicKey,
         userWallet.cryptoWalletSecretEncrypted,
         treasuryWallet.publicKey
@@ -243,31 +265,48 @@ export async function creditNgntsDeposit(
       `DEP-${shortTxId}` // e.g., "DEP-18fb693d" = 12 bytes (safe)
     );
 
-    // Step 3: Update database balance
-    const currencyKey = "NGNTS";
-    await db
-      .update(wallets)
-      .set({
-        cryptoBalances: sql.raw(`
-          jsonb_set(
-            COALESCE(crypto_balances, '{}'::jsonb),
-            ARRAY['${currencyKey}'],
-            to_jsonb(
-              COALESCE(
-                (crypto_balances->>'${currencyKey}')::numeric,
-                0
-              ) + ${Number(amount)}
+    // Step 3: Update database - wrap activation status and balance credit in single transaction
+    await db.transaction(async (tx) => {
+      // Update wallet activation status if account was just activated
+      if (activationMetadata.accountActivated) {
+        console.log(`[NGNTS] Updating wallet activation status for user ${userId}`);
+        await tx
+          .update(wallets)
+          .set({
+            activationStatus: 'active',
+            activatedAt: new Date(),
+            activationTxHash: activationMetadata.activationTxHash,
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.userId, userId));
+      }
+
+      // Update NGNTS balance
+      const currencyKey = "NGNTS";
+      await tx
+        .update(wallets)
+        .set({
+          cryptoBalances: sql.raw(`
+            jsonb_set(
+              COALESCE(crypto_balances, '{}'::jsonb),
+              ARRAY['${currencyKey}'],
+              to_jsonb(
+                COALESCE(
+                  (crypto_balances->>'${currencyKey}')::numeric,
+                  0
+                ) + ${Number(amount)}
+              )
             )
-          )
-        `),
-        updatedAt: new Date(),
-      })
-      .where(eq(wallets.userId, userId));
+          `),
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.userId, userId));
+    });
 
     console.log(`[NGNTS] Deposit credited successfully`);
 
     return {
-      trustlineTxHash,
+      trustlineTxHash: activationMetadata.trustlineTxHash,
       transferTxHash,
       amount,
     };
