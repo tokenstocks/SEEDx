@@ -465,6 +465,33 @@ export default function Admin() {
     },
   });
 
+  const processBankDepositMutation = useMutation({
+    mutationFn: async ({ id, action, adminNotes }: any) => {
+      const endpoint = action === 'approve' 
+        ? `/api/admin/bank-deposits/${id}/approve`
+        : `/api/admin/bank-deposits/${id}/reject`;
+      
+      const res = await apiRequest("POST", endpoint, {
+        reason: action === 'reject' ? adminNotes : undefined,
+      });
+      return await res.json();
+    },
+    onSuccess: (data: any, variables: any) => {
+      toast({ 
+        title: "Success", 
+        description: `Bank deposit ${variables.action}d successfully` 
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/bank-deposits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/regenerator/bank-deposits"] });
+      setApprovalDialog(null);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const createProjectMutation = useMutation({
     mutationFn: async (data: { form: any; photo: File | null; teaserDoc: File | null; docs: FileList | null }) => {
       const formData = new FormData();
@@ -627,6 +654,12 @@ export default function Admin() {
       processBankDetailsMutation.mutate({
         id: approvalDialog.item.id,
         action,
+      });
+    } else if (approvalDialog.type === 'bank_deposit') {
+      processBankDepositMutation.mutate({
+        id: approvalDialog.item.id,
+        action,
+        adminNotes,
       });
     }
   };
@@ -1228,6 +1261,7 @@ export default function Admin() {
                 Review {approvalDialog?.type === 'deposit' ? 'Deposit' : 
                         approvalDialog?.type === 'withdrawal' ? 'Withdrawal' : 
                         approvalDialog?.type === 'bank_details' ? 'Bank Details' : 
+                        approvalDialog?.type === 'bank_deposit' ? 'Bank Deposit' :
                         'KYC'} Request
               </DialogTitle>
               <DialogDescription>
@@ -1235,6 +1269,7 @@ export default function Admin() {
                 {approvalDialog?.type === 'withdrawal' && `Approve or reject withdrawal request for ${formatCurrency(approvalDialog.item.amount)}`}
                 {approvalDialog?.type === 'kyc' && `Approve or reject KYC for ${approvalDialog.item.firstName} ${approvalDialog.item.lastName}`}
                 {approvalDialog?.type === 'bank_details' && `Approve or reject bank details for ${approvalDialog.item.firstName} ${approvalDialog.item.lastName}`}
+                {approvalDialog?.type === 'bank_deposit' && `Approve or reject bank deposit for ₦${parseFloat(approvalDialog.item.amountNGN).toLocaleString()}`}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -1425,10 +1460,10 @@ export default function Admin() {
               <Button
                 className="w-full"
                 onClick={handleProcess}
-                disabled={processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending || processBankDetailsMutation.isPending}
+                disabled={processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending || processBankDetailsMutation.isPending || processBankDepositMutation.isPending}
                 data-testid="button-confirm"
               >
-                {processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending || processBankDetailsMutation.isPending
+                {processDepositMutation.isPending || processWithdrawalMutation.isPending || processKycMutation.isPending || processBankDetailsMutation.isPending || processBankDepositMutation.isPending
                   ? "Processing..."
                   : `Confirm ${action === 'approve' ? 'Approval' : 'Rejection'}`}
               </Button>
