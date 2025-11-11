@@ -12,6 +12,8 @@ import {
   createWalletFundingRequestSchema,
   regeneratorBankDeposits,
   createBankDepositRequestSchema,
+  platformBankAccounts,
+  platformSettings,
   type BankDepositFeePreview,
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
@@ -20,6 +22,7 @@ import { horizonServer } from "../lib/stellarConfig";
 import { calculateDepositBreakdown } from "../lib/depositFees";
 import { generateBankReference } from "../lib/referenceGenerator";
 import { uploadFile } from "../lib/supabase";
+import { getPlatformFeeSettings } from "../lib/platformSettings";
 
 const router = Router();
 
@@ -52,6 +55,42 @@ const regeneratorMiddleware = async (req: Request, res: Response, next: Function
     res.status(500).json({ error: "Failed to verify Regenerator status" });
   }
 };
+
+/**
+ * GET /api/regenerator/bank-account/active
+ * Get active platform bank account for deposits (public endpoint for regenerators)
+ */
+router.get("/bank-account/active", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const activeAccount = await db.query.platformBankAccounts.findFirst({
+      where: eq(platformBankAccounts.isActive, true),
+    });
+
+    if (!activeAccount) {
+      res.status(404).json({ error: "No active bank account configured" });
+      return;
+    }
+
+    res.json(activeAccount);
+  } catch (error: any) {
+    console.error("Get active bank account error:", error);
+    res.status(500).json({ error: "Failed to get bank account details" });
+  }
+});
+
+/**
+ * GET /api/regenerator/platform-fees
+ * Get platform fee settings (public endpoint for regenerators)
+ */
+router.get("/platform-fees", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const fees = await getPlatformFeeSettings();
+    res.json(fees);
+  } catch (error: any) {
+    console.error("Get platform fees error:", error);
+    res.status(500).json({ error: "Failed to get platform fee settings" });
+  }
+});
 
 /**
  * GET /api/regenerator/stats
@@ -567,8 +606,17 @@ router.post("/bank-deposits/preview", authMiddleware, regeneratorMiddleware, asy
       return;
     }
 
-    // Calculate fee breakdown with live exchange rates
-    const breakdown = await calculateDepositBreakdown(amount);
+    // Fetch platform settings for deposit fee percentage
+    const feeSettings = await getPlatformFeeSettings();
+
+    // Check if user's wallet is activated
+    const wallet = await db.query.wallets.findFirst({
+      where: eq(wallets.userId, req.user.userId),
+    });
+    const walletActivated = wallet?.activationStatus === 'active';
+
+    // Calculate fee breakdown with dynamic fees and wallet activation status
+    const breakdown = await calculateDepositBreakdown(amount, feeSettings.depositFeePercent, walletActivated);
 
     const preview: BankDepositFeePreview = {
       amountNGN: breakdown.amountNGN,
@@ -576,9 +624,11 @@ router.post("/bank-deposits/preview", authMiddleware, regeneratorMiddleware, asy
       platformFeePercent: breakdown.platformFeePercent,
       gasFeeXLM: breakdown.gasFeeXLM,
       gasFeeNGN: breakdown.gasFeeNGN,
+      walletActivationFee: breakdown.walletActivationFee,
       xlmNgnRate: breakdown.xlmNgnRate,
       totalFeesNGN: breakdown.totalFeesNGN,
       ngntsAmount: breakdown.ngntsAmount,
+      needsWalletActivation: breakdown.needsWalletActivation,
     };
 
     res.json(preview);
@@ -620,9 +670,14 @@ router.post(
         return;
       }
 
-      // Calculate fees
+      // Calculate fees with dynamic settings and wallet activation check
       const amount = parseFloat(amountNGN);
-      const breakdown = await calculateDepositBreakdown(amount);
+      const feeSettings = await getPlatformFeeSettings();
+      const wallet = await db.query.wallets.findFirst({
+        where: eq(wallets.userId, userId),
+      });
+      const walletActivated = wallet?.activationStatus === 'active';
+      const breakdown = await calculateDepositBreakdown(amount, feeSettings.depositFeePercent, walletActivated);
 
       // Upload proof to Supabase
       let proofUrl: string;

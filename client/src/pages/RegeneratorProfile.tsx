@@ -41,7 +41,8 @@ import UnifiedHeader from "@/components/UnifiedHeader";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { BankDepositFeePreview } from "@shared/schema";
+import type { BankDepositFeePreview, PlatformBankAccount, PlatformSetting } from "@shared/schema";
+import { useMemo } from "react";
 
 export default function RegeneratorProfile() {
   const [, navigate] = useLocation();
@@ -95,13 +96,15 @@ export default function RegeneratorProfile() {
     staleTime: 0,
   });
 
-  const { data: bankAccountSettings } = useQuery<{
-    accountName: string;
-    bankName: string;
-    accountNumber: string;
-    routingCode: string;
+  const { data: activeAccount, isLoading: bankAccountsLoading } = useQuery<PlatformBankAccount>({
+    queryKey: ["/api/regenerator/bank-account/active"],
+  });
+
+  const { data: platformSettings, isLoading: settingsLoading } = useQuery<{
+    depositFeePercent: number;
+    withdrawalFeePercent: number;
   }>({
-    queryKey: ["/api/settings/bank-account"],
+    queryKey: ["/api/regenerator/platform-fees"],
   });
 
   const { data: depositHistory } = useQuery<{
@@ -1035,35 +1038,107 @@ export default function RegeneratorProfile() {
               <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Building2 className="w-5 h-5 text-blue-400" />
-                  <p className="text-sm font-medium text-blue-300">SEEDx Bank Account Details</p>
+                  <p className="text-sm font-medium text-blue-300">Transfer Funds to SEEDx</p>
                 </div>
-                {bankAccountSettings?.accountName ? (
-                  <div className="space-y-3 bg-black/20 p-4 rounded border border-white/5">
+                
+                {bankAccountsLoading ? (
+                  <div className="text-center py-6">
+                    <div className="animate-pulse space-y-3 bg-black/20 p-4 rounded border border-white/5">
+                      <div className="h-4 bg-white/10 rounded w-1/4"></div>
+                      <div className="h-4 bg-white/10 rounded w-2/3"></div>
+                    </div>
+                  </div>
+                ) : activeAccount ? (
+                  <div className="space-y-3 bg-black/20 p-4 rounded border border-white/5" data-testid="bank-account-details">
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">Account Name</p>
-                      <p className="text-sm font-semibold text-white">{bankAccountSettings.accountName}</p>
+                      <p className="text-xs text-slate-400 mb-1">Account Title</p>
+                      <p className="text-sm font-semibold text-white" data-testid="text-account-title">{activeAccount.title}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Company Name</p>
+                      <p className="text-sm font-semibold text-white" data-testid="text-company-name">{activeAccount.companyName}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-400 mb-1">Bank Name</p>
-                      <p className="text-sm font-semibold text-white">{bankAccountSettings.bankName}</p>
+                      <p className="text-sm font-semibold text-white" data-testid="text-bank-name">{activeAccount.bankName}</p>
                     </div>
-                    <div>
+                    <div className="relative">
                       <p className="text-xs text-slate-400 mb-1">Account Number</p>
-                      <p className="text-sm font-mono font-semibold text-white">{bankAccountSettings.accountNumber}</p>
-                    </div>
-                    {bankAccountSettings.routingCode && (
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1">Routing Code</p>
-                        <p className="text-sm font-mono font-semibold text-white">{bankAccountSettings.routingCode}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-mono font-semibold text-white flex-1" data-testid="text-account-number">
+                          {activeAccount.accountNumber}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            navigator.clipboard.writeText(activeAccount.accountNumber);
+                            toast({ title: "Copied!", description: "Account number copied to clipboard" });
+                          }}
+                          className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                          data-testid="button-copy-account-number"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-slate-400">Bank account details not yet configured. Please contact support.</p>
+                  <div className="text-center py-6 bg-destructive/10 border border-destructive/20 rounded p-4">
+                    <AlertCircle className="w-10 h-10 text-destructive mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-destructive mb-1">Bank Transfers Temporarily Unavailable</p>
+                    <p className="text-xs text-destructive/80">Please contact support or try crypto deposit instead.</p>
                   </div>
                 )}
               </div>
+
+              {/* Paystack-Style Instructions */}
+              {activeAccount && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">How to Complete Your Deposit</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Step 1 */}
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="bg-blue-500/20 text-blue-400 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
+                          1
+                        </div>
+                        <h4 className="font-semibold text-white text-sm">Transfer Funds</h4>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Use your mobile banking app or visit your bank to transfer NGN to the account details above
+                      </p>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="bg-emerald-500/20 text-emerald-400 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
+                          2
+                        </div>
+                        <h4 className="font-semibold text-white text-sm">Upload Proof</h4>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Take a screenshot or download PDF of your transfer receipt and upload it below
+                      </p>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="bg-purple-500/20 text-purple-400 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
+                          3
+                        </div>
+                        <h4 className="font-semibold text-white text-sm">Get NGNTS</h4>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        After admin approval (1-2 days), receive NGNTS tokens in your wallet
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Deposit Request Form or Success Message */}
               {!depositSuccess ? (
@@ -1115,21 +1190,45 @@ export default function RegeneratorProfile() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-slate-400">Deposit Amount:</span>
-                            <span className="font-semibold text-white">₦{feePreview.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}</span>
+                            <span className="font-semibold text-white" data-testid="text-deposit-amount">
+                              ₦{feePreview.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Platform Fee ({feePreview.platformFeePercent}%):</span>
-                            <span className="text-orange-300">-₦{feePreview.platformFee.toFixed(2)}</span>
+                            <span className="text-orange-300" data-testid="text-platform-fee">
+                              -₦{feePreview.platformFee.toFixed(2)}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Gas Fee ({feePreview.gasFeeXLM} XLM):</span>
-                            <span className="text-orange-300">-₦{feePreview.gasFeeNGN.toFixed(2)}</span>
+                            <span className="text-orange-300" data-testid="text-gas-fee">
+                              -₦{feePreview.gasFeeNGN.toFixed(2)}
+                            </span>
                           </div>
+                          {feePreview.needsWalletActivation && feePreview.walletActivationFee > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-400 flex items-center gap-1">
+                                Wallet Activation (one-time):
+                                <AlertCircle className="w-3 h-3" />
+                              </span>
+                              <span className="text-orange-300" data-testid="text-wallet-activation-fee">
+                                -₦{feePreview.walletActivationFee.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                           <Separator className="bg-white/10" />
                           <div className="flex justify-between text-base font-semibold">
                             <span className="text-emerald-300">You will receive:</span>
-                            <span className="text-emerald-400">{feePreview.ngntsAmount.toFixed(2)} NGNTS</span>
+                            <span className="text-emerald-400" data-testid="text-ngnts-amount">
+                              {feePreview.ngntsAmount.toFixed(2)} NGNTS
+                            </span>
                           </div>
+                          {feePreview.needsWalletActivation && (
+                            <p className="text-xs text-blue-300 mt-2">
+                              ℹ️ Wallet activation fee is a one-time charge to set up your Stellar account. Future deposits won't include this fee.
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}

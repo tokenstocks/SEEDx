@@ -1124,9 +1124,11 @@ export type BankDepositFeePreview = {
   platformFeePercent: number;
   gasFeeXLM: number;
   gasFeeNGN: number;
+  walletActivationFee: number;
   xlmNgnRate: number;
   totalFeesNGN: number;
   ngntsAmount: number;
+  needsWalletActivation: boolean;
 };
 
 // Types

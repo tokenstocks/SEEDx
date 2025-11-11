@@ -87,3 +87,82 @@ export async function validateCashflowAllocation(allocation: CashflowAllocation)
   const total = allocation.project + allocation.treasury + allocation.lp;
   return Math.abs(total - 1.0) < 0.001;
 }
+
+/**
+ * Platform fee settings interface
+ */
+export interface PlatformFeeSettings {
+  depositFeePercent: number;
+  withdrawalFeePercent: number;
+}
+
+/**
+ * Get platform fee settings (deposit and withdrawal percentages)
+ * Returns defaults (2% each) if not configured
+ */
+export async function getPlatformFeeSettings(): Promise<PlatformFeeSettings> {
+  const [depositFee, withdrawalFee] = await Promise.all([
+    getSetting("depositFeePercent"),
+    getSetting("withdrawalFeePercent"),
+  ]);
+
+  return {
+    depositFeePercent: depositFee ? parseFloat(depositFee) : 2,
+    withdrawalFeePercent: withdrawalFee ? parseFloat(withdrawalFee) : 2,
+  };
+}
+
+/**
+ * Update platform fee settings
+ * Creates or updates both fee percentage settings
+ */
+export async function updatePlatformFeeSettings(
+  fees: PlatformFeeSettings,
+  updatedBy?: string
+): Promise<void> {
+  const { depositFeePercent, withdrawalFeePercent } = fees;
+
+  // Validate percentages (0-10%)
+  if (depositFeePercent < 0 || depositFeePercent > 10) {
+    throw new Error('Deposit fee must be between 0% and 10%');
+  }
+  if (withdrawalFeePercent < 0 || withdrawalFeePercent > 10) {
+    throw new Error('Withdrawal fee must be between 0% and 10%');
+  }
+
+  // Update or insert both settings (upsert pattern)
+  await Promise.all([
+    db
+      .insert(platformSettings)
+      .values({
+        settingKey: 'depositFeePercent',
+        settingValue: depositFeePercent.toString(),
+        description: 'Platform fee percentage for NGN bank deposits',
+        updatedBy,
+      })
+      .onConflictDoUpdate({
+        target: platformSettings.settingKey,
+        set: {
+          settingValue: depositFeePercent.toString(),
+          updatedBy,
+          updatedAt: new Date(),
+        },
+      }),
+    db
+      .insert(platformSettings)
+      .values({
+        settingKey: 'withdrawalFeePercent',
+        settingValue: withdrawalFeePercent.toString(),
+        description: 'Platform fee percentage for NGN withdrawals',
+        updatedBy,
+      })
+      .onConflictDoUpdate({
+        target: platformSettings.settingKey,
+        set: {
+          settingValue: withdrawalFeePercent.toString(),
+          updatedBy,
+          updatedAt: new Date(),
+        },
+      }),
+  ]);
+}
