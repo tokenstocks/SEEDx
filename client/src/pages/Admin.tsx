@@ -18,6 +18,8 @@ import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 import PlatformWallets from "@/pages/PlatformWallets";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
+import AdminBankAccounts from "@/pages/AdminBankAccounts";
+import AdminPlatformFees from "@/pages/AdminPlatformFees";
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -1119,71 +1121,24 @@ export default function Admin() {
 
           {/* Settings Tab */}
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Platform Settings</CardTitle>
-                <CardDescription>Manage bank account details for fiat deposits</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">Bank Account for Fiat Deposits</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="accountName">Account Name</Label>
-                        <Input
-                          id="accountName"
-                          placeholder="SEEDx Platform"
-                          value={bankSettings.accountName}
-                          onChange={(e) => setBankSettings({ ...bankSettings, accountName: e.target.value })}
-                          data-testid="input-account-name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="bankName">Bank Name</Label>
-                        <Input
-                          id="bankName"
-                          placeholder="First Bank of Nigeria"
-                          value={bankSettings.bankName}
-                          onChange={(e) => setBankSettings({ ...bankSettings, bankName: e.target.value })}
-                          data-testid="input-bank-name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="accountNumber">Account Number</Label>
-                        <Input
-                          id="accountNumber"
-                          placeholder="0123456789"
-                          value={bankSettings.accountNumber}
-                          onChange={(e) => setBankSettings({ ...bankSettings, accountNumber: e.target.value })}
-                          data-testid="input-account-number"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="routingCode">Routing/Sort Code (Optional)</Label>
-                        <Input
-                          id="routingCode"
-                          placeholder="011"
-                          value={bankSettings.routingCode}
-                          onChange={(e) => setBankSettings({ ...bankSettings, routingCode: e.target.value })}
-                          data-testid="input-routing-code"
-                        />
-                      </div>
-                    </div>
-                  </div>
+            <Tabs defaultValue="bank-accounts" className="space-y-6">
+              <TabsList data-testid="tabs-settings">
+                <TabsTrigger value="bank-accounts" data-testid="tab-bank-accounts">
+                  Bank Accounts
+                </TabsTrigger>
+                <TabsTrigger value="platform-fees" data-testid="tab-platform-fees">
+                  Platform Fees
+                </TabsTrigger>
+              </TabsList>
 
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={() => saveBankSettingsMutation.mutate(bankSettings)}
-                      disabled={saveBankSettingsMutation.isPending || !bankSettings.accountName || !bankSettings.bankName || !bankSettings.accountNumber}
-                      data-testid="button-save-settings"
-                    >
-                      {saveBankSettingsMutation.isPending ? "Saving..." : "Save Settings"}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              <TabsContent value="bank-accounts">
+                <AdminBankAccounts />
+              </TabsContent>
+
+              <TabsContent value="platform-fees">
+                <AdminPlatformFees />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
 
