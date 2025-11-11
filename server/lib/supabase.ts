@@ -145,5 +145,6 @@ export async function initializeStorageBuckets(): Promise<void> {
   await ensureBucketExists("kyc", true);
   await ensureBucketExists("project-photos", true);
   await ensureBucketExists("project-documents", true);
+  await ensureBucketExists("bank-deposits", true);
   console.log("Storage bucket initialization complete\n");
 }
