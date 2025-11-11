@@ -35,6 +35,7 @@ import {
   Building2,
   Upload,
   Info,
+  Calculator,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import UnifiedHeader from "@/components/UnifiedHeader";
@@ -1341,7 +1342,7 @@ export default function RegeneratorProfile() {
                           <div className="flex justify-between items-center">
                             <p className="text-sm text-slate-400">Stellar Gas Fee</p>
                             <p className="text-sm text-red-400">
-                              -₦{wizardFeeBreakdown.gasFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                              -₦{wizardFeeBreakdown.gasFeeNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                             </p>
                           </div>
                           
@@ -1358,7 +1359,7 @@ export default function RegeneratorProfile() {
                             <div className="flex justify-between items-center">
                               <p className="text-sm font-semibold text-slate-300">Total Fees</p>
                               <p className="text-sm font-semibold text-red-400">
-                                -₦{wizardFeeBreakdown.totalFees.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                                -₦{wizardFeeBreakdown.totalFeesNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                               </p>
                             </div>
                           </div>
@@ -1367,7 +1368,7 @@ export default function RegeneratorProfile() {
                             <div className="flex justify-between items-center">
                               <p className="text-base font-bold text-emerald-300">You Will Receive</p>
                               <p className="text-2xl font-bold text-emerald-400">
-                                {wizardFeeBreakdown.ngntsToCredit.toLocaleString('en-NG', {minimumFractionDigits: 2})} NGNTS
+                                {wizardFeeBreakdown.ngntsAmount.toLocaleString('en-NG', {minimumFractionDigits: 2})} NGNTS
                               </p>
                             </div>
                           </div>
