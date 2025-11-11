@@ -3322,18 +3322,7 @@ router.delete("/settings/bank-accounts/:id", authenticate, requireAdmin, async (
  */
 router.get("/settings/platform-fees", authenticate, requireAdmin, async (req, res) => {
   try {
-    const settingKeys = ["deposit_fee_percent", "withdrawal_fee_percent"];
-    
-    const settings = await db
-      .select()
-      .from(platformSettings)
-      .where(sql`${platformSettings.settingKey} = ANY(${sql`ARRAY[${settingKeys.map(k => sql`${k}`)}]`})`);
-
-    const fees = {
-      depositFeePercent: parseFloat(settings.find(s => s.settingKey === "deposit_fee_percent")?.settingValue || "2"),
-      withdrawalFeePercent: parseFloat(settings.find(s => s.settingKey === "withdrawal_fee_percent")?.settingValue || "2"),
-    };
-
+    const fees = await getPlatformFeeSettings();
     res.json(fees);
   } catch (error: any) {
     console.error("Get platform fees error:", error);
@@ -3366,61 +3355,16 @@ router.put("/settings/platform-fees", authenticate, requireAdmin, async (req, re
       }
     }
 
-    const settingsToUpsert = [];
-    
-    if (depositFeePercent !== undefined) {
-      settingsToUpsert.push({
-        key: "deposit_fee_percent",
-        value: depositFeePercent.toString(),
-        description: "Platform fee percentage for deposits (NGN to NGNTS conversion)",
-      });
-    }
+    await updatePlatformFeeSettings(
+      { depositFeePercent, withdrawalFeePercent },
+      userId
+    );
 
-    if (withdrawalFeePercent !== undefined) {
-      settingsToUpsert.push({
-        key: "withdrawal_fee_percent",
-        value: withdrawalFeePercent.toString(),
-        description: "Platform fee percentage for withdrawals (NGNTS to NGN conversion)",
-      });
-    }
-
-    for (const setting of settingsToUpsert) {
-      const [existing] = await db
-        .select()
-        .from(platformSettings)
-        .where(eq(platformSettings.settingKey, setting.key))
-        .limit(1);
-
-      if (existing) {
-        await db
-          .update(platformSettings)
-          .set({
-            settingValue: setting.value,
-            updatedBy: userId,
-            updatedAt: new Date(),
-          })
-          .where(eq(platformSettings.settingKey, setting.key));
-      } else {
-        await db.insert(platformSettings).values({
-          settingKey: setting.key,
-          settingValue: setting.value,
-          description: setting.description,
-          updatedBy: userId,
-        });
-      }
-    }
-
-    const updatedFees = await db
-      .select()
-      .from(platformSettings)
-      .where(sql`${platformSettings.settingKey} = ANY(${sql`ARRAY['deposit_fee_percent', 'withdrawal_fee_percent']`})`);
+    const updatedFees = await getPlatformFeeSettings();
 
     res.json({
       message: "Platform fees updated successfully",
-      fees: {
-        depositFeePercent: parseFloat(updatedFees.find(s => s.settingKey === "deposit_fee_percent")?.settingValue || "2"),
-        withdrawalFeePercent: parseFloat(updatedFees.find(s => s.settingKey === "withdrawal_fee_percent")?.settingValue || "2"),
-      },
+      fees: updatedFees,
     });
   } catch (error: any) {
     console.error("Update platform fees error:", error);
