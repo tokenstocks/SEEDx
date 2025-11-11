@@ -889,6 +889,26 @@ export default function Admin() {
                             <p className="text-xs text-muted-foreground mt-1" data-testid={`text-reference-${deposit.id}`}>
                               Ref: {deposit.referenceCode}
                             </p>
+                            <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                              <span>Submitted: {new Date(deposit.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}</span>
+                              {deposit.proofUrl && deposit.updatedAt && (
+                                <>
+                                  <span>•</span>
+                                  <span>Proof uploaded: {new Date(deposit.updatedAt).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  })}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                           <Button
                             onClick={() => setApprovalDialog({ type: 'bank_deposit', item: deposit })}
