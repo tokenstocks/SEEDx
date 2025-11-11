@@ -348,7 +348,7 @@ export default function Admin() {
   });
 
   const { data: bankDeposits } = useQuery<{ deposits: BankDeposit[] }>({
-    queryKey: ["/api/admin/bank-deposits", { status: "pending" }],
+    queryKey: ["/api/admin/bank-deposits?status=pending"],
     enabled: !!user,
   });
 
