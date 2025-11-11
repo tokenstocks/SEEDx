@@ -114,6 +114,7 @@ interface BankDeposit {
   approvedBy: string | null;
   approvedAt: string | null;
   txHash: string | null;
+  walletActivationStatus: "created" | "pending" | "activating" | "active" | "failed" | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -278,7 +279,7 @@ export default function Admin() {
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
   const [approvalDialog, setApprovalDialog] = useState<{
-    type: 'deposit' | 'withdrawal' | 'kyc' | 'bank_details';
+    type: 'deposit' | 'withdrawal' | 'kyc' | 'bank_details' | 'bank_deposit';
     item: any;
   } | null>(null);
   const [action, setAction] = useState<'approve' | 'reject'>('approve');
@@ -844,6 +845,63 @@ export default function Admin() {
                   </div>
                 ) : (
                   <p className="text-center py-8 text-muted-foreground">No pending deposits</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bank Deposits Tab */}
+          <TabsContent value="bank-deposits">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Bank Deposits (NGN)</CardTitle>
+                <CardDescription>Review and approve regenerator bank transfer deposits</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {bankDeposits && bankDeposits.deposits.length > 0 ? (
+                  <div className="space-y-4">
+                    {bankDeposits.deposits.map((deposit) => {
+                      const willActivateWallet = deposit.walletActivationStatus !== 'active';
+                      
+                      return (
+                        <div key={deposit.id} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`bank-deposit-${deposit.id}`}>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold">
+                                {deposit.userFirstName} {deposit.userLastName}
+                              </h4>
+                              {willActivateWallet && (
+                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30" data-testid={`badge-first-deposit-${deposit.id}`}>
+                                  First Deposit - Will Activate Wallet
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{deposit.userEmail}</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <p className="text-sm">
+                                Amount: <span className="font-semibold">₦{parseFloat(deposit.amountNGN).toLocaleString()}</span>
+                              </p>
+                              <span className="text-muted-foreground">•</span>
+                              <p className="text-sm">
+                                NGNTS Credit: <span className="font-semibold">{parseFloat(deposit.ngntsAmount).toLocaleString()}</span>
+                              </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1" data-testid={`text-reference-${deposit.id}`}>
+                              Ref: {deposit.referenceCode}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => setApprovalDialog({ type: 'bank_deposit', item: deposit })}
+                            data-testid={`button-review-bank-deposit-${deposit.id}`}
+                          >
+                            Review
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">No pending bank deposits</p>
                 )}
               </CardContent>
             </Card>

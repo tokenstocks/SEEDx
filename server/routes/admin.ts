@@ -3457,9 +3457,11 @@ router.get("/bank-deposits", authenticate, requireAdmin, async (req, res) => {
         userEmail: users.email,
         userFirstName: users.firstName,
         userLastName: users.lastName,
+        walletActivationStatus: wallets.activationStatus,
       })
       .from(regeneratorBankDeposits)
-      .leftJoin(users, eq(regeneratorBankDeposits.userId, users.id));
+      .leftJoin(users, eq(regeneratorBankDeposits.userId, users.id))
+      .leftJoin(wallets, eq(wallets.userId, regeneratorBankDeposits.userId));
 
     if (status && typeof status === "string") {
       queryBuilder = queryBuilder.where(eq(regeneratorBankDeposits.status, status as "pending" | "approved" | "rejected" | "completed"));
