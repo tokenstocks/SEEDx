@@ -19,6 +19,7 @@ import {
   regeneratorWalletFundingRequests,
   regeneratorBankDeposits,
   platformSettings,
+  platformBankAccounts,
   approveDepositSchema,
   approveWithdrawalSchema,
   updateKycStatusSchema,
@@ -27,6 +28,7 @@ import {
   suspendUserSchema,
   processRedemptionRequestSchema,
   approveWalletFundingRequestSchema,
+  createPlatformBankAccountSchema,
 } from "@shared/schema";
 import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
@@ -3145,6 +3147,284 @@ router.put("/settings/bank-account", authenticate, requireAdmin, async (req, res
   } catch (error: any) {
     console.error("Update bank account settings error:", error);
     res.status(500).json({ error: "Failed to update bank account settings" });
+  }
+});
+
+/**
+ * GET /api/admin/settings/bank-accounts
+ * Get all platform bank accounts (new structured approach)
+ */
+router.get("/settings/bank-accounts", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const accounts = await db
+      .select()
+      .from(platformBankAccounts)
+      .orderBy(desc(platformBankAccounts.createdAt));
+
+    res.json({ accounts });
+  } catch (error: any) {
+    console.error("Get bank accounts error:", error);
+    res.status(500).json({ error: "Failed to get bank accounts" });
+  }
+});
+
+/**
+ * GET /api/admin/settings/bank-accounts/active
+ * Get the currently active bank account for deposits
+ */
+router.get("/settings/bank-accounts/active", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const [activeAccount] = await db
+      .select()
+      .from(platformBankAccounts)
+      .where(eq(platformBankAccounts.isActive, true))
+      .limit(1);
+
+    if (!activeAccount) {
+      res.status(404).json({ error: "No active bank account configured" });
+      return;
+    }
+
+    res.json(activeAccount);
+  } catch (error: any) {
+    console.error("Get active bank account error:", error);
+    res.status(500).json({ error: "Failed to get active bank account" });
+  }
+});
+
+/**
+ * POST /api/admin/settings/bank-accounts
+ * Create a new platform bank account
+ */
+router.post("/settings/bank-accounts", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.userId!;
+    const validationResult = createPlatformBankAccountSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      res.status(400).json({
+        error: "Validation failed",
+        details: validationResult.error.issues,
+      });
+      return;
+    }
+
+    const { title, bankName, accountNumber, companyName } = validationResult.data;
+
+    const [newAccount] = await db
+      .insert(platformBankAccounts)
+      .values({
+        title,
+        bankName,
+        accountNumber,
+        companyName,
+        isActive: false,
+        createdBy: userId,
+        updatedBy: userId,
+      })
+      .returning();
+
+    res.json({
+      message: "Bank account created successfully",
+      account: newAccount,
+    });
+  } catch (error: any) {
+    console.error("Create bank account error:", error);
+    res.status(500).json({ error: "Failed to create bank account" });
+  }
+});
+
+/**
+ * PUT /api/admin/settings/bank-accounts/:id/activate
+ * Activate a bank account (and deactivate others)
+ */
+router.put("/settings/bank-accounts/:id/activate", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId!;
+
+    const [account] = await db
+      .select()
+      .from(platformBankAccounts)
+      .where(eq(platformBankAccounts.id, id))
+      .limit(1);
+
+    if (!account) {
+      res.status(404).json({ error: "Bank account not found" });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(platformBankAccounts)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(platformBankAccounts.isActive, true));
+
+      await tx
+        .update(platformBankAccounts)
+        .set({ isActive: true, updatedBy: userId, updatedAt: new Date() })
+        .where(eq(platformBankAccounts.id, id));
+    });
+
+    res.json({
+      message: "Bank account activated successfully",
+      accountId: id,
+    });
+  } catch (error: any) {
+    console.error("Activate bank account error:", error);
+    res.status(500).json({ error: "Failed to activate bank account" });
+  }
+});
+
+/**
+ * DELETE /api/admin/settings/bank-accounts/:id
+ * Delete a bank account (cannot delete if active)
+ */
+router.delete("/settings/bank-accounts/:id", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [account] = await db
+      .select()
+      .from(platformBankAccounts)
+      .where(eq(platformBankAccounts.id, id))
+      .limit(1);
+
+    if (!account) {
+      res.status(404).json({ error: "Bank account not found" });
+      return;
+    }
+
+    if (account.isActive) {
+      res.status(400).json({
+        error: "Cannot delete active bank account. Please activate another account first.",
+      });
+      return;
+    }
+
+    await db
+      .delete(platformBankAccounts)
+      .where(eq(platformBankAccounts.id, id));
+
+    res.json({
+      message: "Bank account deleted successfully",
+      accountId: id,
+    });
+  } catch (error: any) {
+    console.error("Delete bank account error:", error);
+    res.status(500).json({ error: "Failed to delete bank account" });
+  }
+});
+
+/**
+ * GET /api/admin/settings/platform-fees
+ * Get platform fee configuration (deposit and withdrawal fees)
+ */
+router.get("/settings/platform-fees", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const settingKeys = ["deposit_fee_percent", "withdrawal_fee_percent"];
+    
+    const settings = await db
+      .select()
+      .from(platformSettings)
+      .where(sql`${platformSettings.settingKey} = ANY(${sql`ARRAY[${settingKeys.map(k => sql`${k}`)}]`})`);
+
+    const fees = {
+      depositFeePercent: parseFloat(settings.find(s => s.settingKey === "deposit_fee_percent")?.settingValue || "2"),
+      withdrawalFeePercent: parseFloat(settings.find(s => s.settingKey === "withdrawal_fee_percent")?.settingValue || "2"),
+    };
+
+    res.json(fees);
+  } catch (error: any) {
+    console.error("Get platform fees error:", error);
+    res.status(500).json({ error: "Failed to get platform fees" });
+  }
+});
+
+/**
+ * PUT /api/admin/settings/platform-fees
+ * Update platform fee configuration
+ */
+router.put("/settings/platform-fees", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { depositFeePercent, withdrawalFeePercent } = req.body;
+    const userId = req.userId!;
+
+    if (depositFeePercent !== undefined) {
+      const fee = parseFloat(depositFeePercent);
+      if (isNaN(fee) || fee < 0 || fee > 10) {
+        res.status(400).json({ error: "Deposit fee must be between 0% and 10%" });
+        return;
+      }
+    }
+
+    if (withdrawalFeePercent !== undefined) {
+      const fee = parseFloat(withdrawalFeePercent);
+      if (isNaN(fee) || fee < 0 || fee > 10) {
+        res.status(400).json({ error: "Withdrawal fee must be between 0% and 10%" });
+        return;
+      }
+    }
+
+    const settingsToUpsert = [];
+    
+    if (depositFeePercent !== undefined) {
+      settingsToUpsert.push({
+        key: "deposit_fee_percent",
+        value: depositFeePercent.toString(),
+        description: "Platform fee percentage for deposits (NGN to NGNTS conversion)",
+      });
+    }
+
+    if (withdrawalFeePercent !== undefined) {
+      settingsToUpsert.push({
+        key: "withdrawal_fee_percent",
+        value: withdrawalFeePercent.toString(),
+        description: "Platform fee percentage for withdrawals (NGNTS to NGN conversion)",
+      });
+    }
+
+    for (const setting of settingsToUpsert) {
+      const [existing] = await db
+        .select()
+        .from(platformSettings)
+        .where(eq(platformSettings.settingKey, setting.key))
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(platformSettings)
+          .set({
+            settingValue: setting.value,
+            updatedBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(platformSettings.settingKey, setting.key));
+      } else {
+        await db.insert(platformSettings).values({
+          settingKey: setting.key,
+          settingValue: setting.value,
+          description: setting.description,
+          updatedBy: userId,
+        });
+      }
+    }
+
+    const updatedFees = await db
+      .select()
+      .from(platformSettings)
+      .where(sql`${platformSettings.settingKey} = ANY(${sql`ARRAY['deposit_fee_percent', 'withdrawal_fee_percent']`})`);
+
+    res.json({
+      message: "Platform fees updated successfully",
+      fees: {
+        depositFeePercent: parseFloat(updatedFees.find(s => s.settingKey === "deposit_fee_percent")?.settingValue || "2"),
+        withdrawalFeePercent: parseFloat(updatedFees.find(s => s.settingKey === "withdrawal_fee_percent")?.settingValue || "2"),
+      },
+    });
+  } catch (error: any) {
+    console.error("Update platform fees error:", error);
+    res.status(500).json({ error: "Failed to update platform fees" });
   }
 });
 

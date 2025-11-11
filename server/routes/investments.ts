@@ -166,6 +166,9 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
     let trustlineTxHash: string | undefined;
     let paymentTxHash: string;
     let tokenTransferTxHash: string;
+    let paymentAssetCode: string;
+    let paymentIssuerPublicKey: string;
+    let lpPoolWallet: any;
 
     // Step 1: Ensure user has trustline for project token
     try {
@@ -189,14 +192,25 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       return;
     }
 
-    // Step 2: Transfer payment from user to project (on-chain settlement)
-    // For NGN: Transfer NGNTS from user to project distribution wallet
-    // For USDC/XLM: Transfer the crypto asset from user to project distribution wallet
+    // Step 2: Transfer payment from user to LP Pool (on-chain settlement)
+    // REGENERATIVE CAPITAL FLOW: Payment goes to LP Pool to immediately regenerate capital for next project
+    // Project already received operational funds from LP allocation - this completes the regeneration cycle
+    // For NGN: Transfer NGNTS from user to LP Pool wallet
+    // For USDC/XLM: Transfer the crypto asset from user to LP Pool wallet
     try {
-      // Determine payment asset based on project currency
-      let paymentAssetCode: string;
-      let paymentIssuerPublicKey: string;
+      // Get LP Pool wallet
+      [lpPoolWallet] = await db
+        .select()
+        .from(platformWallets)
+        .where(eq(platformWallets.walletType, "liquidity_pool"))
+        .limit(1);
 
+      if (!lpPoolWallet) {
+        res.status(500).json({ error: "LP Pool wallet not configured - required for investments" });
+        return;
+      }
+
+      // Determine payment asset based on project currency
       if (projectCurrency === "NGN") {
         // NGN investments use NGNTS token - need treasury wallet for issuer
         const [treasuryWallet] = await db
@@ -222,18 +236,18 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
         paymentIssuerPublicKey = ""; // Native asset has no issuer
       }
 
-      console.log(`   💸 Transferring ${investmentAmount.toFixed(7)} ${paymentAssetCode} from user to project...`);
+      console.log(`   💸 Transferring ${investmentAmount.toFixed(7)} ${paymentAssetCode} from user to LP Pool (regenerative capital)...`);
 
-      // Transfer payment from user wallet to project distribution wallet
+      // Transfer payment from user wallet to LP Pool wallet (REGENERATIVE FLOW)
       paymentTxHash = await transferAsset(
         userWallet.cryptoWalletPublicKey,
-        project.stellarDistributionPublicKey,
+        lpPoolWallet.publicKey,
         paymentAssetCode,
         paymentIssuerPublicKey,
         investmentAmount.toFixed(7)
       );
 
-      console.log(`   ✓ Payment transferred: ${paymentTxHash}`);
+      console.log(`   ✓ Payment transferred to LP Pool: ${paymentTxHash}`);
     } catch (error: any) {
       console.error("❌ Payment transfer failed:", error);
       res.status(500).json({ 
@@ -255,23 +269,24 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       console.log(`   ✓ Project tokens transferred: ${tokenTransferTxHash}`);
     } catch (error: any) {
       console.error("❌ Token transfer failed after payment:", error);
-      console.error(`   ⚠️  CRITICAL: Payment sent (TX: ${paymentTxHash}) but token delivery failed`);
-      console.error(`   🔄 Attempting to refund payment to user...`);
+      console.error(`   ⚠️  CRITICAL: Payment sent to LP Pool (TX: ${paymentTxHash}) but token delivery failed`);
+      console.error(`   🔄 Attempting to refund payment from LP Pool to user...`);
       
       // CRITICAL: Refund the payment to user since token delivery failed
+      // Payment went to LP Pool, so refund comes from LP Pool
       try {
         const refundTxHash = await transferAsset(
-          project.stellarDistributionPublicKey,
+          lpPoolWallet.publicKey,
           userWallet.cryptoWalletPublicKey,
           paymentAssetCode,
           paymentIssuerPublicKey,
           investmentAmount.toFixed(7)
         );
         
-        console.log(`   ✅ Payment refunded to user: ${refundTxHash}`);
+        console.log(`   ✅ Payment refunded from LP Pool to user: ${refundTxHash}`);
         
         res.status(500).json({ 
-          error: `Token delivery failed but your payment has been refunded. Refund transaction: ${refundTxHash}`,
+          error: `Token delivery failed but your payment has been refunded from LP Pool. Refund transaction: ${refundTxHash}`,
           paymentTxHash,
           refundTxHash,
           tokenDeliveryError: error.message
@@ -281,9 +296,10 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
         console.error("❌❌ REFUND FAILED - DOUBLE CRITICAL:", refundError);
         console.error(`   ⚠️⚠️  USER LOST FUNDS: Payment TX ${paymentTxHash}, Refund failed`);
         console.error(`   ⚠️⚠️  Manual intervention REQUIRED for user ${userId}, project ${projectId}`);
+        console.error(`   ⚠️⚠️  Funds are in LP Pool wallet: ${lpPoolWallet.publicKey}`);
         
         res.status(500).json({ 
-          error: `CRITICAL: Token delivery failed AND refund failed. Your payment is with the project. Please contact support immediately with these transaction hashes for urgent manual recovery.`,
+          error: `CRITICAL: Token delivery failed AND refund failed. Your payment is in the LP Pool. Please contact support immediately with these transaction hashes for urgent manual recovery.`,
           paymentTxHash,
           refundError: refundError.message,
           criticalError: true,
@@ -430,7 +446,7 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
           action: "transfer",
           tokenAmount: "0", // This is the payment leg, not token leg
           stellarTransactionHash: paymentTxHash,
-          notes: `Payment: ${currencySymbol}${investmentAmount.toFixed(2)} transferred to ${project.name}`,
+          notes: `Payment: ${currencySymbol}${investmentAmount.toFixed(2)} transferred to LP Pool (regenerative capital flow) for ${project.name} tokens`,
         });
 
         // Record token transfer in ledger

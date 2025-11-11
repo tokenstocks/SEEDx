@@ -292,6 +292,20 @@ export const platformSettings = pgTable("platform_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Platform bank accounts table - Nigerian bank accounts for deposits
+export const platformBankAccounts = pgTable("platform_bank_accounts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(), // e.g., "Bank 1", "Bank 2"
+  bankName: text("bank_name").notNull(), // e.g., "First Bank of Nigeria"
+  accountNumber: text("account_number").notNull(),
+  companyName: text("company_name").notNull(), // e.g., "SEEDx Ltd"
+  isActive: boolean("is_active").notNull().default(false), // Only one can be active at a time
+  createdBy: uuid("created_by").references(() => users.id),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Secondary market orders table - Liquidity pool token buyback
 export const secondaryMarketOrders = pgTable("secondary_market_orders", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -896,6 +910,19 @@ export const insertPlatformSettingSchema = createInsertSchema(platformSettings).
   updatedAt: true,
 });
 
+export const insertPlatformBankAccountSchema = createInsertSchema(platformBankAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const createPlatformBankAccountSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  bankName: z.string().min(1, "Bank name is required"),
+  accountNumber: z.string().min(10, "Account number must be at least 10 digits").max(10, "Account number must be exactly 10 digits"),
+  companyName: z.string().min(1, "Company name is required"),
+});
+
 export const updatePlatformSettingsSchema = z.object({
   depositFeePercent: z.number().min(0).max(10).optional(),
   investmentFeePercent: z.number().min(0).max(10).optional(),
@@ -1141,6 +1168,9 @@ export type UpdateExchangeRate = z.infer<typeof updateExchangeRateSchema>;
 export type PlatformSetting = typeof platformSettings.$inferSelect;
 export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
 export type UpdatePlatformSettings = z.infer<typeof updatePlatformSettingsSchema>;
+export type PlatformBankAccount = typeof platformBankAccounts.$inferSelect;
+export type InsertPlatformBankAccount = z.infer<typeof insertPlatformBankAccountSchema>;
+export type CreatePlatformBankAccount = z.infer<typeof createPlatformBankAccountSchema>;
 export type SecondaryMarketOrder = typeof secondaryMarketOrders.$inferSelect;
 export type InsertSecondaryMarketOrder = z.infer<typeof insertSecondaryMarketOrderSchema>;
 export type CreateSecondaryMarketOrder = z.infer<typeof createSecondaryMarketOrderSchema>;
