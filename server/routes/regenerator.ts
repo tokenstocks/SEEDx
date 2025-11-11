@@ -639,6 +639,208 @@ router.post("/bank-deposits/preview", authMiddleware, regeneratorMiddleware, asy
 });
 
 /**
+ * POST /api/regenerator/bank-deposits/initiate
+ * Step 1: Generate reference code and bank details for deposit
+ */
+router.post("/bank-deposits/initiate", authMiddleware, regeneratorMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { amountNGN } = req.body;
+
+    if (!amountNGN || isNaN(parseFloat(amountNGN))) {
+      res.status(400).json({ error: "Valid amount required" });
+      return;
+    }
+
+    const amount = parseFloat(amountNGN);
+    if (amount <= 0) {
+      res.status(400).json({ error: "Amount must be greater than 0" });
+      return;
+    }
+
+    const userId = req.user.userId;
+
+    // Get active bank account
+    const activeAccount = await db.query.platformBankAccounts.findFirst({
+      where: eq(platformBankAccounts.isActive, true),
+    });
+
+    if (!activeAccount) {
+      res.status(404).json({ error: "No active bank account configured. Please contact support." });
+      return;
+    }
+
+    // Calculate fees with dynamic settings and wallet activation check
+    const feeSettings = await getPlatformFeeSettings();
+    const wallet = await db.query.wallets.findFirst({
+      where: eq(wallets.userId, userId),
+    });
+    const walletActivated = wallet?.activationStatus === 'active';
+    const breakdown = await calculateDepositBreakdown(amount, feeSettings.depositFeePercent, walletActivated);
+
+    // Generate unique reference code
+    const referenceCode = generateBankReference();
+
+    // Create deposit record WITHOUT proof (to be added later)
+    const [deposit] = await db
+      .insert(regeneratorBankDeposits)
+      .values({
+        userId,
+        referenceCode,
+        amountNGN: amountNGN,
+        ngntsAmount: breakdown.ngntsAmount.toFixed(2),
+        platformFee: breakdown.platformFee.toFixed(2),
+        gasFee: breakdown.gasFeeNGN.toFixed(6),
+        status: "pending",
+        proofUrl: null, // Will be added when user uploads proof
+      })
+      .returning();
+
+    res.status(201).json({
+      success: true,
+      depositId: deposit.id,
+      referenceCode: deposit.referenceCode,
+      bankAccount: {
+        bankName: activeAccount.bankName,
+        accountNumber: activeAccount.accountNumber,
+        accountName: activeAccount.companyName,
+      },
+      feeBreakdown: {
+        amountNGN: breakdown.amountNGN,
+        platformFee: breakdown.platformFee,
+        platformFeePercent: breakdown.platformFeePercent,
+        gasFeeXLM: breakdown.gasFeeXLM,
+        gasFeeNGN: breakdown.gasFeeNGN,
+        walletActivationFee: breakdown.walletActivationFee,
+        xlmNgnRate: breakdown.xlmNgnRate,
+        totalFeesNGN: breakdown.totalFeesNGN,
+        ngntsAmount: breakdown.ngntsAmount,
+        needsWalletActivation: breakdown.needsWalletActivation,
+      },
+    });
+  } catch (error: any) {
+    console.error("Bank deposit initiation error:", error);
+    res.status(500).json({ error: "Failed to initiate deposit" });
+  }
+});
+
+/**
+ * PATCH /api/regenerator/bank-deposits/:id/proof
+ * Step 2: Upload proof of payment for existing deposit
+ */
+router.patch(
+  "/bank-deposits/:id/proof",
+  authMiddleware,
+  regeneratorMiddleware,
+  depositUpload.single("proof"),
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const depositId = req.params.id;
+      const userId = req.user.userId;
+      const { notes } = req.body;
+
+      // Check for uploaded proof
+      if (!req.file) {
+        res.status(400).json({ error: "Proof of payment is required" });
+        return;
+      }
+
+      // Verify deposit exists, belongs to user, and is in pending status
+      const existingDeposit = await db.query.regeneratorBankDeposits.findFirst({
+        where: and(
+          eq(regeneratorBankDeposits.id, depositId),
+          eq(regeneratorBankDeposits.userId, userId),
+          eq(regeneratorBankDeposits.status, "pending")
+        ),
+      });
+
+      if (!existingDeposit) {
+        res.status(404).json({ error: "Deposit not found, access denied, or already processed" });
+        return;
+      }
+
+      // Strictly prevent proof overwrite - immutable once set
+      if (existingDeposit.proofUrl !== null) {
+        res.status(403).json({ 
+          error: "Proof already uploaded for this deposit and cannot be modified",
+          details: "If you need to update proof, please contact support"
+        });
+        return;
+      }
+
+      // Upload proof to Supabase
+      let proofUrl: string;
+      try {
+        const file = req.file;
+        const path = `${userId}/deposit-proof-${Date.now()}.${file.mimetype.split("/")[1]}`;
+        proofUrl = await uploadFile("bank-deposits", path, file.buffer, file.mimetype);
+      } catch (uploadError: any) {
+        console.error("Proof upload failed:", uploadError);
+        res.status(500).json({ 
+          error: "Failed to upload proof of payment",
+          details: "Please ensure the file is a valid image or PDF under 5MB"
+        });
+        return;
+      }
+
+      // Update deposit record with proof (user-scoped + immutability enforced)
+      const [updatedDeposit] = await db
+        .update(regeneratorBankDeposits)
+        .set({
+          proofUrl,
+          notes: notes || null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(regeneratorBankDeposits.id, depositId),
+            eq(regeneratorBankDeposits.userId, userId),
+            eq(regeneratorBankDeposits.status, "pending"),
+            sql`${regeneratorBankDeposits.proofUrl} IS NULL` // Double-check immutability at DB level
+          )
+        )
+        .returning();
+      
+      // Final verification that update succeeded
+      if (!updatedDeposit) {
+        res.status(409).json({ 
+          error: "Deposit was modified by another request",
+          details: "Please refresh and try again"
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        deposit: {
+          id: updatedDeposit.id,
+          referenceCode: updatedDeposit.referenceCode,
+          amountNGN: updatedDeposit.amountNGN,
+          ngntsAmount: updatedDeposit.ngntsAmount,
+          platformFee: updatedDeposit.platformFee,
+          gasFee: updatedDeposit.gasFee,
+          status: updatedDeposit.status,
+          proofUrl: updatedDeposit.proofUrl,
+          createdAt: updatedDeposit.createdAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Proof upload error:", error);
+      res.status(500).json({ error: "Failed to upload proof" });
+    }
+  }
+);
+
+/**
  * POST /api/regenerator/bank-deposits
  * Create a new bank deposit request
  */

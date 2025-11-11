@@ -51,13 +51,18 @@ export default function RegeneratorProfile() {
   const { toast } = useToast();
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedReference, setCopiedReference] = useState(false);
+  
+  // Multi-step wizard state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [depositId, setDepositId] = useState<string | null>(null);
+  const [depositReference, setDepositReference] = useState("");
+  const [wizardBankAccount, setWizardBankAccount] = useState<PlatformBankAccount | null>(null);
+  const [wizardFeeBreakdown, setWizardFeeBreakdown] = useState<BankDepositFeePreview | null>(null);
   
   // Bank deposit form state
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositNotes, setDepositNotes] = useState("");
   const [depositProof, setDepositProof] = useState<File | null>(null);
-  const [depositSuccess, setDepositSuccess] = useState(false);
-  const [depositReference, setDepositReference] = useState("");
   const [feePreview, setFeePreview] = useState<BankDepositFeePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -185,18 +190,55 @@ export default function RegeneratorProfile() {
     return () => clearTimeout(timer);
   }, [depositAmount]);
 
-  // Deposit submission mutation
-  const depositMutation = useMutation({
+  // Step 2: Initiate deposit mutation
+  const initiateMutation = useMutation({
     mutationFn: async () => {
-      if (!depositProof) throw new Error("Proof of payment is required");
+      const response = await fetch("/api/regenerator/bank-deposits/initiate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ amountNGN: depositAmount }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to initiate deposit");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setDepositId(data.depositId);
+      setDepositReference(data.referenceCode);
+      setWizardBankAccount(data.bankAccount);
+      setWizardFeeBreakdown(data.feeBreakdown);
+      setCurrentStep(2);
+      toast({
+        title: "Reference Code Generated",
+        description: `Your reference code: ${data.referenceCode}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Initiation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Step 3: Upload proof mutation
+  const uploadProofMutation = useMutation({
+    mutationFn: async () => {
+      if (!depositProof || !depositId) throw new Error("Missing deposit proof or ID");
       
       const formData = new FormData();
-      formData.append("amountNGN", depositAmount);
-      if (depositNotes) formData.append("notes", depositNotes);
       formData.append("proof", depositProof);
 
-      const response = await fetch("/api/regenerator/bank-deposits", {
-        method: "POST",
+      const response = await fetch(`/api/regenerator/bank-deposits/${depositId}/proof`, {
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -205,65 +247,89 @@ export default function RegeneratorProfile() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to submit deposit request");
+        throw new Error(error.error || "Failed to upload proof");
       }
 
       return response.json();
     },
-    onSuccess: (data) => {
-      setDepositReference(data.deposit.referenceCode);
-      setDepositSuccess(true);
+    onSuccess: () => {
+      setCurrentStep(4);
       toast({
-        title: "Deposit Request Submitted",
-        description: `Reference code: ${data.deposit.referenceCode}`,
+        title: "Proof Uploaded Successfully",
+        description: "Your deposit request is now pending admin approval",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/regenerator/wallet/balances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/regenerator/bank-deposits"] });
     },
     onError: (error: Error) => {
       toast({
-        title: "Submission Failed",
+        title: "Upload Failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const handleDepositSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!depositAmount || !depositProof) {
+  const handleStep1Continue = () => {
+    if (!depositAmount || !feePreview || previewError) {
       toast({
-        title: "Missing Information",
-        description: "Please enter amount and upload proof of payment",
+        title: "Invalid Amount",
+        description: "Please enter a valid deposit amount",
         variant: "destructive",
       });
       return;
     }
-    depositMutation.mutate();
+    initiateMutation.mutate();
   };
 
-  const resetDepositForm = () => {
+  const handleStep3Submit = () => {
+    if (!depositProof) {
+      toast({
+        title: "Missing Proof",
+        description: "Please upload proof of payment",
+        variant: "destructive",
+      });
+      return;
+    }
+    uploadProofMutation.mutate();
+  };
+
+  const resetDepositWizard = () => {
+    setCurrentStep(1);
     setDepositAmount("");
-    setDepositNotes("");
     setDepositProof(null);
-    setDepositSuccess(false);
+    setDepositId(null);
     setDepositReference("");
+    setWizardBankAccount(null);
+    setWizardFeeBreakdown(null);
     setFeePreview(null);
     setPreviewError(null);
   };
 
-  const copyToClipboard = async (text: string) => {
+  const handleCloseWizard = () => {
+    setDepositDialogOpen(false);
+    setTimeout(() => {
+      resetDepositWizard();
+    }, 300);
+  };
+
+  const copyToClipboard = async (text: string, type: "address" | "reference" = "address") => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedAddress(true);
+      if (type === "address") {
+        setCopiedAddress(true);
+        setTimeout(() => setCopiedAddress(false), 2000);
+      } else {
+        setCopiedReference(true);
+        setTimeout(() => setCopiedReference(false), 2000);
+      }
       toast({
-        title: "Address Copied",
-        description: "Wallet address copied to clipboard",
+        title: "Copied!",
+        description: type === "address" ? "Wallet address copied to clipboard" : "Reference code copied to clipboard",
       });
-      setTimeout(() => setCopiedAddress(false), 2000);
     } catch (err) {
       toast({
         title: "Copy Failed",
-        description: "Failed to copy address. Please try again.",
+        description: "Failed to copy. Please try again.",
         variant: "destructive",
       });
     }
@@ -1034,119 +1100,15 @@ export default function RegeneratorProfile() {
 
             {/* Fiat Deposit Tab */}
             <TabsContent value="fiat" className="space-y-6 mt-4">
-              {/* Bank Account Details */}
-              <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="w-5 h-5 text-blue-400" />
-                  <p className="text-sm font-medium text-blue-300">Transfer Funds to SEEDx</p>
-                </div>
-                
-                {bankAccountsLoading ? (
-                  <div className="text-center py-6">
-                    <div className="animate-pulse space-y-3 bg-black/20 p-4 rounded border border-white/5">
-                      <div className="h-4 bg-white/10 rounded w-1/4"></div>
-                      <div className="h-4 bg-white/10 rounded w-2/3"></div>
-                    </div>
+              {/* Step 1: Enter Amount */}
+              {currentStep === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Step 1: Enter Deposit Amount</h3>
+                    <p className="text-sm text-slate-400">How much would you like to deposit?</p>
                   </div>
-                ) : activeAccount ? (
-                  <div className="space-y-3 bg-black/20 p-4 rounded border border-white/5" data-testid="bank-account-details">
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">Account Title</p>
-                      <p className="text-sm font-semibold text-white" data-testid="text-account-title">{activeAccount.title}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">Company Name</p>
-                      <p className="text-sm font-semibold text-white" data-testid="text-company-name">{activeAccount.companyName}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">Bank Name</p>
-                      <p className="text-sm font-semibold text-white" data-testid="text-bank-name">{activeAccount.bankName}</p>
-                    </div>
-                    <div className="relative">
-                      <p className="text-xs text-slate-400 mb-1">Account Number</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-mono font-semibold text-white flex-1" data-testid="text-account-number">
-                          {activeAccount.accountNumber}
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            navigator.clipboard.writeText(activeAccount.accountNumber);
-                            toast({ title: "Copied!", description: "Account number copied to clipboard" });
-                          }}
-                          className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                          data-testid="button-copy-account-number"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 bg-destructive/10 border border-destructive/20 rounded p-4">
-                    <AlertCircle className="w-10 h-10 text-destructive mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-destructive mb-1">Bank Transfers Temporarily Unavailable</p>
-                    <p className="text-xs text-destructive/80">Please contact support or try crypto deposit instead.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Paystack-Style Instructions */}
-              {activeAccount && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">How to Complete Your Deposit</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Step 1 */}
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="bg-blue-500/20 text-blue-400 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
-                          1
-                        </div>
-                        <h4 className="font-semibold text-white text-sm">Transfer Funds</h4>
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        Use your mobile banking app or visit your bank to transfer NGN to the account details above
-                      </p>
-                    </div>
-
-                    {/* Step 2 */}
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="bg-emerald-500/20 text-emerald-400 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
-                          2
-                        </div>
-                        <h4 className="font-semibold text-white text-sm">Upload Proof</h4>
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        Take a screenshot or download PDF of your transfer receipt and upload it below
-                      </p>
-                    </div>
-
-                    {/* Step 3 */}
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="bg-purple-500/20 text-purple-400 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
-                          3
-                        </div>
-                        <h4 className="font-semibold text-white text-sm">Get NGNTS</h4>
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        After admin approval (1-2 days), receive NGNTS tokens in your wallet
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Deposit Request Form or Success Message */}
-              {!depositSuccess ? (
-                <form onSubmit={handleDepositSubmit} className="space-y-6">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white">Request Bank Deposit</h3>
-                    
-                    {/* Amount Input */}
                     <div className="space-y-2">
                       <Label htmlFor="deposit-amount" className="text-slate-300">
                         Deposit Amount (NGN) *
@@ -1161,7 +1123,6 @@ export default function RegeneratorProfile() {
                         onChange={(e) => setDepositAmount(e.target.value)}
                         className="bg-white/5 border-white/10 text-white"
                         data-testid="input-deposit-amount"
-                        required
                       />
                     </div>
 
@@ -1190,19 +1151,19 @@ export default function RegeneratorProfile() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-slate-400">Deposit Amount:</span>
-                            <span className="font-semibold text-white" data-testid="text-deposit-amount">
+                            <span className="font-semibold text-white">
                               ₦{feePreview.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Platform Fee ({feePreview.platformFeePercent}%):</span>
-                            <span className="text-orange-300" data-testid="text-platform-fee">
+                            <span className="text-orange-300">
                               -₦{feePreview.platformFee.toFixed(2)}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Gas Fee ({feePreview.gasFeeXLM} XLM):</span>
-                            <span className="text-orange-300" data-testid="text-gas-fee">
+                            <span className="text-orange-300">
                               -₦{feePreview.gasFeeNGN.toFixed(2)}
                             </span>
                           </div>
@@ -1212,7 +1173,7 @@ export default function RegeneratorProfile() {
                                 Wallet Activation (one-time):
                                 <AlertCircle className="w-3 h-3" />
                               </span>
-                              <span className="text-orange-300" data-testid="text-wallet-activation-fee">
+                              <span className="text-orange-300">
                                 -₦{feePreview.walletActivationFee.toFixed(2)}
                               </span>
                             </div>
@@ -1220,106 +1181,275 @@ export default function RegeneratorProfile() {
                           <Separator className="bg-white/10" />
                           <div className="flex justify-between text-base font-semibold">
                             <span className="text-emerald-300">You will receive:</span>
-                            <span className="text-emerald-400" data-testid="text-ngnts-amount">
+                            <span className="text-emerald-400">
                               {feePreview.ngntsAmount.toFixed(2)} NGNTS
                             </span>
                           </div>
                           {feePreview.needsWalletActivation && (
                             <p className="text-xs text-blue-300 mt-2">
-                              ℹ️ Wallet activation fee is a one-time charge to set up your Stellar account. Future deposits won't include this fee.
+                              ℹ️ Wallet activation fee is a one-time charge to set up your Stellar account.
                             </p>
                           )}
                         </div>
                       </div>
                     )}
-
-                    {/* Proof Upload */}
-                    <div className="space-y-2">
-                      <Label htmlFor="deposit-proof" className="text-slate-300">
-                        Proof of Payment *
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="deposit-proof"
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => setDepositProof(e.target.files?.[0] || null)}
-                          className="bg-white/5 border-white/10 text-white"
-                          data-testid="input-deposit-proof"
-                          required
-                        />
-                        {depositProof && (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400">Upload a screenshot or PDF of your bank transfer confirmation (max 5MB)</p>
-                    </div>
-
-                    {/* Optional Notes */}
-                    <div className="space-y-2">
-                      <Label htmlFor="deposit-notes" className="text-slate-300">
-                        Notes (Optional)
-                      </Label>
-                      <Textarea
-                        id="deposit-notes"
-                        placeholder="Add any additional information about this deposit..."
-                        value={depositNotes}
-                        onChange={(e) => setDepositNotes(e.target.value)}
-                        className="bg-white/5 border-white/10 text-white min-h-20"
-                        data-testid="input-deposit-notes"
-                      />
-                    </div>
                   </div>
 
-                  {/* Important Notes */}
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleStep1Continue}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      disabled={initiateMutation.isPending || !depositAmount || !feePreview || !!previewError}
+                      data-testid="button-get-reference"
+                    >
+                      {initiateMutation.isPending ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Continue to Get Reference Code"
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCloseWizard}
+                      className="border-white/10 text-white hover:bg-white/5"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Get Reference Code */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Step 2: Your Reference Code</h3>
+                    <p className="text-sm text-slate-400">Use this reference code when making your bank transfer</p>
+                  </div>
+
+                  {/* Reference Code Display */}
+                  <Card className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-emerald-500/20">
+                    <CardContent className="p-6 space-y-4">
+                      <div>
+                        <p className="text-sm font-medium text-emerald-300 mb-2">Your Reference Code</p>
+                        <div className="bg-black/40 p-4 rounded-lg border border-white/10">
+                          <p className="text-3xl font-mono font-bold text-white text-center" data-testid="text-reference-code">
+                            {depositReference}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        onClick={() => copyToClipboard(depositReference, "reference")}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700"
+                        data-testid="button-copy-reference"
+                      >
+                        {copiedReference ? (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Reference Code
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Bank Account Details */}
+                  {wizardBankAccount && (
+                    <Card className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-blue-500/20">
+                      <CardContent className="p-6 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-5 h-5 text-blue-400" />
+                          <p className="text-sm font-medium text-blue-300">Transfer to This Account</p>
+                        </div>
+                        
+                        <div className="space-y-3 bg-black/20 p-4 rounded border border-white/5">
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Account Title</p>
+                            <p className="text-sm font-semibold text-white">{wizardBankAccount.title}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Bank Name</p>
+                            <p className="text-sm font-semibold text-white">{wizardBankAccount.bankName}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Account Number</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-mono font-semibold text-white flex-1">
+                                {wizardBankAccount.accountNumber}
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(wizardBankAccount.accountNumber);
+                                  toast({ title: "Copied!", description: "Account number copied" });
+                                }}
+                                className="h-7 text-blue-400 hover:bg-blue-500/10"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          {wizardFeeBreakdown && (
+                            <div>
+                              <p className="text-xs text-slate-400 mb-1">Amount to Transfer</p>
+                              <p className="text-lg font-bold text-emerald-400">
+                                ₦{wizardFeeBreakdown.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-orange-300">Important:</p>
                         <ul className="text-sm text-orange-200 space-y-1 list-disc list-inside">
-                          <li>Make sure you've transferred the exact amount to the bank account above</li>
-                          <li>Upload clear proof of payment (screenshot or PDF)</li>
-                          <li>Admin approval required - typically 1-2 business days</li>
-                          <li>You'll receive a unique reference code after submission</li>
+                          <li>Use the reference code above when making your transfer</li>
+                          <li>Transfer the exact amount shown</li>
+                          <li>Save your transaction receipt for the next step</li>
                         </ul>
                       </div>
                     </div>
                   </div>
 
-                  {/* Submit Buttons */}
                   <div className="flex gap-3">
                     <Button
-                      type="submit"
+                      onClick={() => setCurrentStep(3)}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                      disabled={depositMutation.isPending || !depositAmount || !depositProof || !feePreview || !!previewError}
-                      data-testid="button-submit-deposit"
                     >
-                      {depositMutation.isPending ? (
+                      I've Made the Transfer - Continue
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCloseWizard}
+                      className="border-white/10 text-white hover:bg-white/5"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Upload Proof */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Step 3: Upload Proof of Payment</h3>
+                    <p className="text-sm text-slate-400">Upload your bank transfer receipt or screenshot</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="proof-upload" className="text-slate-300">
+                      Proof of Payment *
+                    </Label>
+                    <div
+                      className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                      onClick={() => document.getElementById("proof-upload")?.click()}
+                    >
+                      {depositProof ? (
+                        <div className="space-y-3">
+                          <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+                          <div>
+                            <p className="text-sm font-semibold text-white">{depositProof.name}</p>
+                            <p className="text-xs text-slate-400">
+                              {(depositProof.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDepositProof(null);
+                            }}
+                            className="border-white/10 text-white hover:bg-white/5"
+                          >
+                            Remove File
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <Upload className="w-12 h-12 text-slate-400 mx-auto" />
+                          <div>
+                            <p className="text-sm font-semibold text-white">Click to upload or drag and drop</p>
+                            <p className="text-xs text-slate-400">PNG, JPG, PDF up to 5MB</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <Input
+                      id="proof-upload"
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => setDepositProof(e.target.files?.[0] || null)}
+                      className="hidden"
+                      data-testid="input-proof-upload"
+                    />
+                  </div>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-blue-300 mb-1">Upload Tips:</p>
+                        <ul className="text-sm text-slate-300 space-y-1 list-disc list-inside">
+                          <li>Ensure all transfer details are clearly visible</li>
+                          <li>Include transaction reference and amount</li>
+                          <li>Good lighting if taking a photo</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleStep3Submit}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      disabled={uploadProofMutation.isPending || !depositProof}
+                      data-testid="button-submit-proof"
+                    >
+                      {uploadProofMutation.isPending ? (
                         <>
                           <Clock className="w-4 h-4 mr-2 animate-spin" />
-                          Submitting...
+                          Uploading...
                         </>
                       ) : (
                         <>
                           <Upload className="w-4 h-4 mr-2" />
-                          Submit Deposit Request
+                          Submit Proof
                         </>
                       )}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setDepositDialogOpen(false)}
+                      onClick={() => setCurrentStep(2)}
                       className="border-white/10 text-white hover:bg-white/5"
-                      data-testid="button-cancel-deposit"
                     >
-                      Cancel
+                      Back
                     </Button>
                   </div>
-                </form>
-              ) : (
-                /* Success Confirmation */
+                </div>
+              )}
+
+              {/* Step 4: Success Modal */}
+              {currentStep === 4 && (
                 <div className="space-y-6">
                   <div className="text-center space-y-4 py-6">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600/20 rounded-full">
@@ -1334,44 +1464,72 @@ export default function RegeneratorProfile() {
                   </div>
 
                   {/* Reference Code */}
-                  <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-emerald-300">Your Reference Code</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => copyToClipboard(depositReference)}
-                        className="h-7 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                        data-testid="button-copy-reference"
-                      >
-                        {copiedAddress ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      </Button>
-                    </div>
-                    <p className="text-lg font-mono font-bold text-white bg-black/20 p-3 rounded border border-white/5">
-                      {depositReference}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-2">
-                      Save this reference code for tracking your deposit
-                    </p>
-                  </div>
+                  <Card className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-emerald-500/20">
+                    <CardContent className="p-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-emerald-300">Your Reference Code</p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyToClipboard(depositReference, "reference")}
+                          className="h-7 text-emerald-400 hover:bg-emerald-500/10"
+                          data-testid="button-copy-reference"
+                        >
+                          {copiedReference ? (
+                            <>
+                              <Check className="w-3 h-3 mr-1" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 mr-1" />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <div className="bg-black/40 p-4 rounded-lg border border-white/10">
+                        <p className="text-2xl font-mono font-bold text-white text-center" data-testid="text-reference-code">
+                          {depositReference}
+                        </p>
+                      </div>
+                      <p className="text-xs text-slate-400 text-center">
+                        Save this reference code for tracking your deposit
+                      </p>
+                    </CardContent>
+                  </Card>
 
                   {/* Next Steps */}
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-blue-300 mb-2">Next Steps:</p>
-                    <ol className="text-sm text-slate-300 space-y-1 list-decimal list-inside">
-                      <li>Wait for admin to review your deposit proof</li>
-                      <li>You'll receive an email notification once approved</li>
-                      <li>NGNTS will be credited to your wallet automatically</li>
-                    </ol>
-                  </div>
+                  <Card className="bg-blue-500/10 border-blue-500/20">
+                    <CardContent className="p-6">
+                      <p className="text-sm font-semibold text-blue-300 mb-3">What Happens Next:</p>
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="bg-blue-500/20 text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            1
+                          </div>
+                          <p className="text-sm text-slate-300">Admin will review your deposit proof</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="bg-blue-500/20 text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            2
+                          </div>
+                          <p className="text-sm text-slate-300">You'll receive an email notification once approved</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="bg-blue-500/20 text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            3
+                          </div>
+                          <p className="text-sm text-slate-300">NGNTS tokens will be credited to your wallet automatically</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   {/* Action Buttons */}
                   <div className="flex gap-3">
                     <Button
-                      onClick={() => {
-                        resetDepositForm();
-                        setDepositDialogOpen(false);
-                      }}
+                      onClick={handleCloseWizard}
                       className="flex-1 bg-blue-600 hover:bg-blue-700"
                       data-testid="button-done"
                     >
@@ -1379,7 +1537,7 @@ export default function RegeneratorProfile() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={resetDepositForm}
+                      onClick={resetDepositWizard}
                       className="flex-1 border-white/10 text-white hover:bg-white/5"
                       data-testid="button-new-deposit"
                     >
