@@ -1315,59 +1315,59 @@ export default function RegeneratorProfile() {
 
                   {/* Fee Breakdown & Amount You'll Receive */}
                   {wizardFeeBreakdown && (
-                    <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+                    <Card className="bg-slate-800/50 border-slate-600/50">
                       <CardContent className="p-6 space-y-4">
                         <div>
-                          <p className="text-sm font-bold text-purple-300 mb-3 flex items-center gap-2">
-                            <Calculator className="w-4 h-4" />
+                          <p className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                            <Calculator className="w-5 h-5 text-slate-300" />
                             Fee Breakdown & NGNTS You'll Receive
                           </p>
                         </div>
                         
-                        <div className="space-y-3 bg-black/20 p-4 rounded-lg border border-white/5">
+                        <div className="space-y-3 bg-black/40 p-4 rounded-lg border border-white/10">
                           <div className="flex justify-between items-center">
-                            <p className="text-sm text-slate-300">Deposit Amount</p>
-                            <p className="text-sm font-semibold text-white">
+                            <p className="text-base text-white">Deposit Amount</p>
+                            <p className="text-base font-bold text-white">
                               ₦{wizardFeeBreakdown.amountNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                             </p>
                           </div>
                           
                           <div className="flex justify-between items-center">
-                            <p className="text-sm text-slate-400">Platform Fee (2%)</p>
-                            <p className="text-sm text-red-400">
+                            <p className="text-sm text-slate-300">Platform Fee (2%)</p>
+                            <p className="text-sm font-semibold text-red-300">
                               -₦{wizardFeeBreakdown.platformFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                             </p>
                           </div>
                           
                           <div className="flex justify-between items-center">
-                            <p className="text-sm text-slate-400">Stellar Gas Fee</p>
-                            <p className="text-sm text-red-400">
+                            <p className="text-sm text-slate-300">Stellar Gas Fee</p>
+                            <p className="text-sm font-semibold text-red-300">
                               -₦{wizardFeeBreakdown.gasFeeNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                             </p>
                           </div>
                           
                           {wizardFeeBreakdown.walletActivationFee > 0 && (
                             <div className="flex justify-between items-center">
-                              <p className="text-sm text-slate-400">Wallet Activation Fee (one-time)</p>
-                              <p className="text-sm text-red-400">
+                              <p className="text-sm text-slate-300">Wallet Activation Fee (one-time)</p>
+                              <p className="text-sm font-semibold text-red-300">
                                 -₦{wizardFeeBreakdown.walletActivationFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                               </p>
                             </div>
                           )}
                           
-                          <div className="border-t border-white/10 pt-3 mt-3">
+                          <div className="border-t border-white/20 pt-3 mt-3">
                             <div className="flex justify-between items-center">
-                              <p className="text-sm font-semibold text-slate-300">Total Fees</p>
-                              <p className="text-sm font-semibold text-red-400">
+                              <p className="text-base font-semibold text-white">Total Fees</p>
+                              <p className="text-base font-bold text-red-300">
                                 -₦{wizardFeeBreakdown.totalFeesNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
                               </p>
                             </div>
                           </div>
                           
-                          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mt-4">
+                          <div className="bg-emerald-600/20 border-2 border-emerald-500/50 rounded-lg p-4 mt-4">
                             <div className="flex justify-between items-center">
-                              <p className="text-base font-bold text-emerald-300">You Will Receive</p>
-                              <p className="text-2xl font-bold text-emerald-400">
+                              <p className="text-base font-bold text-emerald-200">You Will Receive</p>
+                              <p className="text-2xl font-bold text-emerald-300">
                                 {wizardFeeBreakdown.ngntsAmount.toLocaleString('en-NG', {minimumFractionDigits: 2})} NGNTS
                               </p>
                             </div>
