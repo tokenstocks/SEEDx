@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Keypair } from "stellar-sdk";
 import multer from "multer";
+import { z } from "zod";
 import { db } from "../db";
 import { horizonServer, isTestnet } from "../lib/stellarConfig";
 import { 
@@ -19,6 +20,7 @@ import {
   redemptionRequests,
   regeneratorWalletFundingRequests,
   regeneratorBankDeposits,
+  bankDepositDecisions,
   platformSettings,
   platformBankAccounts,
   approveDepositSchema,
@@ -87,6 +89,12 @@ const upload = multer({
     }
     cb(null, true);
   },
+});
+
+// Zod schema for bank deposit decision
+const bankDepositDecisionSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  adminNotes: z.string().optional(),
 });
 
 /**
@@ -3999,6 +4007,414 @@ router.post("/wallet-funding-requests/:id/reject", authenticate, requireAdmin, a
       error: "Failed to reject wallet funding request",
       details: error.message,
     });
+  }
+});
+
+/**
+ * GET /api/admin/bank-deposits
+ * List all bank deposits with filtering, search, and pagination (admin only)
+ */
+router.get("/bank-deposits", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { status, search, page = "1", limit = "50" } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build filter conditions
+    const conditions = [];
+    if (status && typeof status === "string") {
+      conditions.push(eq(regeneratorBankDeposits.status, status as any));
+    }
+    
+    // Search by reference code or user email
+    if (search && typeof search === "string") {
+      const searchLower = `%${search.toLowerCase()}%`;
+      conditions.push(
+        sql`(LOWER(${regeneratorBankDeposits.referenceCode}) LIKE ${searchLower} OR LOWER(${users.email}) LIKE ${searchLower})`
+      );
+    }
+
+    // Build query for deposits list
+    let queryBuilder = db
+      .select({
+        id: regeneratorBankDeposits.id,
+        userId: regeneratorBankDeposits.userId,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        referenceCode: regeneratorBankDeposits.referenceCode,
+        paymentMethod: regeneratorBankDeposits.paymentMethod,
+        amountNGN: regeneratorBankDeposits.amountNGN,
+        ngntsAmount: regeneratorBankDeposits.ngntsAmount,
+        status: regeneratorBankDeposits.status,
+        proofUrl: regeneratorBankDeposits.proofUrl,
+        createdAt: regeneratorBankDeposits.createdAt,
+        processedAt: regeneratorBankDeposits.processedAt,
+      })
+      .from(regeneratorBankDeposits)
+      .innerJoin(users, eq(regeneratorBankDeposits.userId, users.id));
+
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      queryBuilder = queryBuilder.where(and(...conditions));
+    }
+
+    // Build count query with same filters
+    let countQuery = db
+      .select({ total: count() })
+      .from(regeneratorBankDeposits)
+      .innerJoin(users, eq(regeneratorBankDeposits.userId, users.id));
+
+    if (conditions.length > 0) {
+      // @ts-ignore - Drizzle type inference issue
+      countQuery = countQuery.where(and(...conditions));
+    }
+
+    // Get total count
+    const [{ total }] = await countQuery;
+
+    // Apply pagination
+    const depositsList = await queryBuilder
+      .orderBy(desc(regeneratorBankDeposits.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    // Get quick stats (pending count and total pending amount)
+    const [{ pendingCount }] = await db
+      .select({ pendingCount: count() })
+      .from(regeneratorBankDeposits)
+      .where(eq(regeneratorBankDeposits.status, "pending"));
+
+    const [{ pendingTotal }] = await db
+      .select({ 
+        pendingTotal: sql<string>`COALESCE(SUM(${regeneratorBankDeposits.amountNGN}), 0)` 
+      })
+      .from(regeneratorBankDeposits)
+      .where(eq(regeneratorBankDeposits.status, "pending"));
+
+    res.json({
+      deposits: depositsList,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: parseInt(total.toString()),
+        totalPages: Math.ceil(parseInt(total.toString()) / limitNum),
+      },
+      stats: {
+        pendingCount: parseInt(pendingCount.toString()),
+        pendingTotal: pendingTotal || "0.00",
+      },
+    });
+  } catch (error: any) {
+    console.error("List bank deposits error:", error);
+    res.status(500).json({ error: "Failed to fetch bank deposits" });
+  }
+});
+
+/**
+ * GET /api/admin/bank-deposits/:id
+ * Get detailed information about a specific bank deposit including audit trail (admin only)
+ */
+router.get("/bank-deposits/:id", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch deposit with user info
+    const [deposit] = await db
+      .select({
+        id: regeneratorBankDeposits.id,
+        userId: regeneratorBankDeposits.userId,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        stellarPublicKey: users.stellarPublicKey,
+        referenceCode: regeneratorBankDeposits.referenceCode,
+        paymentMethod: regeneratorBankDeposits.paymentMethod,
+        amountNGN: regeneratorBankDeposits.amountNGN,
+        ngntsAmount: regeneratorBankDeposits.ngntsAmount,
+        platformFee: regeneratorBankDeposits.platformFee,
+        gasFee: regeneratorBankDeposits.gasFee,
+        feeBreakdown: regeneratorBankDeposits.feeBreakdown,
+        status: regeneratorBankDeposits.status,
+        proofUrl: regeneratorBankDeposits.proofUrl,
+        approvedBy: regeneratorBankDeposits.approvedBy,
+        approvedAt: regeneratorBankDeposits.approvedAt,
+        rejectedReason: regeneratorBankDeposits.rejectedReason,
+        adminNotes: regeneratorBankDeposits.adminNotes,
+        processedBy: regeneratorBankDeposits.processedBy,
+        processedAt: regeneratorBankDeposits.processedAt,
+        txHash: regeneratorBankDeposits.txHash,
+        notes: regeneratorBankDeposits.notes,
+        createdAt: regeneratorBankDeposits.createdAt,
+        updatedAt: regeneratorBankDeposits.updatedAt,
+      })
+      .from(regeneratorBankDeposits)
+      .innerJoin(users, eq(regeneratorBankDeposits.userId, users.id))
+      .where(eq(regeneratorBankDeposits.id, id))
+      .limit(1);
+
+    if (!deposit) {
+      return res.status(404).json({ error: "Bank deposit not found" });
+    }
+
+    // Fetch audit trail with admin details
+    const auditTrail = await db
+      .select({
+        id: bankDepositDecisions.id,
+        previousStatus: bankDepositDecisions.previousStatus,
+        newStatus: bankDepositDecisions.newStatus,
+        adminNotes: bankDepositDecisions.adminNotes,
+        metadata: bankDepositDecisions.metadata,
+        createdAt: bankDepositDecisions.createdAt,
+        processedByEmail: users.email,
+        processedByFirstName: users.firstName,
+        processedByLastName: users.lastName,
+      })
+      .from(bankDepositDecisions)
+      .leftJoin(users, eq(bankDepositDecisions.processedBy, users.id))
+      .where(eq(bankDepositDecisions.depositId, id))
+      .orderBy(desc(bankDepositDecisions.createdAt));
+
+    res.json({
+      deposit,
+      auditTrail: auditTrail.map((record) => ({
+        id: record.id,
+        previousStatus: record.previousStatus,
+        newStatus: record.newStatus,
+        adminNotes: record.adminNotes,
+        metadata: record.metadata,
+        createdAt: record.createdAt,
+        processedBy: record.processedByEmail ? {
+          email: record.processedByEmail,
+          firstName: record.processedByFirstName,
+          lastName: record.processedByLastName,
+        } : null,
+      })),
+    });
+  } catch (error: any) {
+    console.error("Fetch bank deposit detail error:", error);
+    res.status(500).json({ error: "Failed to fetch bank deposit details" });
+  }
+});
+
+/**
+ * PATCH /api/admin/bank-deposits/:id/decision
+ * Approve or reject a bank deposit (admin only)
+ * Staged pipeline: Stellar operations first, then atomic DB updates
+ */
+router.patch("/bank-deposits/:id/decision", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = bankDepositDecisionSchema.parse(req.body);
+    // @ts-ignore - userId added by auth middleware
+    const adminId = req.userId as string;
+
+    // Fetch the deposit
+    const [deposit] = await db
+      .select()
+      .from(regeneratorBankDeposits)
+      .where(eq(regeneratorBankDeposits.id, id))
+      .limit(1);
+
+    if (!deposit) {
+      return res.status(404).json({ error: "Bank deposit not found" });
+    }
+
+    if (deposit.status !== "pending") {
+      return res.status(400).json({ 
+        error: "Deposit has already been processed",
+        currentStatus: deposit.status,
+      });
+    }
+
+    // Reject flow - no Stellar operations needed
+    if (body.action === "reject") {
+      const previousStatus = deposit.status;
+      const now = new Date();
+      const metadata = {
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+      };
+
+      await db.transaction(async (tx) => {
+        // Update deposit with rejection
+        await tx
+          .update(regeneratorBankDeposits)
+          .set({
+            status: "rejected",
+            rejectedReason: body.adminNotes || "Rejected by admin",
+            adminNotes: body.adminNotes || null,
+            processedBy: adminId,
+            processedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(regeneratorBankDeposits.id, id));
+
+        // Insert audit log
+        await tx.insert(bankDepositDecisions).values({
+          depositId: id,
+          userId: deposit.userId,
+          previousStatus,
+          newStatus: "rejected",
+          processedBy: adminId,
+          adminNotes: body.adminNotes || null,
+          metadata,
+        });
+      });
+
+      return res.json({
+        message: "Deposit rejected successfully",
+        depositId: id,
+        status: "rejected",
+        processedAt: now.toISOString(),
+      });
+    }
+
+    // Approve flow - Stellar operations then DB updates
+    let txHash: string | null = null;
+    let walletActivated = false;
+
+    try {
+      // Step 1: Check if wallet needs activation
+      const [userWallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.userId, deposit.userId))
+        .limit(1);
+
+      const feeBreakdown = deposit.feeBreakdown as any;
+      const needsActivation = feeBreakdown?.needsActivation || false;
+
+      // Step 2: Activate wallet if needed
+      if (needsActivation && userWallet) {
+        console.log(`[BankDeposit] Activating wallet for user ${deposit.userId}`);
+        
+        // Get user info
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, deposit.userId))
+          .limit(1);
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        // Create and fund Stellar account with trustlines
+        const stellarAccount = await createAndFundAccount(
+          user.stellarPublicKey!,
+          "3.0" // XLM for reserves + fees
+        );
+
+        if (!stellarAccount.success) {
+          throw new Error(stellarAccount.error || "Failed to create and fund account");
+        }
+
+        // Update wallet status
+        await db
+          .update(wallets)
+          .set({
+            activationStatus: "active",
+            activatedAt: new Date(),
+            activationTxHash: stellarAccount.txHash,
+            updatedAt: new Date(),
+          })
+          .where(eq(wallets.id, userWallet.id));
+
+        walletActivated = true;
+      }
+
+      // Step 3: Transfer NGNTS tokens from Treasury to user
+      console.log(`[BankDeposit] Transferring ${deposit.ngntsAmount} NGNTS to user ${deposit.userId}`);
+      
+      // Transfer NGNTS from Treasury wallet
+      txHash = await transferNgntsFromPlatformWallet(
+        "treasury",
+        deposit.userId,
+        deposit.ngntsAmount.toString(),
+        `Bank deposit: ${deposit.referenceCode}`
+      );
+
+      // Step 4: Atomic DB updates (deposit status + audit log)
+      const previousStatus = deposit.status;
+      const now = new Date();
+      const metadata = {
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        txHash,
+        walletActivated,
+      };
+
+      await db.transaction(async (tx) => {
+        // Update deposit with approval
+        await tx
+          .update(regeneratorBankDeposits)
+          .set({
+            status: "approved",
+            approvedBy: adminId,
+            approvedAt: now,
+            adminNotes: body.adminNotes || null,
+            processedBy: adminId,
+            processedAt: now,
+            txHash,
+            updatedAt: now,
+          })
+          .where(eq(regeneratorBankDeposits.id, id));
+
+        // Insert audit log
+        await tx.insert(bankDepositDecisions).values({
+          depositId: id,
+          userId: deposit.userId,
+          previousStatus,
+          newStatus: "approved",
+          processedBy: adminId,
+          adminNotes: body.adminNotes || null,
+          metadata,
+        });
+      });
+
+      res.json({
+        message: "Deposit approved successfully",
+        depositId: id,
+        status: "approved",
+        txHash,
+        walletActivated,
+        processedAt: now.toISOString(),
+      });
+    } catch (stellarError: any) {
+      // Stellar operations failed - keep as pending and add audit note
+      console.error("Stellar operations failed during approval:", stellarError);
+      
+      const metadata = {
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        error: stellarError.message,
+      };
+
+      // Add audit log for failed approval attempt
+      await db.insert(bankDepositDecisions).values({
+        depositId: id,
+        userId: deposit.userId,
+        previousStatus: "pending",
+        newStatus: "pending",
+        processedBy: adminId,
+        adminNotes: `Approval failed: ${stellarError.message}`,
+        metadata,
+      });
+
+      return res.status(500).json({ 
+        error: "Failed to process deposit on blockchain",
+        details: stellarError.message,
+        depositStatus: "pending",
+      });
+    }
+  } catch (error: any) {
+    console.error("Bank deposit decision error:", error);
+    if (error.name === "ZodError") {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to process deposit decision" });
   }
 });
 
