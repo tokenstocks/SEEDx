@@ -88,6 +88,8 @@ export default function Portfolio() {
   }>({
     queryKey: ["/api/users/kyc-status"],
     enabled: !!user,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: walletData, dataUpdatedAt: walletUpdatedAt } = useQuery<{

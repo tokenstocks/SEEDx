@@ -27,6 +27,8 @@ export default function PrimerProfile() {
     kycDocuments?: any;
   }>({
     queryKey: ["/api/users/kyc-status"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const getKycStatusBadge = (status: string) => {
