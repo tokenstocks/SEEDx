@@ -182,8 +182,12 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
       formData.append("referenceCode", referenceCode);
       formData.append("proof", proofFile);
 
+      const token = localStorage.getItem("token");
       const response = await fetch("/api/regenerator/bank-deposits", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
         credentials: "include",
       });
