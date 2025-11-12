@@ -16,6 +16,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield, Settings, LogOut, ChevronLeft, ChevronRight, FileText, User as UserIcon } from "lucide-react";
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
+import type { User } from "@shared/schema";
 import PlatformWallets from "@/pages/PlatformWallets";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
 import AdminBankAccounts from "@/pages/AdminBankAccounts";
@@ -60,29 +61,6 @@ interface WithdrawalRequest {
   createdAt: string;
 }
 
-interface User {
-  id: string;
-  email: string;
-  phone?: string;
-  firstName: string;
-  lastName: string;
-  kycStatus: string;
-  role: string;
-  createdAt: string;
-  kycDocuments?: {
-    idCard?: string;
-    selfie?: string;
-    addressProof?: string;
-  };
-  bankDetailsStatus?: string;
-  bankDetails?: {
-    accountName?: string;
-    accountNumber?: string;
-    bankName?: string;
-    bankCode?: string;
-    verificationDocument?: string;
-  };
-}
 
 interface Wallet {
   id: string;
@@ -140,11 +118,8 @@ type KycHistoryResponse = {
 };
 
 // Extend User interface with audit fields
-interface UserWithAudit extends User {
-  kycProcessedAt?: string | null;
-  kycProcessedBy?: string | null;
-  kycAdminNotes?: string | null;
-}
+// UserWithAudit type is now just an alias since User already includes all audit fields
+type UserWithAudit = User;
 
 // KYC Audit Trail View Component (Read-Only)
 function KycAuditTrailView({ 
