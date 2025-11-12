@@ -140,29 +140,6 @@ const menuSections = [
       },
     ],
   },
-  {
-    label: "Developer Tools",
-    items: [
-      {
-        title: "Multisig Demo",
-        url: "/admin/multisig",
-        icon: LinkIcon,
-        testId: "link-admin-multisig",
-      },
-      {
-        title: "Deployment Demo",
-        url: "/admin/deployment",
-        icon: Settings,
-        testId: "link-admin-deployment",
-      },
-      {
-        title: "Flow Demo",
-        url: "/admin/flow",
-        icon: Activity,
-        testId: "link-admin-flow",
-      },
-    ],
-  },
 ];
 
 export function AdminSidebar() {

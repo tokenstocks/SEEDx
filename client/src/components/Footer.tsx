@@ -40,6 +40,8 @@ export default function Footer() {
     { label: "Case Studies", href: "#" },
     { label: "Whitepaper", href: "#" },
     { label: "API Docs", href: "#" },
+    { label: "Capital Deployment Demo", href: "/admin/deployment" },
+    { label: "Capital Flow Demo", href: "/admin/flow" },
   ];
 
   const companyLinks = [
