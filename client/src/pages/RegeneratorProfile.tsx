@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  FileText,
   Wallet,
   TrendingUp,
   Coins,
@@ -36,14 +36,16 @@ import {
   Upload,
   Info,
   Calculator,
+  Fuel,
+  ArrowUpRight,
+  ChevronRight,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import UnifiedHeader from "@/components/UnifiedHeader";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { BankDepositFeePreview, PlatformBankAccount, PlatformSetting } from "@shared/schema";
-import { useMemo } from "react";
+import type { BankDepositFeePreview, PlatformBankAccount } from "@shared/schema";
 
 export default function RegeneratorProfile() {
   const [, navigate] = useLocation();
@@ -53,6 +55,7 @@ export default function RegeneratorProfile() {
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedReference, setCopiedReference] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
   
   // Multi-step wizard state
   const [currentStep, setCurrentStep] = useState(1);
@@ -68,6 +71,7 @@ export default function RegeneratorProfile() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Queries with auto-refresh for real-time updates
   const { data: kycData } = useQuery<{
     kycStatus: string;
     kycDocuments?: any;
@@ -82,12 +86,12 @@ export default function RegeneratorProfile() {
     totalCashflowReceived: number;
     totalTokensOwned: number;
     activeProjectsCount: number;
-    activeProjects: number;
   }>({
     queryKey: ["/api/regenerator/stats"],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: walletData } = useQuery<{
+  const { data: walletData, dataUpdatedAt: walletUpdatedAt } = useQuery<{
     activated: boolean;
     activationStatus: string;
     publicKey: string;
@@ -99,18 +103,23 @@ export default function RegeneratorProfile() {
   }>({
     queryKey: ["/api/regenerator/wallet/balances"],
     refetchOnMount: "always",
+    refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 0,
   });
 
-  const { data: activeAccount, isLoading: bankAccountsLoading } = useQuery<PlatformBankAccount>({
-    queryKey: ["/api/regenerator/bank-account/active"],
-  });
-
-  const { data: platformSettings, isLoading: settingsLoading } = useQuery<{
-    depositFeePercent: number;
-    withdrawalFeePercent: number;
+  const { data: exchangeRates } = useQuery<{
+    rates: {
+      xlmNgn: string;
+      usdcNgn: string;
+      ngntsNgn: string;
+      xlmUsd: string;
+      usdNgn: string;
+    };
+    lastFetchedAt: string;
+    isStale: boolean;
   }>({
-    queryKey: ["/api/regenerator/platform-fees"],
+    queryKey: ["/api/exchange-rates"],
+    refetchInterval: 60000, // Refresh every minute
   });
 
   const { data: depositHistory } = useQuery<{
@@ -135,12 +144,39 @@ export default function RegeneratorProfile() {
     queryKey: ["/api/regenerator/bank-deposits"],
   });
 
-  // Account lifecycle status helper (computed after queries are declared)
+  // Calculate total capital value (NGNTS + USDC converted to NGN, excluding XLM)
+  const totalCapitalValue = useMemo(() => {
+    if (!walletData?.balances || !exchangeRates?.rates) {
+      return { total: 0, ngnts: 0, usdcNgn: 0, ngntsPercent: 0, usdcPercent: 0 };
+    }
+
+    const ngntsBalance = parseFloat(walletData.balances.ngnts || "0");
+    const usdcBalance = parseFloat(walletData.balances.usdc || "0");
+    const usdcToNgnRate = parseFloat(exchangeRates.rates.usdcNgn || "1650");
+
+    const ngntsValue = ngntsBalance; // 1:1 with NGN
+    const usdcValue = usdcBalance * usdcToNgnRate;
+    const total = ngntsValue + usdcValue;
+
+    return {
+      total,
+      ngnts: ngntsValue,
+      usdcNgn: usdcValue,
+      ngntsPercent: total > 0 ? (ngntsValue / total) * 100 : 0,
+      usdcPercent: total > 0 ? (usdcValue / total) * 100 : 0,
+    };
+  }, [walletData, exchangeRates]);
+
+  // XLM gas balance
+  const xlmGasBalance = useMemo(() => {
+    return parseFloat(walletData?.balances?.xlm || "0");
+  }, [walletData]);
+
+  // Account lifecycle status helper
   const accountLifecycleStatus = useMemo(() => {
     const kycStatus = kycData?.kycStatus || user.kycStatus || "pending";
     const walletActivated = walletData?.activated || walletData?.activationStatus === "active";
     
-    // Decision tree for account lifecycle
     if (kycStatus === "rejected") {
       return {
         label: "KYC Rejected",
@@ -173,7 +209,7 @@ export default function RegeneratorProfile() {
     
     if (kycStatus === "approved" && walletActivated) {
       return {
-        label: "Active",
+        label: "Active Member",
         badgeClass: "bg-emerald-600 text-white",
         icon: CheckCircle2,
         callToAction: "Account fully active",
@@ -181,7 +217,6 @@ export default function RegeneratorProfile() {
       };
     }
     
-    // Default fallback
     return {
       label: "Pending KYC",
       badgeClass: "bg-slate-600 text-white",
@@ -191,12 +226,29 @@ export default function RegeneratorProfile() {
     };
   }, [kycData, walletData, user.kycStatus]);
 
+  // Last updated timestamp
+  const lastUpdated = useMemo(() => {
+    if (!walletUpdatedAt) return "Just now";
+    const secondsAgo = Math.floor((Date.now() - walletUpdatedAt) / 1000);
+    if (secondsAgo < 10) return "Just now";
+    if (secondsAgo < 60) return `${secondsAgo}s ago`;
+    if (secondsAgo < 3600) return `${Math.floor(secondsAgo / 60)}m ago`;
+    return `${Math.floor(secondsAgo / 3600)}h ago`;
+  }, [walletUpdatedAt]);
+
+  // Activity timeline (last 5-7 items)
+  const recentActivity = useMemo(() => {
+    if (!depositHistory?.deposits) return [];
+    const sorted = [...depositHistory.deposits].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return showAllHistory ? sorted : sorted.slice(0, 5);
+  }, [depositHistory, showAllHistory]);
+
   // Fee preview effect (debounced)
   useEffect(() => {
-    // Reset preview and error state
     setPreviewError(null);
     
-    // Validate amount
     const numAmount = parseFloat(depositAmount);
     if (!depositAmount || isNaN(numAmount)) {
       setFeePreview(null);
@@ -209,7 +261,7 @@ export default function RegeneratorProfile() {
       return;
     }
 
-    if (numAmount > 10000000) { // 10 million NGN max
+    if (numAmount > 10000000) {
       setPreviewError("Amount exceeds maximum deposit limit (₦10,000,000)");
       setFeePreview(null);
       return;
@@ -247,7 +299,7 @@ export default function RegeneratorProfile() {
     return () => clearTimeout(timer);
   }, [depositAmount]);
 
-  // Step 2: Initiate deposit mutation
+  // Mutations
   const initiateMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch("/api/regenerator/bank-deposits/initiate", {
@@ -286,7 +338,6 @@ export default function RegeneratorProfile() {
     },
   });
 
-  // Step 3: Upload proof mutation
   const uploadProofMutation = useMutation({
     mutationFn: async () => {
       if (!depositProof || !depositId) throw new Error("Missing deposit proof or ID");
@@ -392,656 +443,552 @@ export default function RegeneratorProfile() {
     }
   };
 
-  const getKycStatusBadge = (status: string) => {
-    switch (status) {
-      case "approved":
-        return (
-          <Badge className="bg-emerald-600 text-white" data-testid="badge-kyc-approved">
-            <CheckCircle2 className="w-3 h-3 mr-1" />
-            Verified
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge variant="secondary" className="text-orange-400 border-orange-400" data-testid="badge-kyc-pending">
-            <Clock className="w-3 h-3 mr-1" />
-            Pending Review
-          </Badge>
-        );
-      case "rejected":
-        return (
-          <Badge variant="destructive" data-testid="badge-kyc-rejected">
-            <XCircle className="w-3 h-3 mr-1" />
-            Rejected
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-slate-400 border-slate-600" data-testid="badge-kyc-not-submitted">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Not Submitted
-          </Badge>
-        );
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <UnifiedHeader />
 
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 md:p-6 space-y-6">
         {/* Page Header */}
         <motion.div
           initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
           animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-3xl font-bold text-white" data-testid="text-page-title">
-            Profile & Account
-          </h1>
-          <p className="text-slate-400 mt-1">
-            Manage your Regenerator account information and verification status
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white" data-testid="text-page-title">
+                Member Dashboard
+              </h1>
+              <p className="text-slate-400 mt-1">
+                Manage your participation capital and cooperative memberships
+              </p>
+            </div>
+            <Badge className={accountLifecycleStatus.badgeClass} data-testid="badge-account-status">
+              {(() => {
+                const StatusIcon = accountLifecycleStatus.icon;
+                return <StatusIcon className="w-3 h-3 mr-1" />;
+              })()}
+              {accountLifecycleStatus.label}
+            </Badge>
+          </div>
+        </motion.div>
+
+        {/* HERO: Total Capital Value */}
+        <motion.div
+          initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
+          animate={prefersReducedMotion ? {} : { opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <div className="relative bg-gradient-to-br from-emerald-600/20 via-blue-600/20 to-purple-600/20 backdrop-blur-md border-2 border-emerald-500/30 rounded-3xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10" />
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500" />
+            
+            <div className="relative p-6 md:p-8">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <p className="text-slate-300 text-sm md:text-base mb-2 flex items-center gap-2">
+                    <Wallet className="w-4 h-4" />
+                    Total Capital Value
+                  </p>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-4xl md:text-6xl font-bold text-white" data-testid="text-total-capital">
+                      ₦{totalCapitalValue.total.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h2>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="w-5 h-5 text-slate-400 hover:text-slate-300" />
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-slate-800 border-slate-600">
+                          <p className="text-xs">NGNTS + USDC (converted to NGN)</p>
+                          <p className="text-xs text-slate-400 mt-1">Excludes XLM (network gas)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="outline" className="border-emerald-400/30 text-emerald-400 text-xs">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      Live
+                    </Badge>
+                    <span className="text-xs text-slate-400">Updated {lastUpdated}</span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => accountLifecycleStatus.canDeposit && setDepositDialogOpen(true)}
+                  disabled={!accountLifecycleStatus.canDeposit}
+                  size="lg"
+                  className={
+                    accountLifecycleStatus.canDeposit
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                      : "bg-slate-700 text-slate-400 cursor-not-allowed"
+                  }
+                  data-testid="button-deposit-hero"
+                >
+                  <ArrowUpRight className="w-5 h-5 mr-2" />
+                  Add Capital
+                </Button>
+              </div>
+
+              {/* Capital Allocation Breakdown */}
+              {totalCapitalValue.total > 0 && (
+                <div className="space-y-3 bg-black/20 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-slate-400 uppercase tracking-wide">Capital Allocation</p>
+                  
+                  {/* NGNTS */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="text-slate-300">NGNTS</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-white font-semibold">
+                          ₦{totalCapitalValue.ngnts.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-xs text-slate-400 w-12 text-right">
+                          {totalCapitalValue.ngntsPercent.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <Progress value={totalCapitalValue.ngntsPercent} className="h-2 bg-white/5">
+                      <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${totalCapitalValue.ngntsPercent}%` }} />
+                    </Progress>
+                  </div>
+
+                  {/* USDC */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-400" />
+                        <span className="text-slate-300">USDC</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-white font-semibold">
+                          ₦{totalCapitalValue.usdcNgn.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-xs text-slate-400 w-12 text-right">
+                          {totalCapitalValue.usdcPercent.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <Progress value={totalCapitalValue.usdcPercent} className="h-2 bg-white/5">
+                      <div className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full" style={{ width: `${totalCapitalValue.usdcPercent}%` }} />
+                    </Progress>
+                  </div>
+
+                  {/* XLM Gas Badge */}
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-2 cursor-help">
+                            <Fuel className="w-3.5 h-3.5 text-slate-500" />
+                            <span className="text-xs text-slate-500">Network Gas</span>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-slate-800 border-slate-600 max-w-xs">
+                            <p className="text-xs">XLM is used exclusively for Stellar network transaction fees (gas).</p>
+                            <p className="text-xs text-slate-400 mt-1">It's not counted as participation capital.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
+                      {xlmGasBalance.toFixed(4)} XLM
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
+              {/* First-time user CTA */}
+              {totalCapitalValue.total === 0 && accountLifecycleStatus.canDeposit && (
+                <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-xl p-4">
+                  <p className="text-sm text-blue-300 mb-2 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Ready to get started?
+                  </p>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Make your first capital contribution to activate your wallet and start participating in agricultural cooperatives
+                  </p>
+                  <Button
+                    onClick={() => setDepositDialogOpen(true)}
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                  >
+                    <ArrowUpRight className="w-4 h-4 mr-2" />
+                    Make First Deposit
+                  </Button>
+                </div>
+              )}
+
+              {/* Pre-KYC State */}
+              {!accountLifecycleStatus.canDeposit && (
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-orange-300 mb-1">
+                        {accountLifecycleStatus.callToAction}
+                      </p>
+                      <p className="text-xs text-orange-200/80 mb-3">
+                        Complete KYC verification to unlock capital contributions and cooperative participation
+                      </p>
+                      <Button
+                        onClick={() => navigate("/kyc")}
+                        size="sm"
+                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        <Shield className="w-4 h-4 mr-2" />
+                        Complete KYC
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Information */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Account Information Card */}
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6">
-                  <div className="mb-4">
-                    <h2 className="text-white text-xl font-semibold flex items-center gap-2">
-                      <User className="w-5 h-5 text-blue-400" />
-                      Account Information
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Your Regenerator account details
+          {/* Portfolio Overview */}
+          <motion.div
+            className="lg:col-span-2 space-y-6"
+            initial={prefersReducedMotion ? {} : { opacity: 0, x: -20 }}
+            animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            {/* Participation Summary */}
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+              <div className="p-6">
+                <div className="mb-4">
+                  <h2 className="text-white text-xl font-semibold flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-emerald-400" />
+                    Participation Summary
+                  </h2>
+                  <p className="text-slate-400 text-sm mt-1">
+                    Your cooperative membership overview
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover-elevate" data-testid="card-total-contributed">
+                    <p className="text-sm text-slate-400 mb-1">Total Contributed</p>
+                    <p className="text-2xl md:text-3xl font-bold text-white" data-testid="text-total-contributed">
+                      ₦{stats?.totalInvested?.toLocaleString() || "0"}
                     </p>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-email-info">
-                      <div className="flex items-start gap-3">
-                        <Mail className="w-5 h-5 text-blue-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-slate-400">Email Address</p>
-                          <p className="text-white font-medium" data-testid="text-user-email-value">
-                            {user.email || "Not available"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start justify-between p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-account-type">
-                      <div className="flex items-start gap-3">
-                        <Shield className="w-5 h-5 text-purple-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-slate-400">Account Status</p>
-                          <p className="text-white font-medium" data-testid="text-account-type">
-                            {accountLifecycleStatus.label}
-                          </p>
-                          {accountLifecycleStatus.callToAction !== "Account fully active" && (
-                            <p className="text-xs text-slate-400 mt-1">{accountLifecycleStatus.callToAction}</p>
-                          )}
-                        </div>
-                      </div>
-                      <Badge className={accountLifecycleStatus.badgeClass} data-testid="badge-account-status">
-                        {(() => {
-                          const StatusIcon = accountLifecycleStatus.icon;
-                          return <StatusIcon className="w-3 h-3 mr-1" />;
-                        })()}
-                        {accountLifecycleStatus.label}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-start justify-between p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-member-since">
-                      <div className="flex items-start gap-3">
-                        <Calendar className="w-5 h-5 text-orange-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-slate-400">Member Since</p>
-                          <p className="text-white font-medium" data-testid="text-member-since">
-                            {user.createdAt
-                              ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })
-                              : "Recently joined"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Portfolio Summary */}
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6">
-                  <div className="mb-4">
-                    <h2 className="text-white text-xl font-semibold flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-emerald-400" />
-                      Portfolio Summary
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Your investment overview
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover-elevate" data-testid="card-participation-units">
+                    <p className="text-sm text-slate-400 mb-1">Participation Units</p>
+                    <p className="text-2xl md:text-3xl font-bold text-white" data-testid="text-participation-units">
+                      {stats?.totalTokensOwned?.toLocaleString() || "0"}
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-total-invested">
-                      <p className="text-sm text-slate-400 mb-1">Total Invested</p>
-                      <p className="text-2xl font-bold text-white" data-testid="text-total-invested">
-                        ₦{stats?.totalInvested?.toLocaleString() || "0"}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-tokens-owned">
-                      <p className="text-sm text-slate-400 mb-1">Tokens Owned</p>
-                      <p className="text-2xl font-bold text-white" data-testid="text-tokens-owned">
-                        {stats?.totalTokensOwned?.toLocaleString() || "0"}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-active-projects">
-                      <p className="text-sm text-slate-400 mb-1">Active Projects</p>
-                      <p className="text-2xl font-bold text-white" data-testid="text-active-projects">
-                        {stats?.activeProjectsCount || "0"}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-total-cashflow">
-                      <p className="text-sm text-slate-400 mb-1">Total Cashflow</p>
-                      <p className="text-2xl font-bold text-emerald-400" data-testid="text-total-cashflow">
-                        ₦{stats?.totalCashflowReceived?.toLocaleString() || "0"}
-                      </p>
-                    </div>
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover-elevate" data-testid="card-active-cooperatives">
+                    <p className="text-sm text-slate-400 mb-1">Active Cooperatives</p>
+                    <p className="text-2xl md:text-3xl font-bold text-white" data-testid="text-active-cooperatives">
+                      {stats?.activeProjectsCount || "0"}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10 hover-elevate" data-testid="card-total-distributions">
+                    <p className="text-sm text-slate-400 mb-1">Total Distributions</p>
+                    <p className="text-2xl md:text-3xl font-bold text-emerald-400" data-testid="text-total-distributions">
+                      ₦{stats?.totalCashflowReceived?.toLocaleString() || "0"}
+                    </p>
                   </div>
                 </div>
+                <Button
+                  onClick={() => navigate("/portfolio")}
+                  variant="outline"
+                  className="w-full mt-4 border-white/10 text-white hover:bg-white/5"
+                  data-testid="button-view-portfolio"
+                >
+                  View Full Portfolio
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
               </div>
-            </motion.div>
+            </div>
 
-            {/* Wallet Balances */}
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-white text-xl font-semibold flex items-center gap-2">
-                        <Wallet className="w-5 h-5 text-yellow-400" />
-                        Wallet Balances
-                      </h2>
-                      <p className="text-slate-400 text-sm mt-1">
-                        Your multi-currency Stellar wallet
-                      </p>
-                    </div>
-                    {walletData?.activationStatus && (
-                      <Badge
-                        className={
-                          walletData.activated
-                            ? "bg-emerald-600 text-white"
-                            : walletData.activationStatus === "pending"
-                            ? "bg-orange-500 text-white"
-                            : "bg-slate-600 text-white"
-                        }
-                        data-testid="badge-wallet-status"
-                      >
-                        {walletData.activated ? "Active" : walletData.activationStatus === "pending" ? "Funding Pending" : "Not Activated"}
-                      </Badge>
-                    )}
+            {/* Activity Timeline */}
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/60 via-purple-500/60 to-blue-500/60" />
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-white text-xl font-semibold flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-blue-400" />
+                      Recent Activity
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">
+                      Your latest capital transactions
+                    </p>
                   </div>
-
-                  {!walletData?.activated && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4" data-testid="alert-wallet-not-activated">
-                      <p className="text-sm text-blue-300 mb-2">
-                        <AlertCircle className="w-4 h-4 inline mr-2" />
-                        Your Stellar wallet will be automatically activated when you make your first deposit
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Complete KYC verification, then deposit funds to activate your wallet and start investing in projects
-                      </p>
-                    </div>
+                  {depositHistory && depositHistory.deposits.length > 5 && (
+                    <Button
+                      onClick={() => setShowAllHistory(!showAllHistory)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                    >
+                      {showAllHistory ? "Show Less" : "View All"}
+                    </Button>
                   )}
-                  
-                  {/* Wallet Address */}
-                  <div className="p-4 bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg" data-testid="card-wallet-address">
+                </div>
+
+                {recentActivity && recentActivity.length > 0 ? (
+                  <div className="space-y-2" data-testid="list-activity-timeline">
+                    {recentActivity.map((deposit) => (
+                      <div
+                        key={deposit.id}
+                        className="p-3 bg-white/5 rounded-lg border border-white/10 hover-elevate"
+                        data-testid={`activity-${deposit.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-xs font-mono text-blue-300 truncate" data-testid={`ref-${deposit.id}`}>
+                                {deposit.referenceCode}
+                              </p>
+                              {deposit.status === "pending" && (
+                                <Badge variant="secondary" className="text-orange-400 border-orange-400 text-xs">
+                                  <Clock className="w-2.5 h-2.5 mr-1" />
+                                  Pending
+                                </Badge>
+                              )}
+                              {deposit.status === "approved" && (
+                                <Badge className="bg-emerald-600 text-white text-xs">
+                                  <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+                                  Approved
+                                </Badge>
+                              )}
+                              {deposit.status === "rejected" && (
+                                <Badge variant="destructive" className="text-xs">
+                                  <XCircle className="w-2.5 h-2.5 mr-1" />
+                                  Rejected
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              {new Date(deposit.createdAt).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-base font-semibold text-white" data-testid={`amount-${deposit.id}`}>
+                              ₦{parseFloat(deposit.amountNGN).toLocaleString()}
+                            </p>
+                            {deposit.status === "approved" && (
+                              <p className="text-xs text-emerald-400">
+                                +{parseFloat(deposit.ngntsAmount).toLocaleString()} NGNTS
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {deposit.txHash && (
+                          <a
+                            href={`https://stellar.expert/explorer/${
+                              import.meta.env.VITE_STELLAR_HORIZON_URL?.includes("testnet") ? "testnet" : "public"
+                            }/tx/${deposit.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2"
+                            data-testid={`tx-link-${deposit.id}`}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View on Blockchain
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8" data-testid="empty-activity">
+                    <Clock className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-400 text-sm">No activity yet</p>
+                    <p className="text-slate-500 text-xs mt-1">
+                      Your transactions will appear here
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Sidebar: Account Info & Actions */}
+          <motion.div
+            className="space-y-6"
+            initial={prefersReducedMotion ? {} : { opacity: 0, x: 20 }}
+            animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            {/* Account Information - Compact */}
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500/60 via-pink-500/60 to-purple-500/60" />
+              <div className="p-5">
+                <h2 className="text-white text-lg font-semibold flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4 text-purple-400" />
+                  Account Info
+                </h2>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <Mail className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-slate-500">Email</p>
+                      <p className="text-white truncate" data-testid="text-user-email">
+                        {user.email || "Not available"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-500">Member Since</p>
+                      <p className="text-white" data-testid="text-member-since">
+                        {user.createdAt
+                          ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "Recently joined"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Wallet Address - Compact */}
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-500/60 via-orange-500/60 to-yellow-500/60" />
+              <div className="p-5">
+                <h2 className="text-white text-lg font-semibold flex items-center gap-2 mb-3">
+                  <Wallet className="w-4 h-4 text-yellow-400" />
+                  Stellar Wallet
+                </h2>
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-blue-300">Your Stellar Wallet Address</p>
+                      <p className="text-xs font-medium text-blue-300">Wallet Address</p>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
-                        className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                        className="h-6 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1"
                         data-testid="button-copy-address"
                       >
                         {copiedAddress ? (
-                          <>
-                            <Check className="w-3 h-3 mr-1" />
-                            Copied
-                          </>
+                          <Check className="w-3 h-3" />
                         ) : (
-                          <>
-                            <Copy className="w-3 h-3 mr-1" />
-                            Copy
-                          </>
+                          <Copy className="w-3 h-3" />
                         )}
                       </Button>
                     </div>
                     <p className="text-xs font-mono text-slate-300 break-all bg-black/20 p-2 rounded border border-white/5" data-testid="text-public-key">
                       {walletData?.publicKey || "Loading..."}
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setDepositDialogOpen(true)}
-                      className="w-full mt-3 border-blue-500/30 text-blue-300 hover:bg-blue-500/10"
-                      data-testid="button-deposit-instructions"
-                    >
-                      <Download className="w-3 h-3 mr-2" />
-                      How to Deposit Funds
-                    </Button>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-xlm">
-                      <p className="text-xs text-slate-400">XLM</p>
-                      <p className="text-lg font-semibold text-white">
-                        {parseFloat(walletData?.balances?.xlm || "0").toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-usdc">
-                      <p className="text-xs text-slate-400">USDC</p>
-                      <p className="text-lg font-semibold text-white">
-                        {parseFloat(walletData?.balances?.usdc || "0").toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid="balance-ngnts">
-                      <p className="text-xs text-slate-400">NGNTS</p>
-                      <p className="text-lg font-semibold text-white">
-                        {parseFloat(walletData?.balances?.ngnts || "0").toFixed(0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* KYC Information */}
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6 space-y-4">
-                  <div className="mb-4">
-                    <h2 className="text-white text-xl font-semibold flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-blue-400" />
-                      KYC Verification
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Identity verification for compliance
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-kyc-status">
-                    <div>
-                      <p className="text-sm text-slate-400 mb-1">Verification Status</p>
-                      {getKycStatusBadge(kycData?.kycStatus || "not_submitted")}
-                    </div>
-                    {kycData?.kycStatus !== "approved" && (
-                      <Button
-                        onClick={() => navigate("/kyc")}
-                        className="bg-blue-600 hover:bg-blue-700"
-                        data-testid="button-kyc-action"
-                      >
-                        {kycData?.kycStatus === "pending" ? "View Status" : "Complete KYC"}
-                      </Button>
-                    )}
-                  </div>
-
-                  {kycData?.kycStatus === "pending" && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4" data-testid="alert-kyc-pending">
-                      <p className="text-sm text-blue-300">
-                        <Clock className="w-4 h-4 inline mr-2" />
-                        Your KYC documents are being reviewed by our compliance team. This
-                        typically takes 1-2 business days.
-                      </p>
-                    </div>
-                  )}
-
-                  {kycData?.kycStatus === "rejected" && (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4" data-testid="alert-kyc-rejected">
-                      <p className="text-sm text-red-300">
-                        <XCircle className="w-4 h-4 inline mr-2" />
-                        Your KYC submission was rejected. Please review the feedback and
-                        resubmit with updated documents.
-                      </p>
-                      {/* Rejection reason not available in /api/users/kyc-status response */}
-                    </div>
-                  )}
-
-                  {kycData?.kycStatus === "approved" && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4" data-testid="alert-kyc-approved">
-                      <p className="text-sm text-emerald-300">
-                        <CheckCircle2 className="w-4 h-4 inline mr-2" />
-                        Your identity has been verified. You have full access to all platform features.
-                      </p>
-                    </div>
-                  )}
-
-                  {!kycData?.kycStatus && (
-                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4" data-testid="alert-kyc-not-submitted">
-                      <p className="text-sm text-orange-300">
-                        <AlertCircle className="w-4 h-4 inline mr-2" />
-                        Complete KYC verification to unlock token purchasing and full platform access.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Bank Deposit History */}
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6">
-                  <div className="mb-4">
-                    <h2 className="text-white text-xl font-semibold flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-blue-400" />
-                      Bank Deposit History
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Track your NGN deposit requests and NGNTS credits
-                    </p>
-                  </div>
-
-                  {depositHistory?.deposits && depositHistory.deposits.length > 0 ? (
-                    <div className="space-y-3" data-testid="list-deposit-history">
-                      {depositHistory.deposits.map((deposit) => (
-                        <div
-                          key={deposit.id}
-                          className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-3"
-                          data-testid={`deposit-${deposit.id}`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="text-xs font-mono text-blue-300" data-testid={`ref-${deposit.id}`}>
-                                  {deposit.referenceCode}
-                                </p>
-                                {deposit.status === "pending" && (
-                                  <Badge variant="secondary" className="text-orange-400 border-orange-400" data-testid={`status-${deposit.id}`}>
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    Pending
-                                  </Badge>
-                                )}
-                                {deposit.status === "approved" && (
-                                  <Badge className="bg-emerald-600 text-white" data-testid={`status-${deposit.id}`}>
-                                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                                    Approved
-                                  </Badge>
-                                )}
-                                {deposit.status === "rejected" && (
-                                  <Badge variant="destructive" data-testid={`status-${deposit.id}`}>
-                                    <XCircle className="w-3 h-3 mr-1" />
-                                    Rejected
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-slate-500">
-                                {new Date(deposit.createdAt).toLocaleDateString("en-US", {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-semibold text-white" data-testid={`amount-${deposit.id}`}>
-                                ₦{parseFloat(deposit.amountNGN).toLocaleString()}
-                              </p>
-                              {deposit.status === "approved" && (
-                                <p className="text-xs text-emerald-400">
-                                  +{parseFloat(deposit.ngntsAmount).toLocaleString()} NGNTS
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Fee breakdown */}
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div className="bg-black/20 p-2 rounded">
-                              <p className="text-slate-500">Platform Fee</p>
-                              <p className="text-slate-300">₦{parseFloat(deposit.platformFee).toFixed(2)}</p>
-                            </div>
-                            <div className="bg-black/20 p-2 rounded">
-                              <p className="text-slate-500">Gas Fee</p>
-                              <p className="text-slate-300">₦{parseFloat(deposit.gasFee).toFixed(2)}</p>
-                            </div>
-                            <div className="bg-black/20 p-2 rounded">
-                              <p className="text-slate-500">Net NGNTS</p>
-                              <p className="text-emerald-400">{parseFloat(deposit.ngntsAmount).toLocaleString()}</p>
-                            </div>
-                          </div>
-
-                          {/* Additional info */}
-                          {deposit.notes && (
-                            <div className="text-xs text-slate-400 bg-black/20 p-2 rounded" data-testid={`notes-${deposit.id}`}>
-                              <p className="text-slate-500 mb-1">Notes:</p>
-                              {deposit.notes}
-                            </div>
-                          )}
-
-                          {deposit.rejectedReason && (
-                            <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded" data-testid={`rejection-${deposit.id}`}>
-                              <p className="text-red-300 mb-1">Rejection Reason:</p>
-                              {deposit.rejectedReason}
-                            </div>
-                          )}
-
-                          {deposit.txHash && (
-                            <div className="flex items-center gap-2 text-xs">
-                              <a
-                                href={`https://stellar.expert/explorer/${
-                                  import.meta.env.VITE_STELLAR_HORIZON_URL?.includes("testnet") ? "testnet" : "public"
-                                }/tx/${deposit.txHash}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
-                                data-testid={`tx-link-${deposit.id}`}
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                View Transaction
-                              </a>
-                            </div>
-                          )}
-
-                          {deposit.approvedAt && (
-                            <p className="text-xs text-slate-500">
-                              Approved on {new Date(deposit.approvedAt).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8" data-testid="empty-deposit-history">
-                      <Building2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                      <p className="text-slate-400 text-sm">No deposit history yet</p>
-                      <p className="text-slate-500 text-xs mt-1">
-                        Your bank deposit requests will appear here
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="space-y-6">
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6 space-y-3">
-                  <h2 className="text-white text-xl font-semibold mb-4">Quick Actions</h2>
-                  
-                  {/* KYC Not Approved - Show warning banner */}
-                  {!accountLifecycleStatus.canDeposit && (
-                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 mb-3" data-testid="alert-kyc-required">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-orange-300">KYC Verification Required</p>
-                          <p className="text-xs text-orange-200/80 mt-1">
-                            Complete your KYC to unlock deposits and project investments
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
                   <Button
-                    onClick={() => navigate("/regenerator-dashboard")}
-                    variant={accountLifecycleStatus.label === "Active" ? "default" : "outline"}
-                    className={accountLifecycleStatus.label === "Active" ? "w-full bg-blue-600 hover:bg-blue-700" : "w-full border-white/10 text-white hover:bg-white/5"}
-                    data-testid="button-go-to-dashboard"
-                  >
-                    View Dashboard
-                  </Button>
-                  <Button
+                    onClick={() => setDepositDialogOpen(true)}
                     variant="outline"
-                    onClick={() => navigate("/portfolio")}
-                    className="w-full border-white/10 text-white hover:bg-white/5"
-                    data-testid="button-go-to-portfolio"
+                    size="sm"
+                    className="w-full border-blue-500/30 text-blue-300 hover:bg-blue-500/10"
+                    data-testid="button-deposit-instructions"
                   >
-                    View Portfolio
+                    <Download className="w-3 h-3 mr-2" />
+                    Deposit Instructions
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate("/projects")}
-                    className="w-full border-white/10 text-white hover:bg-white/5"
-                    data-testid="button-browse-projects"
-                  >
-                    Browse Projects
-                  </Button>
-                  
-                  {/* Complete KYC Button - Primary when KYC not approved */}
-                  <Button
-                    onClick={() => navigate("/kyc")}
-                    variant={!accountLifecycleStatus.canDeposit ? "default" : "outline"}
-                    className={
-                      !accountLifecycleStatus.canDeposit
-                        ? "w-full bg-orange-600 hover:bg-orange-700"
-                        : "w-full border-white/10 text-white hover:bg-white/5"
-                    }
-                    data-testid="button-go-to-kyc"
-                  >
-                    <Shield className="w-4 h-4 mr-2" />
-                    {kycData?.kycStatus === "approved" ? "View KYC" : "Complete KYC"}
-                  </Button>
-                  
-                  {/* Deposit Funds Button - Disabled when KYC not approved */}
-                  <div className="relative">
-                    <Button
-                      variant="outline"
-                      onClick={() => accountLifecycleStatus.canDeposit && setDepositDialogOpen(true)}
-                      disabled={!accountLifecycleStatus.canDeposit}
-                      className={
-                        accountLifecycleStatus.canDeposit
-                          ? "w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                          : "w-full border-slate-700 text-slate-500 cursor-not-allowed"
-                      }
-                      data-testid="button-deposit-funds"
-                    >
-                      <Wallet className="w-4 h-4 mr-2" />
-                      Deposit Funds
-                    </Button>
-                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-            >
-              <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
-                <div className="p-6 space-y-3">
-                  <h2 className="text-white text-sm font-semibold mb-4" data-testid="text-benefits-title">
-                    Platform Benefits
-                  </h2>
-                  <div className="flex items-start gap-2" data-testid="benefit-tokenized-projects">
-                    <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-300">
-                      Access tokenized agricultural projects
+            {/* Quick Actions */}
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
+              <div className="p-5 space-y-2.5">
+                <h2 className="text-white text-lg font-semibold mb-3">Quick Actions</h2>
+                
+                <Button
+                  onClick={() => navigate("/regenerator-dashboard")}
+                  variant="outline"
+                  className="w-full border-white/10 text-white hover:bg-white/5 justify-start"
+                  data-testid="button-go-to-dashboard"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  View Dashboard
+                </Button>
+                
+                <Button
+                  onClick={() => navigate("/projects")}
+                  className="w-full bg-blue-600 hover:bg-blue-700 justify-start"
+                  data-testid="button-browse-cooperatives"
+                >
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Browse Cooperatives
+                </Button>
+                
+                <Button
+                  onClick={() => navigate("/kyc")}
+                  variant="outline"
+                  className="w-full border-white/10 text-white hover:bg-white/5 justify-start"
+                  data-testid="button-go-to-kyc"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  {kycData?.kycStatus === "approved" ? "View KYC" : "Complete KYC"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Platform Benefits - Compact */}
+            <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500/60 via-emerald-500/60 to-green-500/60" />
+              <div className="p-5">
+                <h2 className="text-white text-sm font-semibold mb-3">Member Benefits</h2>
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-slate-300">
+                      Access tokenized agricultural cooperatives
                     </p>
                   </div>
-                  <div className="flex items-start gap-2" data-testid="benefit-cashflow">
-                    <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-300">
-                      Receive regular cashflow distributions
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-slate-300">
+                      Receive regular distribution payments
                     </p>
                   </div>
-                  <div className="flex items-start gap-2" data-testid="benefit-marketplace">
-                    <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-300">
-                      Trade tokens on secondary marketplace
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-slate-300">
+                      Trade participation units on marketplace
                     </p>
                   </div>
-                  <div className="flex items-start gap-2" data-testid="benefit-transparency">
-                    <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-300">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-slate-300">
                       Full blockchain transparency
                     </p>
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* Deposit Funds Dialog */}
+      {/* Deposit Funds Dialog - Keep existing wizard */}
       <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
         <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-deposit-funds">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Wallet className="w-6 h-6 text-emerald-400" />
-              How to Deposit Funds
+              Add Capital to Your Wallet
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               Fund your wallet using cryptocurrency or bank transfer
@@ -1062,121 +1009,92 @@ export default function RegeneratorProfile() {
 
             {/* Crypto Deposit Tab */}
             <TabsContent value="crypto" className="space-y-6 mt-4">
-            {/* Wallet Address */}
-            <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-blue-300">Your Stellar Wallet Address</p>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
-                  className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                  data-testid="button-copy-address-dialog"
-                >
-                  {copiedAddress ? (
-                    <>
-                      <Check className="w-3 h-3 mr-1" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 mr-1" />
-                      Copy
-                    </>
-                  )}
-                </Button>
+              <div className="bg-gradient-to-r from-blue-500/10 to-emerald-500/10 border border-blue-500/20 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-blue-300">Your Stellar Wallet Address</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
+                    className="h-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                    data-testid="button-copy-address-dialog"
+                  >
+                    {copiedAddress ? (
+                      <>
+                        <Check className="w-3 h-3 mr-1" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 mr-1" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-sm font-mono text-slate-300 break-all bg-black/20 p-3 rounded border border-white/5">
+                  {walletData?.publicKey || "Loading..."}
+                </p>
               </div>
-              <p className="text-xs font-mono text-slate-300 break-all bg-black/20 p-3 rounded border border-white/5">
-                {walletData?.publicKey || "Loading..."}
-              </p>
-            </div>
 
-            {/* Instructions */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Deposit Options</h3>
-              
-              {/* Option 1: External Wallet */}
-              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-emerald-500/20 p-2 rounded-lg">
-                    <Wallet className="w-5 h-5 text-emerald-400" />
+              <div className="space-y-4">
+                <h3 className="text-white font-semibold">Supported Assets</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                        <span className="text-emerald-400 font-bold text-xs">N</span>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">NGNTS</p>
+                        <p className="text-xs text-slate-400">Nigerian Naira Token</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-emerald-600">Recommended</Badge>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-white mb-1">From External Stellar Wallet</h4>
-                    <p className="text-sm text-slate-400 mb-3">
-                      Send XLM, USDC, or NGNTS from any Stellar wallet (Lobstr, Freighter, etc.)
-                    </p>
-                    <ol className="text-sm text-slate-300 space-y-2 list-decimal list-inside">
-                      <li>Copy your wallet address above</li>
-                      <li>Open your external Stellar wallet app</li>
-                      <li>Select "Send" or "Transfer"</li>
-                      <li>Paste your SEEDx wallet address</li>
-                      <li>Enter amount and confirm transaction</li>
-                    </ol>
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                        <span className="text-blue-400 font-bold text-xs">U</span>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">USDC</p>
+                        <p className="text-xs text-slate-400">USD Coin</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Option 2: Exchange */}
-              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-500/20 p-2 rounded-lg">
-                    <ExternalLink className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-white mb-1">From Cryptocurrency Exchange</h4>
-                    <p className="text-sm text-slate-400 mb-3">
-                      Withdraw directly from exchanges like Binance, Coinbase, or Kraken
-                    </p>
-                    <ol className="text-sm text-slate-300 space-y-2 list-decimal list-inside">
-                      <li>Log into your exchange account</li>
-                      <li>Go to "Withdraw" or "Send"</li>
-                      <li>Select XLM, USDC, or NGNTS</li>
-                      <li>Choose "Stellar Network" as the network</li>
-                      <li>Paste your SEEDx wallet address</li>
-                      <li>Enter amount and confirm withdrawal</li>
-                    </ol>
-                  </div>
-                </div>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <h3 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  Important Notes
+                </h3>
+                <ul className="space-y-2 text-sm text-slate-300">
+                  <li className="flex gap-2">
+                    <span className="text-blue-400">•</span>
+                    <span>Send only NGNTS or USDC to this address on the Stellar network</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-blue-400">•</span>
+                    <span>Your wallet will be automatically activated on first deposit</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-blue-400">•</span>
+                    <span>Deposits typically appear within 5-10 seconds</span>
+                  </li>
+                </ul>
               </div>
 
-              {/* Important Notes */}
-              <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-orange-300">Important Notes:</p>
-                    <ul className="text-sm text-orange-200 space-y-1 list-disc list-inside">
-                      <li>Always use the <strong>Stellar network</strong> when sending assets</li>
-                      <li>Minimum 1 XLM balance required for wallet activation</li>
-                      <li>Deposits typically appear within 5-10 seconds</li>
-                      <li>Double-check the address before sending</li>
-                      <li>NGNTS tokens must be acquired from the platform after depositing XLM or USDC</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Crypto Action Buttons */}
-            <div className="flex gap-3">
-              <Button
-                onClick={() => walletData?.publicKey && copyToClipboard(walletData.publicKey)}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                data-testid="button-copy-and-close"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Address
-              </Button>
               <Button
                 variant="outline"
-                onClick={() => setDepositDialogOpen(false)}
-                className="flex-1 border-white/10 text-white hover:bg-white/5"
+                onClick={handleCloseWizard}
+                className="w-full border-white/10 text-white hover:bg-white/5"
                 data-testid="button-close-dialog"
               >
                 Close
               </Button>
-            </div>
             </TabsContent>
 
             {/* Fiat Deposit Tab */}
@@ -1207,7 +1125,6 @@ export default function RegeneratorProfile() {
                       />
                     </div>
 
-                    {/* Fee Breakdown */}
                     {previewLoading && (
                       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                         <p className="text-sm text-blue-300">Calculating fees...</p>
@@ -1312,7 +1229,6 @@ export default function RegeneratorProfile() {
                     <p className="text-sm text-slate-400">Use this reference code when making your bank transfer</p>
                   </div>
 
-                  {/* Reference Code Display */}
                   <Card className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-emerald-500/20">
                     <CardContent className="p-6 space-y-4">
                       <div>
@@ -1344,7 +1260,6 @@ export default function RegeneratorProfile() {
                     </CardContent>
                   </Card>
 
-                  {/* Bank Account Details - Enhanced Visibility */}
                   {wizardBankAccount && (
                     <Card className="bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-500/20 border-blue-400/40 border-2">
                       <CardContent className="p-6 space-y-4">
@@ -1393,7 +1308,6 @@ export default function RegeneratorProfile() {
                     </Card>
                   )}
 
-                  {/* Fee Breakdown & Amount You'll Receive */}
                   {wizardFeeBreakdown && (
                     <Card className="bg-slate-800/50 border-slate-600/50">
                       <CardContent className="p-6 space-y-4">
@@ -1422,69 +1336,45 @@ export default function RegeneratorProfile() {
                           <div className="flex justify-between items-center">
                             <p className="text-sm text-slate-300">Stellar Gas Fee</p>
                             <p className="text-sm font-semibold text-red-300">
-                              -₦{wizardFeeBreakdown.gasFeeNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                              -₦{wizardFeeBreakdown.gasFeeNGN.toFixed(2)}
                             </p>
                           </div>
-                          
-                          {wizardFeeBreakdown.walletActivationFee > 0 && (
+
+                          {wizardFeeBreakdown.needsWalletActivation && wizardFeeBreakdown.walletActivationFee > 0 && (
                             <div className="flex justify-between items-center">
-                              <p className="text-sm text-slate-300">Wallet Activation Fee (one-time)</p>
+                              <p className="text-sm text-slate-300">Wallet Activation (one-time)</p>
                               <p className="text-sm font-semibold text-red-300">
-                                -₦{wizardFeeBreakdown.walletActivationFee.toLocaleString('en-NG', {minimumFractionDigits: 2})}
+                                -₦{wizardFeeBreakdown.walletActivationFee.toFixed(2)}
                               </p>
                             </div>
                           )}
                           
-                          <div className="border-t border-white/20 pt-3 mt-3">
-                            <div className="flex justify-between items-center">
-                              <p className="text-base font-semibold text-white">Total Fees</p>
-                              <p className="text-base font-bold text-red-300">
-                                -₦{wizardFeeBreakdown.totalFeesNGN.toLocaleString('en-NG', {minimumFractionDigits: 2})}
-                              </p>
-                            </div>
-                          </div>
+                          <Separator className="bg-white/20" />
                           
-                          <div className="bg-emerald-600/20 border-2 border-emerald-500/50 rounded-lg p-4 mt-4">
-                            <div className="flex justify-between items-center">
-                              <p className="text-base font-bold text-emerald-200">You Will Receive</p>
-                              <p className="text-2xl font-bold text-emerald-300">
-                                {wizardFeeBreakdown.ngntsAmount.toLocaleString('en-NG', {minimumFractionDigits: 2})} NGNTS
-                              </p>
-                            </div>
+                          <div className="flex justify-between items-center pt-2">
+                            <p className="text-lg font-bold text-emerald-300">You will receive</p>
+                            <p className="text-xl font-bold text-emerald-400">
+                              {wizardFeeBreakdown.ngntsAmount.toFixed(2)} NGNTS
+                            </p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   )}
 
-                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
-                      <div className="space-y-2">
-                        <p className="text-sm font-semibold text-orange-300">Important:</p>
-                        <ul className="text-sm text-orange-200 space-y-1 list-disc list-inside">
-                          <li>Use the reference code above when making your transfer</li>
-                          <li>Transfer the exact amount shown</li>
-                          <li>Save your transaction receipt for the next step</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="flex gap-3">
                     <Button
                       onClick={() => setCurrentStep(3)}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
                     >
-                      I've Made the Transfer - Continue
+                      Next: Upload Proof
                     </Button>
                     <Button
-                      type="button"
+                      onClick={() => setCurrentStep(1)}
                       variant="outline"
-                      onClick={handleCloseWizard}
                       className="border-white/10 text-white hover:bg-white/5"
                     >
-                      Cancel
+                      Back
                     </Button>
                   </div>
                 </div>
@@ -1498,65 +1388,27 @@ export default function RegeneratorProfile() {
                     <p className="text-sm text-slate-400">Upload your bank transfer receipt or screenshot</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="proof-upload" className="text-slate-300">
-                      Proof of Payment *
-                    </Label>
-                    <div
-                      className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                      onClick={() => document.getElementById("proof-upload")?.click()}
-                    >
-                      {depositProof ? (
-                        <div className="space-y-3">
-                          <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-                          <div>
-                            <p className="text-sm font-semibold text-white">{depositProof.name}</p>
-                            <p className="text-xs text-slate-400">
-                              {(depositProof.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDepositProof(null);
-                            }}
-                            className="border-white/10 text-white hover:bg-white/5"
-                          >
-                            Remove File
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <Upload className="w-12 h-12 text-slate-400 mx-auto" />
-                          <div>
-                            <p className="text-sm font-semibold text-white">Click to upload or drag and drop</p>
-                            <p className="text-xs text-slate-400">PNG, JPG, PDF up to 5MB</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <Input
-                      id="proof-upload"
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={(e) => setDepositProof(e.target.files?.[0] || null)}
-                      className="hidden"
-                      data-testid="input-proof-upload"
-                    />
-                  </div>
-
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-blue-300 mb-1">Upload Tips:</p>
-                        <ul className="text-sm text-slate-300 space-y-1 list-disc list-inside">
-                          <li>Ensure all transfer details are clearly visible</li>
-                          <li>Include transaction reference and amount</li>
-                          <li>Good lighting if taking a photo</li>
-                        </ul>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="proof-upload" className="text-slate-300">
+                        Proof of Payment *
+                      </Label>
+                      <div className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center hover:border-blue-400/50 transition-colors">
+                        <Input
+                          id="proof-upload"
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => setDepositProof(e.target.files?.[0] || null)}
+                          className="hidden"
+                          data-testid="input-proof-upload"
+                        />
+                        <label htmlFor="proof-upload" className="cursor-pointer">
+                          <Upload className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                          <p className="text-white mb-1">
+                            {depositProof ? depositProof.name : "Click to upload"}
+                          </p>
+                          <p className="text-xs text-slate-400">PNG, JPG or PDF (max 10MB)</p>
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -1565,7 +1417,7 @@ export default function RegeneratorProfile() {
                     <Button
                       onClick={handleStep3Submit}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                      disabled={uploadProofMutation.isPending || !depositProof}
+                      disabled={!depositProof || uploadProofMutation.isPending}
                       data-testid="button-submit-proof"
                     >
                       {uploadProofMutation.isPending ? (
@@ -1574,16 +1426,12 @@ export default function RegeneratorProfile() {
                           Uploading...
                         </>
                       ) : (
-                        <>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Submit Proof
-                        </>
+                        "Submit for Review"
                       )}
                     </Button>
                     <Button
-                      type="button"
-                      variant="outline"
                       onClick={() => setCurrentStep(2)}
+                      variant="outline"
                       className="border-white/10 text-white hover:bg-white/5"
                     >
                       Back
@@ -1592,102 +1440,44 @@ export default function RegeneratorProfile() {
                 </div>
               )}
 
-              {/* Step 4: Success Modal */}
+              {/* Step 4: Success */}
               {currentStep === 4 && (
-                <div className="space-y-6">
-                  <div className="text-center space-y-4 py-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600/20 rounded-full">
-                      <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Deposit Request Submitted!</h3>
-                      <p className="text-slate-400">
-                        Your deposit request has been received and is pending admin approval.
-                      </p>
-                    </div>
+                <div className="space-y-6 text-center">
+                  <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Proof Uploaded Successfully!</h3>
+                    <p className="text-slate-400">
+                      Your deposit request is now pending admin approval. We'll review it within 1-2 business days.
+                    </p>
                   </div>
 
-                  {/* Reference Code */}
-                  <Card className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-emerald-500/20">
-                    <CardContent className="p-6 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-emerald-300">Your Reference Code</p>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => copyToClipboard(depositReference, "reference")}
-                          className="h-7 text-emerald-400 hover:bg-emerald-500/10"
-                          data-testid="button-copy-reference"
-                        >
-                          {copiedReference ? (
-                            <>
-                              <Check className="w-3 h-3 mr-1" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3 mr-1" />
-                              Copy
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <div className="bg-black/40 p-4 rounded-lg border border-white/10">
-                        <p className="text-2xl font-mono font-bold text-white text-center" data-testid="text-reference-code">
-                          {depositReference}
-                        </p>
-                      </div>
-                      <p className="text-xs text-slate-400 text-center">
-                        Save this reference code for tracking your deposit
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Next Steps */}
-                  <Card className="bg-blue-500/10 border-blue-500/20">
-                    <CardContent className="p-6">
-                      <p className="text-sm font-semibold text-blue-300 mb-3">What Happens Next:</p>
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="bg-blue-500/20 text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            1
-                          </div>
-                          <p className="text-sm text-slate-300">Admin will review your deposit proof</p>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="bg-blue-500/20 text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            2
-                          </div>
-                          <p className="text-sm text-slate-300">You'll receive an email notification once approved</p>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="bg-blue-500/20 text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            3
-                          </div>
-                          <p className="text-sm text-slate-300">NGNTS tokens will be credited to your wallet automatically</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={handleCloseWizard}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700"
-                      data-testid="button-done"
-                    >
-                      Done
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={resetDepositWizard}
-                      className="flex-1 border-white/10 text-white hover:bg-white/5"
-                      data-testid="button-new-deposit"
-                    >
-                      New Deposit
-                    </Button>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-left">
+                    <h4 className="text-white font-semibold mb-2">What happens next?</h4>
+                    <ul className="space-y-2 text-sm text-slate-300">
+                      <li className="flex gap-2">
+                        <span className="text-blue-400">1.</span>
+                        <span>Our team will verify your bank transfer</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-blue-400">2.</span>
+                        <span>Once approved, NGNTS will be credited to your wallet</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-blue-400">3.</span>
+                        <span>You'll receive a notification when the deposit is processed</span>
+                      </li>
+                    </ul>
                   </div>
+
+                  <Button
+                    onClick={handleCloseWizard}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    Done
+                  </Button>
                 </div>
               )}
             </TabsContent>
