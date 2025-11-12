@@ -57,17 +57,21 @@ export default function RegeneratorProfile() {
   const [copiedReference, setCopiedReference] = useState(false);
 
   // Fetch server-sourced user data for auth
-  const { data: user, isLoading: userLoading } = useQuery<{
-    id: string;
-    email: string;
-    role: string;
-    isPrimer: boolean;
-    isLpInvestor: boolean;
-    kycStatus: string;
-    createdAt: string;
+  const { data: authData, isLoading: userLoading } = useQuery<{
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      isPrimer: boolean;
+      isLpInvestor: boolean;
+      kycStatus: string;
+      createdAt: string;
+    };
   }>({
     queryKey: ["/api/auth/me"],
   });
+
+  const user = authData?.user;
 
   // Redirect primers to their dedicated profile
   useEffect(() => {
@@ -75,6 +79,15 @@ export default function RegeneratorProfile() {
       navigate("/primer-profile");
     }
   }, [user, userLoading, navigate]);
+
+  // Show loading state while user data loads or redirect primers
+  if (userLoading || !user || user.isPrimer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   // Queries with auto-refresh for real-time updates
   const { data: kycData } = useQuery<{

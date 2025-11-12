@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,17 +23,21 @@ export default function PrimerProfile() {
   const [, navigate] = useLocation();
 
   // Fetch server-sourced user data for auth
-  const { data: user, isLoading: userLoading } = useQuery<{
-    id: string;
-    email: string;
-    role: string;
-    isPrimer: boolean;
-    isLpInvestor: boolean;
-    kycStatus: string;
-    createdAt: string;
+  const { data: authData, isLoading: userLoading } = useQuery<{
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      isPrimer: boolean;
+      isLpInvestor: boolean;
+      kycStatus: string;
+      createdAt: string;
+    };
   }>({
     queryKey: ["/api/auth/me"],
   });
+
+  const user = authData?.user;
 
   // Redirect non-primers to regenerator profile
   useEffect(() => {
@@ -40,6 +45,15 @@ export default function PrimerProfile() {
       navigate("/regenerator-profile");
     }
   }, [user, userLoading, navigate]);
+
+  // Show loading state while user data loads or redirect non-primers
+  if (userLoading || !user || !user.isPrimer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   const { data: kycData } = useQuery<{
     kycStatus: string;

@@ -207,7 +207,7 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white flex items-center gap-3">
             <Coins className="w-7 h-7 text-blue-400" />
-            Contribute to LP Pool
+            Contribute to Liquidity Pool
           </DialogTitle>
         </DialogHeader>
 
