@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
+import Decimal from "decimal.js";
 import { db } from "../db";
 import {
   primerContributions,
@@ -10,6 +11,7 @@ import {
   platformWallets,
   users,
   createPrimerContributionSchema,
+  primerContributionPreviewSchema,
   approvePrimerContributionSchema,
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
@@ -336,6 +338,49 @@ router.get("/allocations", authMiddleware, primerMiddleware, async (req: Request
   } catch (error) {
     console.error("Get allocations error:", error);
     res.status(500).json({ error: "Failed to get allocations" });
+  }
+});
+
+/**
+ * POST /api/primer/contribution-preview
+ * Calculate and preview fees for a Primer contribution
+ */
+router.post("/contribution-preview", authMiddleware, primerMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    // Validate input with min/max range
+    const validatedData = primerContributionPreviewSchema.parse(req.body);
+    const { amountNGN } = validatedData;
+
+    // Platform fee rate (1.5%)
+    const FEE_RATE = new Decimal("0.015");
+    // Exchange rate (1:1 NGN to NGNTS for now)
+    const EXCHANGE_RATE = new Decimal("1");
+
+    // Calculate using Decimal for precision
+    const grossAmount = new Decimal(amountNGN);
+    const platformFee = grossAmount.times(FEE_RATE);
+    const netNGNTS = grossAmount.minus(platformFee);
+
+    // Return fee preview with all amounts as fixed-precision strings
+    res.json({
+      amountNGN: grossAmount.toFixed(2),
+      platformFeePercent: FEE_RATE.times(100).toFixed(2), // "1.50"
+      platformFeeNGN: platformFee.toFixed(2),
+      netNGNTS: netNGNTS.toFixed(2),
+      exchangeRate: EXCHANGE_RATE.toFixed(2),
+    });
+  } catch (error: any) {
+    console.error("Contribution preview error:", error);
+    if (error.name === "ZodError") {
+      res.status(400).json({ error: "Invalid input data", details: error.errors });
+    } else {
+      res.status(500).json({ error: "Failed to calculate fees" });
+    }
   }
 });
 

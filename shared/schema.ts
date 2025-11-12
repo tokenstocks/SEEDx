@@ -1129,6 +1129,15 @@ export const createPrimerContributionSchema = z.object({
   // paymentProof handled via multipart file upload (req.file), not as a string field
 });
 
+export const primerContributionPreviewSchema = z.object({
+  amountNGN: z.string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return num >= 1000 && num <= 100000000;
+    }, "Amount must be between ₦1,000 and ₦100,000,000"),
+});
+
 export const approvePrimerContributionSchema = z.object({
   action: z.enum(["approve", "reject"]),
   rejectedReason: z.string().optional(),
@@ -1279,6 +1288,7 @@ export type InsertLpCashflowAllocation = z.infer<typeof insertLpCashflowAllocati
 export type PrimerContribution = typeof primerContributions.$inferSelect;
 export type InsertPrimerContribution = z.infer<typeof insertPrimerContributionSchema>;
 export type CreatePrimerContribution = z.infer<typeof createPrimerContributionSchema>;
+export type PrimerContributionPreview = z.infer<typeof primerContributionPreviewSchema>;
 export type ApprovePrimerContribution = z.infer<typeof approvePrimerContributionSchema>;
 export type LpProjectAllocation = typeof lpProjectAllocations.$inferSelect;
 export type InsertLpProjectAllocation = z.infer<typeof insertLpProjectAllocationSchema>;
