@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AdminLayout } from "@/components/AdminLayout";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -50,6 +51,32 @@ function PortfolioRedirect() {
   return null;
 }
 
+function AdminRoutes() {
+  return (
+    <AdminLayout>
+      <Switch>
+        <Route path="/admin" component={Admin} />
+        <Route path="/admin/onchain-verification" component={OnChainVerification} />
+        <Route path="/admin/storage-setup" component={StorageSetup} />
+        <Route path="/admin/redemptions" component={AdminRedemptions} />
+        <Route path="/admin/treasury" component={AdminTreasury} />
+        <Route path="/admin/cashflows" component={AdminCashflows} />
+        <Route path="/admin/audit" component={AdminAudit} />
+        <Route path="/admin/primers" component={AdminPrimers} />
+        <Route path="/admin/regenerators" component={AdminRegenerators} />
+        <Route path="/admin/wallet-funding" component={AdminWalletFunding} />
+        <Route path="/admin/funding" component={AdminFunding} />
+        <Route path="/admin/investments" component={AdminInvestments} />
+        <Route path="/admin/lp-pool" component={AdminLPPool} />
+        <Route path="/admin/lp-allocations" component={AdminLPAllocations} />
+        <Route path="/admin/multisig" component={MultisigDemo} />
+        <Route path="/admin/deployment" component={DeploymentDemo} />
+        <Route path="/admin/flow" component={FlowDemo} />
+      </Switch>
+    </AdminLayout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -69,23 +96,8 @@ function Router() {
       {/* DEPRECATED: /wallet-funding-request route removed - wallets auto-activate on first bank deposit */}
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
-      <Route path="/admin" component={Admin} />
-      <Route path="/admin/onchain-verification" component={OnChainVerification} />
-      <Route path="/admin/storage-setup" component={StorageSetup} />
-      <Route path="/admin/redemptions" component={AdminRedemptions} />
-      <Route path="/admin/treasury" component={AdminTreasury} />
-      <Route path="/admin/cashflows" component={AdminCashflows} />
-      <Route path="/admin/audit" component={AdminAudit} />
-      <Route path="/admin/primers" component={AdminPrimers} />
-      <Route path="/admin/regenerators" component={AdminRegenerators} />
-      <Route path="/admin/wallet-funding" component={AdminWalletFunding} />
-      <Route path="/admin/funding" component={AdminFunding} />
-      <Route path="/admin/investments" component={AdminInvestments} />
-      <Route path="/admin/lp-pool" component={AdminLPPool} />
-      <Route path="/admin/lp-allocations" component={AdminLPAllocations} />
-      <Route path="/admin/multisig" component={MultisigDemo} />
-      <Route path="/admin/deployment" component={DeploymentDemo} />
-      <Route path="/admin/flow" component={FlowDemo} />
+      <Route path="/admin/:rest*" component={AdminRoutes} />
+      <Route path="/admin" component={AdminRoutes} />
       <Route path="/about" component={About} />
       <Route path="/learn" component={Learn} />
       <Route path="/platform" component={Platform} />
