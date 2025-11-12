@@ -30,6 +30,7 @@ import {
 import { format } from "date-fns";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import KYCHistorySection from "@/components/KYCHistorySection";
 
 interface Primer {
   id: string;
@@ -428,36 +429,8 @@ export function PrimerDetailDrawer({ primer, onClose }: PrimerDetailDrawerProps)
               </div>
             )}
 
-            {/* KYC History */}
-            {detail.kycHistory.length > 0 && (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <History className="w-5 h-5 text-yellow-500" />
-                  <h3 className="text-lg font-semibold text-white">KYC Audit Trail</h3>
-                </div>
-
-                <div className="space-y-3">
-                  {detail.kycHistory.map((record) => (
-                    <div key={record.id} className="border-l-2 border-white/20 pl-4 py-2" data-testid={`record-kyc-${record.id}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        {getKycStatusBadge(record.decision, `badge-kyc-decision-${record.id}`)}
-                        <span className="text-xs text-slate-400" data-testid={`text-kyc-date-${record.id}`}>
-                          {format(new Date(record.processedAt), "MMM dd, yyyy HH:mm")}
-                        </span>
-                      </div>
-                      {record.adminName && (
-                        <p className="text-sm text-slate-400" data-testid={`text-kyc-admin-${record.id}`}>
-                          Processed by: {record.adminName} ({record.adminEmail})
-                        </p>
-                      )}
-                      {record.notes && (
-                        <p className="text-sm text-slate-300 mt-1" data-testid={`text-kyc-notes-${record.id}`}>{record.notes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* KYC History - Enhanced Section */}
+            <KYCHistorySection userId={detail.primer.id} />
           </div>
         ) : (
           <div className="flex items-center justify-center py-12">

@@ -1,28 +1,15 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  CheckCircle2,
-  XCircle,
   Clock,
   FileText,
-  ExternalLink,
+  Eye,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import KYCReviewModal from "@/components/KYCReviewModal";
 
 interface AdminKYCSubmission {
   id: string;
@@ -41,12 +28,8 @@ interface AdminKYCSubmission {
 }
 
 export default function AdminKYC() {
-  const { toast } = useToast();
-
   const [selectedSubmission, setSelectedSubmission] = useState<AdminKYCSubmission | null>(null);
-  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
-  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   const { data: submissionsData, isLoading } = useQuery<{ users: AdminKYCSubmission[] }>({
     queryKey: ["/api/admin/users?kycStatus=submitted"],
@@ -54,88 +37,14 @@ export default function AdminKYC() {
 
   const submissions = submissionsData?.users || [];
 
-  const approveMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      return await apiRequest(
-        "PUT",
-        `/api/admin/users/${userId}/kyc`,
-        { action: "approve" }
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setShowApprovalDialog(false);
-      setSelectedSubmission(null);
-      toast({
-        title: "KYC Approved",
-        description: "User has been verified and can now access the platform",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Approval Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
-      return await apiRequest(
-        "PUT",
-        `/api/admin/users/${userId}/kyc`,
-        { action: "reject", adminNotes: reason }
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setShowRejectionDialog(false);
-      setSelectedSubmission(null);
-      setRejectionReason("");
-      toast({
-        title: "KYC Rejected",
-        description: "User has been notified of the rejection",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Rejection Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleApprove = (submission: AdminKYCSubmission) => {
+  const handleReviewSubmission = (submission: AdminKYCSubmission) => {
     setSelectedSubmission(submission);
-    setShowApprovalDialog(true);
+    setShowReviewModal(true);
   };
 
-  const handleReject = (submission: AdminKYCSubmission) => {
-    setSelectedSubmission(submission);
-    setShowRejectionDialog(true);
-  };
-
-  const confirmApproval = () => {
-    if (selectedSubmission) {
-      approveMutation.mutate(selectedSubmission.id);
-    }
-  };
-
-  const confirmRejection = () => {
-    if (selectedSubmission && rejectionReason.trim()) {
-      rejectMutation.mutate({
-        userId: selectedSubmission.id,
-        reason: rejectionReason.trim(),
-      });
-    } else {
-      toast({
-        title: "Rejection reason required",
-        description: "Please provide a reason for rejecting this KYC submission",
-        variant: "destructive",
-      });
-    }
+  const handleCloseModal = () => {
+    setShowReviewModal(false);
+    setSelectedSubmission(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -208,7 +117,7 @@ export default function AdminKYC() {
                       <th className="text-left py-3 px-4">User</th>
                       <th className="text-left py-3 px-4">Role</th>
                       <th className="text-left py-3 px-4">Contact</th>
-                      <th className="text-left py-3 px-4">Documents</th>
+                      <th className="text-left py-3 px-4">Documents Submitted</th>
                       <th className="text-left py-3 px-4">Submitted</th>
                       <th className="text-right py-3 px-4">Actions</th>
                     </tr>
@@ -235,42 +144,21 @@ export default function AdminKYC() {
                           {submission.phone || "—"}
                         </td>
                         <td className="py-4 px-4">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex gap-1">
                             {submission.kycDocuments?.idCard && (
-                              <a
-                                href={submission.kycDocuments.idCard}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                                data-testid={`link-id-card-${submission.id}`}
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                ID Card
-                              </a>
+                              <Badge variant="secondary" className="text-xs">
+                                ID
+                              </Badge>
                             )}
                             {submission.kycDocuments?.selfie && (
-                              <a
-                                href={submission.kycDocuments.selfie}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                                data-testid={`link-selfie-${submission.id}`}
-                              >
-                                <ExternalLink className="w-3 h-3" />
+                              <Badge variant="secondary" className="text-xs">
                                 Selfie
-                              </a>
+                              </Badge>
                             )}
                             {submission.kycDocuments?.addressProof && (
-                              <a
-                                href={submission.kycDocuments.addressProof}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                                data-testid={`link-address-proof-${submission.id}`}
-                              >
-                                <ExternalLink className="w-3 h-3" />
+                              <Badge variant="secondary" className="text-xs">
                                 Address
-                              </a>
+                              </Badge>
                             )}
                           </div>
                         </td>
@@ -281,21 +169,12 @@ export default function AdminKYC() {
                           <div className="flex gap-2 justify-end">
                             <Button
                               size="sm"
-                              onClick={() => handleApprove(submission)}
+                              onClick={() => handleReviewSubmission(submission)}
                               className="bg-emerald-600 hover:bg-emerald-700"
-                              data-testid={`button-approve-kyc-${submission.id}`}
+                              data-testid={`button-review-kyc-${submission.id}`}
                             >
-                              <CheckCircle2 className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleReject(submission)}
-                              data-testid={`button-reject-kyc-${submission.id}`}
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
+                              <Eye className="w-4 h-4 mr-1" />
+                              Review
                             </Button>
                           </div>
                         </td>
@@ -309,88 +188,12 @@ export default function AdminKYC() {
         </Card>
       </div>
 
-      {/* Approval Dialog */}
-      <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <DialogContent className="bg-slate-900 border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Approve KYC Submission</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Are you sure you want to approve this KYC submission for{" "}
-              <span className="font-semibold text-white">
-                {selectedSubmission?.firstName} {selectedSubmission?.lastName}
-              </span>
-              ?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowApprovalDialog(false)}
-              className="border-slate-700 text-slate-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmApproval}
-              disabled={approveMutation.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
-              data-testid="button-confirm-approve"
-            >
-              {approveMutation.isPending ? "Approving..." : "Approve"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rejection Dialog */}
-      <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
-        <DialogContent className="bg-slate-900 border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Reject KYC Submission</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Provide a reason for rejecting the KYC submission for{" "}
-              <span className="font-semibold text-white">
-                {selectedSubmission?.firstName} {selectedSubmission?.lastName}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="rejection-reason" className="text-slate-300">
-                Rejection Reason *
-              </Label>
-              <Textarea
-                id="rejection-reason"
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Enter reason for rejection (required)"
-                className="mt-2 bg-slate-800 border-slate-700 text-white"
-                data-testid="input-reject-reason"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowRejectionDialog(false);
-                setRejectionReason("");
-              }}
-              className="border-slate-700 text-slate-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmRejection}
-              disabled={rejectMutation.isPending || !rejectionReason.trim()}
-              data-testid="button-confirm-reject"
-            >
-              {rejectMutation.isPending ? "Rejecting..." : "Reject"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* KYC Review Modal */}
+      <KYCReviewModal
+        submission={selectedSubmission}
+        open={showReviewModal}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 }
