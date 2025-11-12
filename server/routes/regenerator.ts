@@ -664,6 +664,27 @@ router.post("/bank-deposits/initiate", authMiddleware, regeneratorMiddleware, as
 
     const userId = req.user.userId;
 
+    // CRITICAL: Require KYC approval before accepting deposits
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    if (user.kycStatus !== "approved") {
+      res.status(403).json({
+        error: "KYC verification required",
+        details: "Please complete and get your KYC approved before making deposits",
+        kycStatus: user.kycStatus,
+      });
+      return;
+    }
+
     // Get active bank account
     const activeAccount = await db.query.platformBankAccounts.findFirst({
       where: eq(platformBankAccounts.isActive, true),

@@ -27,7 +27,6 @@ import LPDashboard from "@/pages/LPDashboard";
 import PrimerDashboard from "@/pages/PrimerDashboard";
 import PrimerProfile from "@/pages/PrimerProfile";
 import RegeneratorProfile from "@/pages/RegeneratorProfile";
-import WalletFundingRequest from "@/pages/WalletFundingRequest";
 import AdminPrimers from "@/pages/AdminPrimers";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
 import AdminLPAllocations from "@/pages/AdminLPAllocations";
@@ -63,7 +62,7 @@ function Router() {
       <Route path="/primer-dashboard" component={PrimerDashboard} />
       <Route path="/primer-profile" component={PrimerProfile} />
       <Route path="/regenerator-profile" component={RegeneratorProfile} />
-      <Route path="/wallet-funding-request" component={WalletFundingRequest} />
+      {/* DEPRECATED: /wallet-funding-request route removed - wallets auto-activate on first bank deposit */}
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/admin" component={Admin} />

@@ -135,6 +135,62 @@ export default function RegeneratorProfile() {
     queryKey: ["/api/regenerator/bank-deposits"],
   });
 
+  // Account lifecycle status helper (computed after queries are declared)
+  const accountLifecycleStatus = useMemo(() => {
+    const kycStatus = kycData?.status || user.kycStatus || "pending";
+    const walletActivated = walletData?.activated || walletData?.activationStatus === "active";
+    
+    // Decision tree for account lifecycle
+    if (kycStatus === "rejected") {
+      return {
+        label: "KYC Rejected",
+        badgeClass: "bg-red-600 text-white",
+        icon: XCircle,
+        callToAction: "Resubmit KYC documents",
+        canDeposit: false,
+      };
+    }
+    
+    if (kycStatus === "pending" || kycStatus === "submitted") {
+      return {
+        label: kycStatus === "submitted" ? "KYC Under Review" : "Pending KYC",
+        badgeClass: "bg-orange-500 text-white",
+        icon: Clock,
+        callToAction: kycStatus === "submitted" ? "Awaiting KYC approval" : "Complete KYC to continue",
+        canDeposit: false,
+      };
+    }
+    
+    if (kycStatus === "approved" && !walletActivated) {
+      return {
+        label: "KYC Approved",
+        badgeClass: "bg-blue-600 text-white",
+        icon: CheckCircle2,
+        callToAction: "Make your first deposit to activate wallet",
+        canDeposit: true,
+      };
+    }
+    
+    if (kycStatus === "approved" && walletActivated) {
+      return {
+        label: "Active",
+        badgeClass: "bg-emerald-600 text-white",
+        icon: CheckCircle2,
+        callToAction: "Account fully active",
+        canDeposit: true,
+      };
+    }
+    
+    // Default fallback
+    return {
+      label: "Pending KYC",
+      badgeClass: "bg-slate-600 text-white",
+      icon: AlertCircle,
+      callToAction: "Complete KYC to continue",
+      canDeposit: false,
+    };
+  }, [kycData, walletData, user.kycStatus]);
+
   // Fee preview effect (debounced)
   useEffect(() => {
     // Reset preview and error state
@@ -426,14 +482,21 @@ export default function RegeneratorProfile() {
                       <div className="flex items-start gap-3">
                         <Shield className="w-5 h-5 text-purple-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-slate-400">Account Type</p>
+                          <p className="text-sm text-slate-400">Account Status</p>
                           <p className="text-white font-medium" data-testid="text-account-type">
-                            Regenerator (Token Participant)
+                            {accountLifecycleStatus.label}
                           </p>
+                          {accountLifecycleStatus.callToAction !== "Account fully active" && (
+                            <p className="text-xs text-slate-400 mt-1">{accountLifecycleStatus.callToAction}</p>
+                          )}
                         </div>
                       </div>
-                      <Badge className="bg-blue-600 text-white" data-testid="badge-account-status">
-                        Active
+                      <Badge className={accountLifecycleStatus.badgeClass} data-testid="badge-account-status">
+                        {(() => {
+                          const StatusIcon = accountLifecycleStatus.icon;
+                          return <StatusIcon className="w-3 h-3 mr-1" />;
+                        })()}
+                        {accountLifecycleStatus.label}
                       </Badge>
                     </div>
 
@@ -543,26 +606,14 @@ export default function RegeneratorProfile() {
                   </div>
 
                   {!walletData?.activated && (
-                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4" data-testid="alert-wallet-not-activated">
-                      <p className="text-sm text-orange-300 mb-3">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4" data-testid="alert-wallet-not-activated">
+                      <p className="text-sm text-blue-300 mb-2">
                         <AlertCircle className="w-4 h-4 inline mr-2" />
-                        Your Stellar wallet needs activation funding. Request funding from admin to enable blockchain transactions.
+                        Your Stellar wallet will be automatically activated when you make your first deposit
                       </p>
-                      {walletData?.activationStatus !== "pending" && (
-                        <Button
-                          onClick={() => navigate("/wallet-funding-request")}
-                          className="bg-orange-600 hover:bg-orange-700 w-full"
-                          data-testid="button-request-funding"
-                        >
-                          Request Wallet Funding
-                        </Button>
-                      )}
-                      {walletData?.activationStatus === "pending" && (
-                        <p className="text-xs text-slate-400">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          Funding request submitted. Awaiting admin approval.
-                        </p>
-                      )}
+                      <p className="text-xs text-slate-400">
+                        Complete KYC verification, then deposit funds to activate your wallet and start investing in projects
+                      </p>
                     </div>
                   )}
                   
@@ -869,9 +920,26 @@ export default function RegeneratorProfile() {
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 via-blue-500/60 to-emerald-500/60" />
                 <div className="p-6 space-y-3">
                   <h2 className="text-white text-xl font-semibold mb-4">Quick Actions</h2>
+                  
+                  {/* KYC Not Approved - Show warning banner */}
+                  {!accountLifecycleStatus.canDeposit && (
+                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 mb-3" data-testid="alert-kyc-required">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-orange-300">KYC Verification Required</p>
+                          <p className="text-xs text-orange-200/80 mt-1">
+                            Complete your KYC to unlock deposits and project investments
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <Button
                     onClick={() => navigate("/regenerator-dashboard")}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    variant={accountLifecycleStatus.label === "Active" ? "default" : "outline"}
+                    className={accountLifecycleStatus.label === "Active" ? "w-full bg-blue-600 hover:bg-blue-700" : "w-full border-white/10 text-white hover:bg-white/5"}
                     data-testid="button-go-to-dashboard"
                   >
                     View Dashboard
@@ -892,23 +960,39 @@ export default function RegeneratorProfile() {
                   >
                     Browse Projects
                   </Button>
+                  
+                  {/* Complete KYC Button - Primary when KYC not approved */}
                   <Button
-                    variant="outline"
                     onClick={() => navigate("/kyc")}
-                    className="w-full border-white/10 text-white hover:bg-white/5"
+                    variant={!accountLifecycleStatus.canDeposit ? "default" : "outline"}
+                    className={
+                      !accountLifecycleStatus.canDeposit
+                        ? "w-full bg-orange-600 hover:bg-orange-700"
+                        : "w-full border-white/10 text-white hover:bg-white/5"
+                    }
                     data-testid="button-go-to-kyc"
                   >
+                    <Shield className="w-4 h-4 mr-2" />
                     {kycData?.status === "approved" ? "View KYC" : "Complete KYC"}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDepositDialogOpen(true)}
-                    className="w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                    data-testid="button-deposit-funds"
-                  >
-                    <Wallet className="w-4 h-4 mr-2" />
-                    Deposit Funds
-                  </Button>
+                  
+                  {/* Deposit Funds Button - Disabled when KYC not approved */}
+                  <div className="relative">
+                    <Button
+                      variant="outline"
+                      onClick={() => accountLifecycleStatus.canDeposit && setDepositDialogOpen(true)}
+                      disabled={!accountLifecycleStatus.canDeposit}
+                      className={
+                        accountLifecycleStatus.canDeposit
+                          ? "w-full border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                          : "w-full border-slate-700 text-slate-500 cursor-not-allowed"
+                      }
+                      data-testid="button-deposit-funds"
+                    >
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Deposit Funds
+                    </Button>
+                  </div>
                 </div>
               </div>
             </motion.div>
