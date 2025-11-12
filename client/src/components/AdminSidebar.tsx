@@ -28,6 +28,7 @@ import {
   HardDrive,
   Link as LinkIcon,
 } from "lucide-react";
+import seedxLogo from "@assets/image_1762970335693.png";
 
 const menuSections = [
   {
@@ -172,7 +173,7 @@ export function AdminSidebar() {
       <SidebarHeader className="border-b border-white/10 px-6 py-4">
         <Link href="/admin" className="flex items-center gap-3 group">
           <img 
-            src="/attached_assets/image_1762970335693.png" 
+            src={seedxLogo} 
             alt="SEEDx" 
             className="h-10 w-auto transition-transform group-hover:scale-105"
           />
