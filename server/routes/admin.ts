@@ -5574,7 +5574,7 @@ router.get("/regenerators/:id", authenticate, requireAdmin, async (req, res) => 
         previousStatus: kycDecisions.previousStatus,
         newStatus: kycDecisions.newStatus,
         adminNotes: kycDecisions.adminNotes,
-        processedAt: kycDecisions.processedAt,
+        createdAt: kycDecisions.createdAt,
         adminId: kycDecisions.processedBy,
         adminName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
         adminEmail: users.email,
@@ -5582,7 +5582,7 @@ router.get("/regenerators/:id", authenticate, requireAdmin, async (req, res) => 
       .from(kycDecisions)
       .leftJoin(users, eq(kycDecisions.processedBy, users.id))
       .where(eq(kycDecisions.userId, id))
-      .orderBy(desc(kycDecisions.processedAt));
+      .orderBy(desc(kycDecisions.createdAt));
 
     // Calculate stats
     const totalInvested = investmentHistory
