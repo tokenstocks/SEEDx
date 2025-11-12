@@ -77,7 +77,7 @@ export const kycDecisions = pgTable("kyc_decisions", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "no action" }),
   previousStatus: kycStatusEnum("previous_status").notNull(),
   newStatus: kycStatusEnum("new_status").notNull(),
-  processedBy: uuid("processed_by").notNull().references(() => users.id, { onDelete: "set null" }),
+  processedBy: uuid("processed_by").references(() => users.id, { onDelete: "set null" }),
   adminNotes: text("admin_notes"),
   metadata: jsonb("metadata").$type<{
     ipAddress?: string;

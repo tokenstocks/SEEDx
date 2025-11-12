@@ -9,6 +9,7 @@ import {
   transactions, 
   wallets,
   users,
+  kycDecisions,
   projects,
   investments,
   projectUpdates,
@@ -245,14 +246,16 @@ router.get("/users", authenticate, requireAdmin, async (req, res) => {
 
 /**
  * PUT /api/admin/users/:id/kyc
- * Approve or reject KYC (admin only)
+ * Approve or reject KYC (admin only) with full audit trail
  */
 router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const body = updateKycStatusSchema.parse(req.body);
+    // @ts-ignore - userId added by auth middleware
+    const adminId = req.userId as string;
 
-    // Fetch the user
+    // Fetch the user to get previous status
     const [user] = await db
       .select()
       .from(users)
@@ -270,16 +273,40 @@ router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
       });
     }
 
+    const previousStatus = user.kycStatus;
     const newStatus = body.action === "approve" ? "approved" : "rejected";
+    const now = new Date();
 
-    // Update user KYC status
-    await db
-      .update(users)
-      .set({
-        kycStatus: newStatus,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, id));
+    // Prepare metadata for audit trail
+    const metadata = {
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers['user-agent'],
+    };
+
+    // Atomic transaction: update user + insert audit log
+    await db.transaction(async (tx) => {
+      // Update user with denormalized audit fields
+      await tx
+        .update(users)
+        .set({
+          kycStatus: newStatus,
+          kycProcessedAt: now,
+          kycProcessedBy: adminId,
+          kycAdminNotes: body.adminNotes || null,
+          updatedAt: now,
+        })
+        .where(eq(users.id, id));
+
+      // Insert immutable audit log entry
+      await tx.insert(kycDecisions).values({
+        userId: id,
+        previousStatus,
+        newStatus,
+        processedBy: adminId,
+        adminNotes: body.adminNotes || null,
+        metadata,
+      });
+    });
 
     // TODO: Send email notification to user about KYC status
 
@@ -287,6 +314,7 @@ router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
       message: `KYC ${newStatus} successfully`,
       userId: id,
       kycStatus: newStatus,
+      processedAt: now.toISOString(),
     });
   } catch (error: any) {
     console.error("Update KYC error:", error);
