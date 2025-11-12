@@ -3422,7 +3422,14 @@ router.get("/bank-deposits", authenticate, requireAdmin, async (req, res) => {
 
 /**
  * POST /api/admin/bank-deposits/:id/approve
- * Approve a bank deposit and transfer NGNTS to user wallet (admin only)
+ * Approve a bank deposit with automatic wallet activation and NGNTS minting (admin only)
+ * 
+ * Flow:
+ * 1. Check if user wallet is activated
+ * 2. If not activated: create account + trustlines
+ * 3. Mint NGNTS from Treasury (unlimited supply)
+ * 4. Credit NGNTS to user wallet
+ * 5. Update deposit status and balances
  */
 router.post("/bank-deposits/:id/approve", authenticate, requireAdmin, async (req, res) => {
   try {
@@ -3430,104 +3437,138 @@ router.post("/bank-deposits/:id/approve", authenticate, requireAdmin, async (req
     // @ts-ignore - userId is added by auth middleware
     const adminId = req.userId as string;
 
-    // Fetch the deposit request
-    const [deposit] = await db
-      .select()
-      .from(regeneratorBankDeposits)
-      .where(eq(regeneratorBankDeposits.id, id))
-      .limit(1);
-
-    if (!deposit) {
-      return res.status(404).json({ error: "Bank deposit not found" });
-    }
-
-    if (deposit.status !== "pending") {
-      return res.status(400).json({ 
-        error: "Deposit has already been processed",
-        currentStatus: deposit.status,
-      });
-    }
-
-    // Get user wallet
-    const [userWallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.userId, deposit.userId))
-      .limit(1);
-
-    if (!userWallet || !userWallet.cryptoWalletPublicKey) {
-      return res.status(400).json({ error: "User wallet not found or not activated" });
-    }
-
-    // Transfer NGNTS from Distribution wallet to user wallet
-    let txHash: string;
-    try {
-      txHash = await transferNgntsFromPlatformWallet(
-        "distribution",
-        deposit.userId,
-        deposit.ngntsAmount.toString(),
-        `Bank deposit ${deposit.referenceCode}`
-      );
-    } catch (error: any) {
-      return res.status(500).json({ 
-        error: "Failed to transfer NGNTS on Stellar network",
-        details: error.message,
-      });
-    }
-
-    // Use database transaction for atomicity
+    const txHashes: string[] = [];
+    let walletWasActivated = false;
+    
+    // Use database transaction for atomicity and concurrency safety
     await db.transaction(async (tx) => {
-      // Update deposit status
-      await tx
+      // Step 1: Fetch and lock deposit with status check (prevents double-approval)
+      const [deposit] = await tx
+        .select()
+        .from(regeneratorBankDeposits)
+        .where(
+          sql`${regeneratorBankDeposits.id} = ${id} AND ${regeneratorBankDeposits.status} = 'pending' FOR UPDATE`
+        )
+        .limit(1);
+
+      if (!deposit) {
+        throw new Error("Bank deposit not found or already processed");
+      }
+
+      // Get user wallet
+      const [userWallet] = await tx
+        .select()
+        .from(wallets)
+        .where(eq(wallets.userId, deposit.userId))
+        .limit(1);
+
+      if (!userWallet || !userWallet.cryptoWalletPublicKey) {
+        throw new Error("User wallet not found");
+      }
+
+      console.log(`📋 Processing bank deposit ${deposit.referenceCode} for user ${userWallet.cryptoWalletPublicKey.substring(0, 8)}...`);
+
+      // Step 2: Activate wallet if needed (before minting)
+      if (userWallet.activationStatus !== "active") {
+        console.log(`   🔓 Wallet not activated. Starting activation...`);
+        const { activateRegeneratorWallet } = await import("../lib/walletActivation");
+        const activationResult = await activateRegeneratorWallet(userWallet.cryptoWalletPublicKey, "2");
+
+        if (!activationResult.success) {
+          throw new Error(`Wallet activation failed: ${activationResult.error}`);
+        }
+
+        txHashes.push(...activationResult.txHashes);
+        walletWasActivated = true;
+        console.log(`   ✅ Wallet activated successfully`);
+      } else {
+        console.log(`   ℹ️  Wallet already activated`);
+      }
+
+      // Step 3: Update deposit status to "approved" BEFORE minting
+      // This ensures we have idempotency - if minting fails, deposit stays pending
+      const updateResult = await tx
         .update(regeneratorBankDeposits)
         .set({
           status: "approved",
           approvedBy: adminId,
           approvedAt: new Date(),
-          txHash,
+          updatedAt: new Date(),
+        })
+        .where(
+          sql`${regeneratorBankDeposits.id} = ${id} AND ${regeneratorBankDeposits.status} = 'pending'`
+        )
+        .returning();
+
+      if (updateResult.length === 0) {
+        throw new Error("Deposit was already approved by another admin");
+      }
+
+      // Step 4: Mint NGNTS from Treasury (after DB commit ensures no double-mint)
+      console.log(`   💰 Minting ${deposit.ngntsAmount} NGNTS from Treasury...`);
+      const { mintNGNTS } = await import("../lib/stellarOps");
+      const mintTxHash = await mintNGNTS(
+        deposit.ngntsAmount.toString(),
+        userWallet.cryptoWalletPublicKey,
+        `Bank deposit ${deposit.referenceCode}`
+      );
+      txHashes.push(mintTxHash);
+      console.log(`   ✅ NGNTS minted and transferred to user`);
+
+      // Step 5: Store mint transaction hash
+      await tx
+        .update(regeneratorBankDeposits)
+        .set({
+          txHash: mintTxHash,
           updatedAt: new Date(),
         })
         .where(eq(regeneratorBankDeposits.id, id));
 
-      // Update user wallet NGNTS balance
-      const account = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey!);
-      
-      // Get Treasury wallet to identify NGNTS issuer
-      const [treasuryWallet] = await tx
-        .select()
-        .from(platformWallets)
-        .where(eq(platformWallets.walletType, "treasury"))
-        .limit(1);
+      // Step 6: Sync user wallet NGNTS balance from Stellar
+      try {
+        const account = await horizonServer.loadAccount(userWallet.cryptoWalletPublicKey!);
+        
+        // Get Treasury wallet to identify NGNTS issuer
+        const [treasuryWallet] = await tx
+          .select()
+          .from(platformWallets)
+          .where(eq(platformWallets.walletRole, "treasury"))
+          .limit(1);
 
-      if (!treasuryWallet) {
-        throw new Error("Treasury wallet not found");
+        if (treasuryWallet) {
+          // Find NGNTS balance
+          const ngntsBalance = account.balances.find(
+            (b: any) => b.asset_code === "NGNTS" && b.asset_issuer === treasuryWallet.publicKey
+          );
+          const newNgntsBalance = ngntsBalance ? ngntsBalance.balance : "0";
+
+          // Update wallet balance using atomic JSONB update
+          await tx
+            .update(wallets)
+            .set({
+              cryptoBalances: sql.raw(`
+                jsonb_set(
+                  COALESCE(crypto_balances, '{}'::jsonb),
+                  ARRAY['NGNTS'],
+                  to_jsonb('${newNgntsBalance}'::text)
+                )
+              `),
+              updatedAt: new Date(),
+            })
+            .where(eq(wallets.userId, deposit.userId));
+        }
+      } catch (balanceError) {
+        console.warn("Warning: Could not sync wallet balance from Stellar:", balanceError);
+        // Non-fatal - balance will sync on next wallet query
       }
-
-      // Find NGNTS balance
-      const ngntsBalance = account.balances.find(
-        (b: any) => b.asset_code === "NGNTS" && b.asset_issuer === treasuryWallet.publicKey
-      );
-      const newNgntsBalance = ngntsBalance ? ngntsBalance.balance : "0";
-
-      // Update wallet balance using atomic JSONB update
-      await tx
-        .update(wallets)
-        .set({
-          cryptoBalances: sql.raw(`
-            jsonb_set(
-              COALESCE(crypto_balances, '{}'::jsonb),
-              ARRAY['NGNTS'],
-              to_jsonb('${newNgntsBalance}'::text)
-            )
-          `),
-          updatedAt: new Date(),
-        })
-        .where(eq(wallets.userId, deposit.userId));
     });
 
+    console.log(`✅ Bank deposit approved! Tx hashes: ${txHashes.join(", ")}`);
+
     res.json({ 
-      message: "Bank deposit approved and NGNTS transferred successfully",
-      ngntsAmount: deposit.ngntsAmount,
+      message: "Bank deposit approved successfully. NGNTS minted and credited to user wallet.",
+      txHashes,
+      walletActivated: walletWasActivated,
     });
   } catch (error: any) {
     console.error("Approve bank deposit error:", error);

@@ -2,7 +2,7 @@ import * as StellarSdk from "stellar-sdk";
 import { horizonServer, NETWORK_PASSPHRASE } from "./stellarConfig";
 import { decrypt } from "./encryption";
 import { db } from "../db";
-import { transactions, projectTokenLedger, wallets } from "@shared/schema";
+import { transactions, projectTokenLedger, wallets, platformWallets } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 
 /**
@@ -662,5 +662,107 @@ export async function transferNgntsFromPlatformWallet(
     }
 
     throw new Error(`Failed to transfer NGNTS from ${fromWalletType}: ${error.message}`);
+  }
+}
+
+/**
+ * Mint NGNTS tokens from Treasury wallet
+ * 
+ * @param amount - Amount of NGNTS to mint (as string to preserve precision)
+ * @param recipientPublicKey - Recipient's Stellar public key
+ * @param memo - Optional transaction memo
+ * @returns Transaction hash
+ * 
+ * @description
+ * Mints NGNTS tokens directly from the Treasury issuer wallet.
+ * Treasury is the NGNTS issuer and has unlimited minting capability.
+ * This function creates new NGNTS supply and sends it to the recipient.
+ * 
+ * @example
+ * const txHash = await mintNGNTS("10000", "GABC...", "Bank deposit SD-20251111-ABC123");
+ */
+export async function mintNGNTS(
+  amount: string,
+  recipientPublicKey: string,
+  memo?: string
+): Promise<string> {
+  try {
+    console.log(`💵 Minting ${amount} NGNTS from Treasury to ${recipientPublicKey.substring(0, 8)}...`);
+
+    // Validate inputs
+    if (!amount || parseFloat(amount) <= 0) {
+      throw new Error("Invalid amount: must be positive number");
+    }
+    if (!recipientPublicKey || !recipientPublicKey.startsWith("G") || recipientPublicKey.length !== 56) {
+      throw new Error("Invalid recipient public key format");
+    }
+
+    // Get Treasury wallet
+    const [treasuryWallet] = await db
+      .select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletRole, "treasury"))
+      .limit(1);
+
+    if (!treasuryWallet || !treasuryWallet.encryptedSecretKey) {
+      throw new Error("Treasury wallet not configured or secret key missing");
+    }
+
+    // Decrypt Treasury secret key
+    const treasurySecret = decrypt(treasuryWallet.encryptedSecretKey);
+    const treasuryKeypair = StellarSdk.Keypair.fromSecret(treasurySecret);
+
+    // NGNTS asset (Treasury is the issuer)
+    const ngntsAsset = new StellarSdk.Asset("NGNTS", treasuryWallet.publicKey);
+
+    // Load Treasury account
+    const treasuryAccount = await horizonServer.loadAccount(treasuryWallet.publicKey);
+
+    // Build mint transaction (payment from issuer creates new supply)
+    const txBuilder = new StellarSdk.TransactionBuilder(treasuryAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.payment({
+          destination: recipientPublicKey,
+          asset: ngntsAsset,
+          amount: amount,
+        })
+      )
+      .setTimeout(30);
+
+    // Add memo if provided
+    if (memo) {
+      txBuilder.addMemo(StellarSdk.Memo.text(memo.substring(0, 28))); // Max 28 bytes
+    }
+
+    const transaction = txBuilder.build();
+    transaction.sign(treasuryKeypair);
+
+    // Submit transaction
+    const result = await horizonServer.submitTransaction(transaction);
+
+    console.log(`   ✅ NGNTS minted successfully! TX: ${result.hash}`);
+
+    // Update Treasury wallet balance in database (increase minted supply tracking)
+    await db
+      .update(platformWallets)
+      .set({
+        balanceNGNTS: sql`${platformWallets.balanceNGNTS} + ${amount}`,
+        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(platformWallets.id, treasuryWallet.id));
+
+    return result.hash;
+  } catch (error: any) {
+    console.error("❌ Error minting NGNTS:", error);
+
+    if (error.response && error.response.data) {
+      console.error("   Stellar error details:", JSON.stringify(error.response.data, null, 2));
+    }
+
+    throw new Error(`Failed to mint NGNTS: ${error.message}`);
   }
 }
