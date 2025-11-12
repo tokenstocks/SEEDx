@@ -20,7 +20,26 @@ import { useLocation } from "wouter";
 
 export default function PrimerProfile() {
   const [, navigate] = useLocation();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  // Fetch server-sourced user data for auth
+  const { data: user, isLoading: userLoading } = useQuery<{
+    id: string;
+    email: string;
+    role: string;
+    isPrimer: boolean;
+    isLpInvestor: boolean;
+    kycStatus: string;
+    createdAt: string;
+  }>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  // Redirect non-primers to regenerator profile
+  useEffect(() => {
+    if (!userLoading && user && !user.isPrimer) {
+      navigate("/regenerator-profile");
+    }
+  }, [user, userLoading, navigate]);
 
   const { data: kycData } = useQuery<{
     kycStatus: string;

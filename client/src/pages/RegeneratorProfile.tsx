@@ -50,12 +50,31 @@ import { FundingWizard } from "@/components/FundingWizard";
 
 export default function RegeneratorProfile() {
   const [, navigate] = useLocation();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
   const prefersReducedMotion = useReducedMotion();
   const { toast } = useToast();
   const [fundingWizardOpen, setFundingWizardOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedReference, setCopiedReference] = useState(false);
+
+  // Fetch server-sourced user data for auth
+  const { data: user, isLoading: userLoading } = useQuery<{
+    id: string;
+    email: string;
+    role: string;
+    isPrimer: boolean;
+    isLpInvestor: boolean;
+    kycStatus: string;
+    createdAt: string;
+  }>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  // Redirect primers to their dedicated profile
+  useEffect(() => {
+    if (!userLoading && user?.isPrimer) {
+      navigate("/primer-profile");
+    }
+  }, [user, userLoading, navigate]);
 
   // Queries with auto-refresh for real-time updates
   const { data: kycData } = useQuery<{
