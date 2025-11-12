@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,33 +15,113 @@ import {
   Send,
   ArrowRightLeft,
   Clock,
+  AlertCircle,
+  Shield,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import PrimerContributionForm from "@/components/PrimerContributionForm";
+import { PrimerFundingWizard } from "@/components/PrimerFundingWizard";
 import UnifiedHeader from "@/components/UnifiedHeader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import type { 
+  PrimerStats, 
+  PrimerContribution, 
+  PrimerAllocation, 
+  PrimerTimelineEvent,
+  PrimerWalletBalances
+} from "@/types/primer";
 
 export default function PrimerDashboard() {
-  const [showContributionForm, setShowContributionForm] = useState(false);
+  const [showFundingWizard, setShowFundingWizard] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const { data: stats } = useQuery({
+  // Queries with auto-refresh for real-time updates
+  const { data: kycData } = useQuery<{
+    kycStatus: string;
+    kycDocuments?: any;
+  }>({
+    queryKey: ["/api/users/kyc-status"],
+    refetchOnMount: "always",
+    staleTime: 0,
+  });
+
+  const { data: walletData } = useQuery<PrimerWalletBalances>({
+    queryKey: ["/api/primer/wallet/balances"],
+    refetchOnMount: "always",
+    staleTime: 0,
+  });
+
+  const { data: stats } = useQuery<PrimerStats>({
     queryKey: ["/api/primer/stats"],
   });
 
-  const { data: contributions } = useQuery({
+  const { data: contributions } = useQuery<PrimerContribution[]>({
     queryKey: ["/api/primer/contributions"],
   });
 
-  const { data: allocations } = useQuery({
+  const { data: allocations } = useQuery<PrimerAllocation[]>({
     queryKey: ["/api/primer/allocations"],
   });
 
-  const { data: timeline, isLoading: timelineLoading } = useQuery({
+  const { data: timeline, isLoading: timelineLoading } = useQuery<PrimerTimelineEvent[]>({
     queryKey: ["/api/primer/timeline"],
   });
+
+  // Account lifecycle status helper
+  const accountLifecycleStatus = useMemo(() => {
+    // Only use fresh data from API queries - no localStorage fallbacks to avoid stale state
+    const kycStatus = kycData?.kycStatus || "pending";
+    const walletActivated = walletData?.activated || walletData?.activationStatus === "active";
+    
+    if (kycStatus === "rejected") {
+      return {
+        label: "KYC Rejected",
+        badgeClass: "bg-red-600 text-white",
+        icon: XCircle,
+        callToAction: "Resubmit KYC documents to continue",
+        canContribute: false,
+      };
+    }
+    
+    if (kycStatus === "pending" || kycStatus === "submitted") {
+      return {
+        label: kycStatus === "submitted" ? "KYC Under Review" : "Pending KYC",
+        badgeClass: "bg-orange-500 text-white",
+        icon: Clock,
+        callToAction: kycStatus === "submitted" ? "Awaiting KYC approval" : "Complete KYC verification to contribute",
+        canContribute: false,
+      };
+    }
+    
+    if (kycStatus === "approved" && !walletActivated) {
+      return {
+        label: "KYC Approved",
+        badgeClass: "bg-blue-600 text-white",
+        icon: CheckCircle2,
+        callToAction: "Make your first contribution to activate wallet",
+        canContribute: true,
+      };
+    }
+    
+    if (kycStatus === "approved" && walletActivated) {
+      return {
+        label: "Active Primer",
+        badgeClass: "bg-emerald-600 text-white",
+        icon: CheckCircle2,
+        callToAction: "Account fully active",
+        canContribute: true,
+      };
+    }
+    
+    return {
+      label: "Pending KYC",
+      badgeClass: "bg-slate-600 text-white",
+      icon: AlertCircle,
+      callToAction: "Complete KYC verification to contribute",
+      canContribute: false,
+    };
+  }, [kycData, walletData]);
 
   const getEventIcon = (type: string) => {
     switch (type) {
@@ -113,14 +193,49 @@ export default function PrimerDashboard() {
           </div>
 
           <Button
-            onClick={() => setShowContributionForm(true)}
+            onClick={() => setShowFundingWizard(true)}
             className="self-start bg-emerald-600 hover:bg-emerald-700"
             data-testid="button-contribute"
+            disabled={!accountLifecycleStatus.canContribute}
           >
             <Plus className="w-4 h-4 mr-2" />
             Contribute to LP Pool
           </Button>
         </motion.div>
+
+        {/* Setup Completion Banner */}
+        {accountLifecycleStatus.label !== "Active Primer" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 border-blue-500/30 backdrop-blur-sm">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <Shield className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CardTitle className="text-white text-lg">Setup Your Primer Account</CardTitle>
+                      <Badge className={accountLifecycleStatus.badgeClass} data-testid="badge-account-status">
+                        {(() => {
+                          const StatusIcon = accountLifecycleStatus.icon;
+                          return <StatusIcon className="w-3 h-3 mr-1" />;
+                        })()}
+                        {accountLifecycleStatus.label}
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-slate-300">
+                      {accountLifecycleStatus.callToAction}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -503,10 +618,11 @@ export default function PrimerDashboard() {
         </Tabs>
       </div>
 
-      {/* Contribution Form Modal */}
-      {showContributionForm && (
-        <PrimerContributionForm onClose={() => setShowContributionForm(false)} />
-      )}
+      {/* Funding Wizard */}
+      <PrimerFundingWizard
+        open={showFundingWizard}
+        onOpenChange={setShowFundingWizard}
+      />
     </div>
   );
 }

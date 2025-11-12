@@ -30,6 +30,7 @@ import PrimerProfile from "@/pages/PrimerProfile";
 import RegeneratorProfile from "@/pages/RegeneratorProfile";
 import AdminPrimers from "@/pages/AdminPrimers";
 import AdminRegenerators from "@/pages/AdminRegenerators";
+import AdminPrimerContributions from "@/pages/AdminPrimerContributions";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
 import AdminLPAllocations from "@/pages/AdminLPAllocations";
 import AdminFunding from "@/pages/AdminFunding";
@@ -63,6 +64,7 @@ function AdminRoutes() {
         <Route path="/admin/cashflows" component={AdminCashflows} />
         <Route path="/admin/audit" component={AdminAudit} />
         <Route path="/admin/primers" component={AdminPrimers} />
+        <Route path="/admin/primer-contributions" component={AdminPrimerContributions} />
         <Route path="/admin/regenerators" component={AdminRegenerators} />
         <Route path="/admin/wallet-funding" component={AdminWalletFunding} />
         <Route path="/admin/funding" component={AdminFunding} />

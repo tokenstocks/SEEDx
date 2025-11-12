@@ -104,6 +104,12 @@ const menuSections = [
         testId: "link-admin-funding",
       },
       {
+        title: "Primer Contributions",
+        url: "/admin/primer-contributions",
+        icon: PiggyBank,
+        testId: "link-admin-primer-contributions",
+      },
+      {
         title: "Redemptions",
         url: "/admin/redemptions",
         icon: Activity,
