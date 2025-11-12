@@ -30,6 +30,7 @@ export const primerContributionStatusEnum = pgEnum("primer_contribution_status",
 export const walletActivationStatusEnum = pgEnum("wallet_activation_status", ["created", "pending", "activating", "active", "failed"]);
 export const walletFundingRequestStatusEnum = pgEnum("wallet_funding_request_status", ["pending", "approved", "rejected", "funded"]);
 export const bankDepositStatusEnum = pgEnum("bank_deposit_status", ["pending", "approved", "rejected", "completed"]);
+export const depositPaymentMethodEnum = pgEnum("deposit_payment_method", ["bank_transfer", "usdc"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -553,20 +554,56 @@ export const regeneratorBankDeposits = pgTable("regenerator_bank_deposits", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   referenceCode: text("reference_code").notNull().unique(),
+  paymentMethod: depositPaymentMethodEnum("payment_method").notNull().default("bank_transfer"),
   amountNGN: decimal("amount_ngn", { precision: 18, scale: 2 }).notNull(),
   ngntsAmount: decimal("ngnts_amount", { precision: 18, scale: 2 }).notNull(),
   platformFee: decimal("platform_fee", { precision: 18, scale: 2 }).notNull().default("0.00"),
   gasFee: decimal("gas_fee", { precision: 18, scale: 6 }).notNull().default("0.00"),
+  feeBreakdown: jsonb("fee_breakdown").$type<{
+    platformFeeRate: string;
+    platformFeeAmount: string;
+    networkFeeXLM: string;
+    networkFeeNGN: string;
+    totalFeesNGN: string;
+    netAmount: string;
+    needsActivation: boolean;
+  }>(),
   status: bankDepositStatusEnum("status").notNull().default("pending"),
   proofUrl: text("proof_url"),
   approvedBy: uuid("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   rejectedReason: text("rejected_reason"),
+  adminNotes: text("admin_notes"), // Admin decision notes
+  processedBy: uuid("processed_by").references(() => users.id), // Admin who processed
+  processedAt: timestamp("processed_at"), // When processed
   txHash: text("tx_hash"),
-  notes: text("notes"),
+  notes: text("notes"), // User notes
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// Bank Deposit Decisions Audit Log - Immutable history of all deposit status changes
+// Tracks approve/reject actions with admin notes and timestamps for compliance
+export const bankDepositDecisions = pgTable("bank_deposit_decisions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  depositId: uuid("deposit_id").notNull().references(() => regeneratorBankDeposits.id, { onDelete: "no action" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "no action" }),
+  previousStatus: bankDepositStatusEnum("previous_status").notNull(),
+  newStatus: bankDepositStatusEnum("new_status").notNull(),
+  processedBy: uuid("processed_by").references(() => users.id, { onDelete: "set null" }),
+  adminNotes: text("admin_notes"),
+  metadata: jsonb("metadata").$type<{
+    ipAddress?: string;
+    userAgent?: string;
+    proofUrl?: string;
+    txHash?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Index for efficient history queries per deposit
+  depositIdCreatedAtIdx: index("bank_deposit_decisions_deposit_id_created_at_idx").on(table.depositId, table.createdAt.desc()),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -1246,3 +1283,4 @@ export type RegeneratorBankDeposit = typeof regeneratorBankDeposits.$inferSelect
 export type InsertRegeneratorBankDeposit = z.infer<typeof insertRegeneratorBankDepositSchema>;
 export type CreateBankDepositRequest = z.infer<typeof createBankDepositRequestSchema>;
 export type ApproveBankDeposit = z.infer<typeof approveBankDepositSchema>;
+export type BankDepositDecision = typeof bankDepositDecisions.$inferSelect;
