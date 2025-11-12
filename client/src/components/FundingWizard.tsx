@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Building2, Coins, Check, ChevronRight, ArrowDown, Calculator, Fuel, Ale
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import type { BankDepositFeePreview } from "@shared/schema";
 
 type BankAccountDetails = {
@@ -124,6 +125,58 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
       title: "Copied!",
       description: `${label} copied to clipboard`,
     });
+  };
+
+  // Submit deposit mutation
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!proofFile || !feePreview) {
+        throw new Error("Missing required data");
+      }
+
+      const formData = new FormData();
+      formData.append("amountNGN", feePreview.amountNGN.toFixed(2));
+      formData.append("referenceCode", referenceCode);
+      formData.append("proof", proofFile);
+
+      const response = await fetch("/api/regenerator/bank-deposits", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to submit deposit");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/regenerator/bank-deposits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/regenerator/wallet/balances"] });
+
+      // Show success toast
+      toast({
+        title: "Deposit submitted!",
+        description: "Your deposit is now pending review. You'll be notified once it's approved.",
+      });
+
+      // Close modal
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Submission failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = () => {
+    submitMutation.mutate();
   };
 
   return (
@@ -667,13 +720,22 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
                     Back
                   </Button>
                   <Button
-                    onClick={handleClose}
-                    disabled={!proofFile}
+                    onClick={handleSubmit}
+                    disabled={!proofFile || submitMutation.isPending}
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                     data-testid="button-submit-funding"
                   >
-                    <FileCheck className="w-4 h-4 mr-2" />
-                    I have sent the money
+                    {submitMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <FileCheck className="w-4 h-4 mr-2" />
+                        I have sent the money
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

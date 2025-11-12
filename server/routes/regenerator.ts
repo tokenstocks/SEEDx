@@ -884,7 +884,7 @@ router.post(
         return;
       }
 
-      const { amountNGN, notes } = validation.data;
+      const { amountNGN, referenceCode: clientReferenceCode, notes } = validation.data;
       const userId = req.user.userId;
 
       // Check for uploaded proof
@@ -917,8 +917,26 @@ router.post(
         return;
       }
 
-      // Generate unique reference code
-      const referenceCode = generateBankReference();
+      // Determine reference code: prefer client-provided if unique, fallback to generated
+      let referenceCode: string;
+      if (clientReferenceCode) {
+        // Check if client-provided reference code already exists
+        const existing = await db.query.regeneratorBankDeposits.findFirst({
+          where: eq(regeneratorBankDeposits.referenceCode, clientReferenceCode),
+        });
+        
+        if (existing) {
+          // Collision detected - generate new code instead
+          referenceCode = generateBankReference();
+          console.warn(`Reference code collision detected for ${clientReferenceCode}, using generated code ${referenceCode}`);
+        } else {
+          // Client code is unique - use it
+          referenceCode = clientReferenceCode;
+        }
+      } else {
+        // No client code provided - generate one
+        referenceCode = generateBankReference();
+      }
 
       // Create deposit record
       const [deposit] = await db

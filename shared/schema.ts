@@ -1175,6 +1175,7 @@ export const insertRegeneratorBankDepositSchema = createInsertSchema(regenerator
 
 export const createBankDepositRequestSchema = z.object({
   amountNGN: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal with up to 2 decimal places"),
+  referenceCode: z.string().regex(/^NGN-[A-Z0-9]{8,12}-[A-Z0-9]{4,6}$/, "Invalid reference code format").max(30).optional(),
   notes: z.string().optional(),
 });
 
