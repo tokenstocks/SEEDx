@@ -1,16 +1,30 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { format } from "date-fns";
+import { motion } from "framer-motion";
+import { 
+  Users, 
+  TrendingUp, 
+  DollarSign, 
+  ArrowLeft,
+  Search,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Activity,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
+import { 
   Table,
   TableBody,
   TableCell,
@@ -19,70 +33,61 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, DollarSign, TrendingUp, UserCheck, Search, ChevronLeft, ChevronRight, ArrowLeft, Calendar } from "lucide-react";
-import { motion } from "framer-motion";
-import { format } from "date-fns";
-import { Link } from "wouter";
-import { PrimerDetailDrawer } from "@/components/PrimerDetailDrawer";
+import { RegeneratorDetailDrawer } from "@/components/RegeneratorDetailDrawer";
 
-interface Primer {
+interface RegeneratorStats {
+  totalRegenerators: number;
+  activeRegenerators: number;
+  totalInvested: string;
+  avgInvestment: string;
+  totalInvestments: number;
+}
+
+interface Regenerator {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  phone: string | null;
-  kycStatus: "pending" | "approved" | "rejected" | "unverified";
-  walletActivationStatus: "pending" | "active" | "failed" | "created" | "activating" | null;
-  stellarPublicKey: string | null;
+  phone: string;
+  kycStatus: string;
+  walletActivationStatus: string | null;
+  totalInvested: string;
+  investmentCount: number;
   createdAt: string;
-  totalContributed: string;
-  pendingContributions: number;
-  approvedContributions: number;
-  rejectedContributions: number;
 }
 
-interface PrimerStats {
-  totalPrimers: number;
-  activePrimers: number;
-  totalContributed: string;
-  avgContribution: string;
-  totalApprovedContributions: number;
-}
-
-export default function AdminPrimers() {
-  const [selectedPrimer, setSelectedPrimer] = useState<Primer | null>(null);
+export default function AdminRegenerators() {
+  const [selectedRegenerator, setSelectedRegenerator] = useState<Regenerator | null>(null);
   const [search, setSearch] = useState("");
-  const [kycStatus, setKycStatus] = useState<string>("all");
+  const [kycStatus, setKycStatus] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
-  const limit = 50;
 
   // Reset page to 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [search, kycStatus, fromDate, toDate]);
 
-  // Build query string
   const buildQueryString = () => {
     const params = new URLSearchParams();
-    params.append("page", page.toString());
-    params.append("limit", limit.toString());
     if (search) params.append("search", search);
     if (kycStatus !== "all") params.append("kycStatus", kycStatus);
     if (fromDate) params.append("fromDate", fromDate);
     if (toDate) params.append("toDate", toDate);
+    params.append("page", page.toString());
+    params.append("limit", "50");
     return params.toString();
   };
 
-  // Fetch primer stats
-  const { data: stats } = useQuery<PrimerStats>({
-    queryKey: ["/api/admin/primers/stats"],
+  // Fetch stats
+  const { data: stats } = useQuery<RegeneratorStats>({
+    queryKey: ["/api/admin/regenerators/stats"],
   });
 
-  // Fetch primers list
-  const { data: primersData, isLoading } = useQuery<{
-    primers: Primer[];
+  // Fetch regenerators list
+  const { data: regeneratorsData, isLoading } = useQuery<{
+    regenerators: Regenerator[];
     pagination: {
       page: number;
       limit: number;
@@ -90,7 +95,7 @@ export default function AdminPrimers() {
       totalPages: number;
     };
   }>({
-    queryKey: [`/api/admin/primers?${buildQueryString()}`],
+    queryKey: [`/api/admin/regenerators?${buildQueryString()}`],
   });
 
   const formatCurrency = (amount: string) => {
@@ -146,9 +151,9 @@ export default function AdminPrimers() {
             </Link>
             <div>
               <h1 className="text-3xl font-bold text-white" data-testid="text-page-title">
-                Primer Management
+                Regenerator Management
               </h1>
-              <p className="text-slate-400 mt-1">Monitor liquidity providers and their contributions</p>
+              <p className="text-slate-400 mt-1">Monitor participants and their capital contributions</p>
             </div>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
@@ -168,13 +173,13 @@ export default function AdminPrimers() {
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-slate-400">
-                    Total Primers
+                    Total Regenerators
                   </CardTitle>
                   <Users className="w-4 h-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white" data-testid="text-total-primers">
-                    {stats.totalPrimers.toLocaleString()}
+                  <div className="text-2xl font-bold text-white" data-testid="text-total-regenerators">
+                    {stats.totalRegenerators.toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
@@ -188,14 +193,15 @@ export default function AdminPrimers() {
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-slate-400">
-                    Active Primers
+                    Active Regenerators
                   </CardTitle>
-                  <UserCheck className="w-4 h-4 text-emerald-500" />
+                  <Activity className="w-4 h-4 text-emerald-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white" data-testid="text-active-primers">
-                    {stats.activePrimers.toLocaleString()}
+                  <div className="text-2xl font-bold text-white" data-testid="text-active-regenerators">
+                    {stats.activeRegenerators.toLocaleString()}
                   </div>
+                  <p className="text-xs text-slate-400 mt-1">KYC approved</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -208,16 +214,16 @@ export default function AdminPrimers() {
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-slate-400">
-                    Total Contributed
+                    Total Invested
                   </CardTitle>
                   <DollarSign className="w-4 h-4 text-emerald-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white" data-testid="text-total-contributed">
-                    {formatCurrency(stats.totalContributed)}
+                  <div className="text-2xl font-bold text-white" data-testid="text-total-invested">
+                    {formatCurrency(stats.totalInvested)}
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    {stats.totalApprovedContributions} approved contributions
+                    {stats.totalInvestments} total investments
                   </p>
                 </CardContent>
               </Card>
@@ -231,13 +237,13 @@ export default function AdminPrimers() {
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-slate-400">
-                    Avg Contribution
+                    Avg Investment
                   </CardTitle>
                   <TrendingUp className="w-4 h-4 text-purple-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-white" data-testid="text-avg-contribution">
-                    {formatCurrency(stats.avgContribution)}
+                  <div className="text-2xl font-bold text-white" data-testid="text-avg-investment">
+                    {formatCurrency(stats.avgInvestment)}
                   </div>
                 </CardContent>
               </Card>
@@ -318,16 +324,16 @@ export default function AdminPrimers() {
           </CardContent>
         </Card>
 
-        {/* Primers Table */}
+        {/* Regenerators Table */}
         <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-white">Primers</CardTitle>
+            <CardTitle className="text-white">Regenerators</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-12 text-slate-400">Loading...</div>
-            ) : !primersData || primersData.primers.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">No primers found</div>
+            ) : !regeneratorsData || regeneratorsData.regenerators.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">No regenerators found</div>
             ) : (
               <>
                 <Table>
@@ -337,58 +343,49 @@ export default function AdminPrimers() {
                       <TableHead className="text-slate-400">Email</TableHead>
                       <TableHead className="text-slate-400">KYC Status</TableHead>
                       <TableHead className="text-slate-400">Wallet</TableHead>
-                      <TableHead className="text-slate-400">Total Contributed</TableHead>
-                      <TableHead className="text-slate-400">Contributions</TableHead>
+                      <TableHead className="text-slate-400">Total Invested</TableHead>
+                      <TableHead className="text-slate-400">Investments</TableHead>
                       <TableHead className="text-slate-400">Joined</TableHead>
                       <TableHead className="text-slate-400">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {primersData.primers.map((primer) => (
+                    {regeneratorsData.regenerators.map((regenerator) => (
                       <TableRow
-                        key={primer.id}
+                        key={regenerator.id}
                         className="border-white/10 hover:bg-white/5 cursor-pointer"
-                        onClick={() => setSelectedPrimer(primer)}
-                        data-testid={`row-primer-${primer.id}`}
+                        onClick={() => setSelectedRegenerator(regenerator)}
+                        data-testid={`row-regenerator-${regenerator.id}`}
                       >
-                        <TableCell className="text-white font-medium" data-testid={`text-primer-name-${primer.id}`}>
-                          {primer.firstName} {primer.lastName}
+                        <TableCell className="text-white font-medium" data-testid={`text-regenerator-name-${regenerator.id}`}>
+                          {regenerator.firstName} {regenerator.lastName}
                         </TableCell>
-                        <TableCell className="text-slate-300" data-testid={`text-primer-email-${primer.id}`}>
-                          {primer.email}
+                        <TableCell className="text-slate-300" data-testid={`text-regenerator-email-${regenerator.id}`}>
+                          {regenerator.email}
                         </TableCell>
-                        <TableCell data-testid={`cell-kyc-status-${primer.id}`}>
-                          {getKycBadge(primer.kycStatus, primer.id.toString())}
+                        <TableCell data-testid={`cell-kyc-status-${regenerator.id}`}>
+                          {getKycBadge(regenerator.kycStatus, regenerator.id)}
                         </TableCell>
-                        <TableCell data-testid={`cell-wallet-status-${primer.id}`}>
-                          {getWalletBadge(primer.walletActivationStatus, primer.id.toString())}
+                        <TableCell data-testid={`cell-wallet-status-${regenerator.id}`}>
+                          {getWalletBadge(regenerator.walletActivationStatus, regenerator.id)}
                         </TableCell>
-                        <TableCell className="text-white font-medium" data-testid={`text-contributed-${primer.id}`}>
-                          {formatCurrency(primer.totalContributed)}
+                        <TableCell className="text-white font-medium" data-testid={`text-invested-${regenerator.id}`}>
+                          {formatCurrency(regenerator.totalInvested)}
                         </TableCell>
-                        <TableCell data-testid={`cell-contributions-${primer.id}`}>
-                          <div className="flex gap-2">
-                            {primer.approvedContributions > 0 && (
-                              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 border" data-testid={`badge-approved-count-${primer.id}`}>
-                                {primer.approvedContributions} Approved
-                              </Badge>
-                            )}
-                            {primer.pendingContributions > 0 && (
-                              <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30 border" data-testid={`badge-pending-count-${primer.id}`}>
-                                {primer.pendingContributions} Pending
-                              </Badge>
-                            )}
-                          </div>
+                        <TableCell data-testid={`cell-investments-${regenerator.id}`}>
+                          <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 border" data-testid={`badge-investment-count-${regenerator.id}`}>
+                            {regenerator.investmentCount} {regenerator.investmentCount === 1 ? 'Investment' : 'Investments'}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-slate-300" data-testid={`text-joined-date-${primer.id}`}>
-                          {formatDate(primer.createdAt)}
+                        <TableCell className="text-slate-300" data-testid={`text-joined-date-${regenerator.id}`}>
+                          {formatDate(regenerator.createdAt)}
                         </TableCell>
                         <TableCell>
                           <Button
                             size="sm"
                             variant="ghost"
                             className="text-blue-400 hover:text-blue-300"
-                            data-testid={`button-view-primer-${primer.id}`}
+                            data-testid={`button-view-regenerator-${regenerator.id}`}
                           >
                             View Details
                           </Button>
@@ -399,12 +396,12 @@ export default function AdminPrimers() {
                 </Table>
 
                 {/* Pagination */}
-                {primersData.pagination.totalPages > 1 && (
+                {regeneratorsData.pagination.totalPages > 1 && (
                   <div className="flex items-center justify-between mt-6">
                     <p className="text-sm text-slate-400">
-                      Showing {((primersData.pagination.page - 1) * primersData.pagination.limit) + 1} to{" "}
-                      {Math.min(primersData.pagination.page * primersData.pagination.limit, primersData.pagination.total)} of{" "}
-                      {primersData.pagination.total} primers
+                      Showing {((regeneratorsData.pagination.page - 1) * regeneratorsData.pagination.limit) + 1} to{" "}
+                      {Math.min(regeneratorsData.pagination.page * regeneratorsData.pagination.limit, regeneratorsData.pagination.total)} of{" "}
+                      {regeneratorsData.pagination.total} regenerators
                     </p>
                     <div className="flex items-center gap-2">
                       <Button
@@ -419,13 +416,13 @@ export default function AdminPrimers() {
                         Previous
                       </Button>
                       <span className="text-sm text-slate-400">
-                        Page {primersData.pagination.page} of {primersData.pagination.totalPages}
+                        Page {page} of {regeneratorsData.pagination.totalPages}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage(page + 1)}
-                        disabled={page >= primersData.pagination.totalPages}
+                        disabled={page >= regeneratorsData.pagination.totalPages}
                         className="bg-white/5 border-white/10 text-white hover:bg-white/10"
                         data-testid="button-next-page"
                       >
@@ -442,12 +439,11 @@ export default function AdminPrimers() {
       </div>
 
       {/* Detail Drawer */}
-      {selectedPrimer && (
-        <PrimerDetailDrawer
-          primer={selectedPrimer}
-          onClose={() => setSelectedPrimer(null)}
-        />
-      )}
+      <RegeneratorDetailDrawer 
+        regenerator={selectedRegenerator}
+        open={!!selectedRegenerator}
+        onClose={() => setSelectedRegenerator(null)}
+      />
     </div>
   );
 }

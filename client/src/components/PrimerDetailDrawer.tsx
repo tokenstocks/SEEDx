@@ -121,6 +121,9 @@ export function PrimerDetailDrawer({ primer, onClose }: PrimerDetailDrawerProps)
     enabled: !!primer.id,
   });
 
+  // Guard against stale data from previous primer
+  const isDataStale = detail && primer && detail.primer.id !== primer.id;
+
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -182,7 +185,7 @@ export function PrimerDetailDrawer({ primer, onClose }: PrimerDetailDrawerProps)
           </SheetDescription>
         </SheetHeader>
 
-        {isLoading ? (
+        {isLoading || isDataStale ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-slate-400">Loading primer details...</p>
           </div>

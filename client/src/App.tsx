@@ -28,6 +28,7 @@ import PrimerDashboard from "@/pages/PrimerDashboard";
 import PrimerProfile from "@/pages/PrimerProfile";
 import RegeneratorProfile from "@/pages/RegeneratorProfile";
 import AdminPrimers from "@/pages/AdminPrimers";
+import AdminRegenerators from "@/pages/AdminRegenerators";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
 import AdminLPAllocations from "@/pages/AdminLPAllocations";
 import AdminFunding from "@/pages/AdminFunding";
@@ -76,6 +77,7 @@ function Router() {
       <Route path="/admin/cashflows" component={AdminCashflows} />
       <Route path="/admin/audit" component={AdminAudit} />
       <Route path="/admin/primers" component={AdminPrimers} />
+      <Route path="/admin/regenerators" component={AdminRegenerators} />
       <Route path="/admin/wallet-funding" component={AdminWalletFunding} />
       <Route path="/admin/funding" component={AdminFunding} />
       <Route path="/admin/investments" component={AdminInvestments} />
