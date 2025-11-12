@@ -49,7 +49,7 @@ export default function AdminKYC() {
   const [rejectionReason, setRejectionReason] = useState("");
 
   const { data: submissionsData, isLoading } = useQuery<{ users: AdminKYCSubmission[] }>({
-    queryKey: ["/api/admin/users", { kycStatus: "submitted" }],
+    queryKey: ["/api/admin/users?kycStatus=submitted"],
   });
 
   const submissions = submissionsData?.users || [];
