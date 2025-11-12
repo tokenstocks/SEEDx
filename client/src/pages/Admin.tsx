@@ -475,7 +475,7 @@ export default function Admin() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "KYC request processed successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users?kycStatus=submitted"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
       // Invalidate user profile queries so frontend updates
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
