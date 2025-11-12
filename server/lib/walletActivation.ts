@@ -16,7 +16,7 @@ interface WalletActivationResult {
  * Activate a regenerator wallet with account creation and trustlines
  * 
  * @param userPublicKey - User's Stellar public key
- * @param startingBalance - XLM to fund account with (default: "2")
+ * @param startingBalance - XLM to fund account with (default: "2.5")
  * @returns Activation result with transaction hashes
  * 
  * @description
@@ -26,10 +26,17 @@ interface WalletActivationResult {
  * 3. Establishes USDC trustline
  * 
  * All operations are bundled into minimal transactions to reduce fees.
+ * 
+ * Stellar Reserve Requirements (as of 2025):
+ * - Base reserve: 0.5 XLM
+ * - Minimum account balance: (2 + subentries) × 0.5 XLM
+ * - New account: 1 XLM minimum
+ * - Account + 2 trustlines: 2 XLM minimum
+ * - Starting balance of 2.5 XLM provides 0.5 XLM buffer for fees
  */
 export async function activateRegeneratorWallet(
   userPublicKey: string,
-  startingBalance: string = "2"
+  startingBalance: string = "2.5"
 ): Promise<WalletActivationResult> {
   const txHashes: string[] = [];
 
