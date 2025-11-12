@@ -153,25 +153,54 @@ router.get("/timeline", authMiddleware, primerMiddleware, async (req: Request, r
       .orderBy(desc(primerContributions.createdAt));
 
     // Fetch all project allocations with project details
-    const allocationsData = await db
-      .select({
-        id: primerProjectAllocations.id,
-        shareAmountNgnts: primerProjectAllocations.shareAmountNgnts,
-        sharePercent: primerProjectAllocations.sharePercent,
-        createdAt: primerProjectAllocations.createdAt,
-        projectName: projects.name,
-        projectLocation: projects.location,
-        allocationId: lpProjectAllocations.id,
-        totalAllocated: lpProjectAllocations.amountNgnts,
-      })
+    // Note: For new primers with no allocations, this query returns empty array
+    const allocationsDataRaw = await db
+      .select()
       .from(primerProjectAllocations)
-      .leftJoin(
-        lpProjectAllocations,
-        eq(primerProjectAllocations.allocationId, lpProjectAllocations.id)
-      )
-      .leftJoin(projects, eq(lpProjectAllocations.projectId, projects.id))
       .where(eq(primerProjectAllocations.primerId, primerId))
       .orderBy(desc(primerProjectAllocations.createdAt));
+
+    // Enrich with project details separately to avoid null handling issues
+    const allocationsData = await Promise.all(
+      allocationsDataRaw.map(async (allocation) => {
+        let projectInfo = { name: null, location: null, totalAllocated: null };
+        
+        if (allocation.allocationId) {
+          const lpAllocation = await db
+            .select()
+            .from(lpProjectAllocations)
+            .where(eq(lpProjectAllocations.id, allocation.allocationId))
+            .limit(1);
+
+          if (lpAllocation.length > 0 && lpAllocation[0].projectId) {
+            const project = await db
+              .select()
+              .from(projects)
+              .where(eq(projects.id, lpAllocation[0].projectId))
+              .limit(1);
+
+            if (project.length > 0) {
+              projectInfo = {
+                name: project[0].name,
+                location: project[0].location,
+                totalAllocated: lpAllocation[0].amountNgnts,
+              };
+            }
+          }
+        }
+
+        return {
+          id: allocation.id,
+          shareAmountNgnts: allocation.shareAmountNgnts,
+          sharePercent: allocation.sharePercent,
+          createdAt: allocation.createdAt,
+          projectName: projectInfo.name,
+          projectLocation: projectInfo.location,
+          allocationId: allocation.allocationId,
+          totalAllocated: projectInfo.totalAllocated,
+        };
+      })
+    );
 
     // Build timeline events array
     const timelineEvents: any[] = [];
