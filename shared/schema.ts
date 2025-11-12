@@ -8,7 +8,7 @@ import { relations } from "drizzle-orm";
 export const userRoleEnum = pgEnum("user_role", ["investor", "admin"]);
 export const kycStatusEnum = pgEnum("kyc_status", ["pending", "submitted", "approved", "rejected"]);
 export const bankDetailsStatusEnum = pgEnum("bank_details_status", ["not_submitted", "pending", "approved", "rejected"]);
-export const currencyEnum = pgEnum("currency", ["NGN", "USDC", "XLM"]);
+export const currencyEnum = pgEnum("currency", ["NGN", "NGNTS", "USDC", "XLM"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "investment", "return", "fee"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "card", "stellar", "wallet"]);
