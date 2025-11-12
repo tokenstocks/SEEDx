@@ -384,7 +384,7 @@ export default function Portfolio() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-900/20 via-blue-900/20 to-purple-900/20 border-2 border-emerald-500/30 backdrop-blur-md">
+            <Card className="relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500" />
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between flex-wrap gap-4">
@@ -401,7 +401,7 @@ export default function Portfolio() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-slate-500 mt-2">
+                    <p className="text-sm text-slate-400 mt-2">
                       Last updated: {walletLastUpdated}
                     </p>
                   </div>
@@ -419,7 +419,7 @@ export default function Portfolio() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-400">Capital Allocation</span>
-                      <span className="text-slate-500">NGNTS + USDC</span>
+                      <span className="text-slate-400">NGNTS + USDC</span>
                     </div>
 
                     {/* NGNTS */}
@@ -470,7 +470,7 @@ export default function Portfolio() {
                             <div className="flex items-center gap-2">
                               <Fuel className="w-4 h-4 text-amber-400" />
                               <span className="text-slate-400 text-sm">Network Gas</span>
-                              <Info className="w-3 h-3 text-slate-500" />
+                              <Info className="w-3 h-3 text-slate-400" />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
@@ -518,7 +518,7 @@ export default function Portfolio() {
                 <div className="text-2xl font-bold text-white" data-testid="text-total-contributed">
                   {formatCurrency(stats?.totalInvested || 0)}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Lifetime capital</p>
+                <p className="text-xs text-slate-400 mt-1">Lifetime capital</p>
               </CardContent>
             </Card>
 
@@ -534,7 +534,7 @@ export default function Portfolio() {
                 <div className="text-2xl font-bold text-white" data-testid="text-participation-units">
                   {stats?.totalTokensOwned?.toLocaleString() || 0}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Tokens owned</p>
+                <p className="text-xs text-slate-400 mt-1">Tokens owned</p>
               </CardContent>
             </Card>
 
@@ -550,7 +550,7 @@ export default function Portfolio() {
                 <div className="text-2xl font-bold text-white" data-testid="text-active-cooperatives">
                   {stats?.activeProjects || 0}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Participating in</p>
+                <p className="text-xs text-slate-400 mt-1">Participating in</p>
               </CardContent>
             </Card>
 
@@ -566,7 +566,7 @@ export default function Portfolio() {
                 <div className="text-2xl font-bold text-white" data-testid="text-total-distributions">
                   {formatCurrency(stats?.totalCashflowReceived || 0)}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Lifetime received</p>
+                <p className="text-xs text-slate-400 mt-1">Lifetime received</p>
               </CardContent>
             </Card>
           </div>
@@ -656,7 +656,7 @@ export default function Portfolio() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <Coins className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+                      <Coins className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2 text-white">No holdings yet</h3>
                       <p className="text-slate-400 mb-4">
                         Participate in agricultural cooperatives to receive tokens
@@ -739,7 +739,7 @@ export default function Portfolio() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <Activity className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                      <Activity className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                       <p className="text-slate-400">No activity yet</p>
                     </div>
                   )}
@@ -786,7 +786,8 @@ export default function Portfolio() {
               </Card>
 
               {/* Member Benefits */}
-              <Card className="bg-gradient-to-br from-emerald-900/20 to-blue-900/20 border-emerald-500/20 backdrop-blur-md">
+              <Card className="bg-white/5 backdrop-blur-md border-white/10">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/60 to-blue-500/60" />
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Sparkles className="w-5 h-5 text-emerald-400" />
