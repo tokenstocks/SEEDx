@@ -6,8 +6,8 @@ import { encrypt } from "../lib/encryption";
 import { eq } from "drizzle-orm";
 
 async function createAdminUser() {
-  const email = "admin@tockenstocks.local";
-  const password = "Admin@123!Temp";
+  const email = "admin@seedx.africa";
+  const password = "admin123";
   const firstName = "Admin";
   const lastName = "User";
   const phone = "+9999999999";
