@@ -1355,10 +1355,10 @@ export default function Admin() {
                 {pendingKycData && pendingKycData.users.length > 0 ? (
                   <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-350px)]">
                     {/* Left Panel - KYC Request List */}
-                    <Card className="w-full md:w-2/5">
+                    <Card className="w-full md:w-2/5 bg-white/5 border-white/10 backdrop-blur-sm">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Pending KYC Requests</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-lg text-white">Pending KYC Requests</CardTitle>
+                        <CardDescription className="text-slate-400">
                           {pendingKycData.users.length} request{pendingKycData.users.length !== 1 ? 's' : ''} awaiting review
                         </CardDescription>
                       </CardHeader>
@@ -1369,7 +1369,7 @@ export default function Admin() {
                           <Card
                             key={kycUser.id}
                             className={`cursor-pointer transition-colors ${
-                              selectedKycIndex === index ? 'bg-accent border-primary' : 'hover-elevate'
+                              selectedKycIndex === index ? 'bg-white/10 border-emerald-500/50' : 'bg-white/5 border-white/10 hover-elevate'
                             }`}
                             onClick={() => setSelectedKycIndex(index)}
                             data-testid={`kyc-list-item-${index}`}
@@ -1377,10 +1377,10 @@ export default function Admin() {
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-sm">
+                                  <h4 className="font-semibold text-sm text-white">
                                     {kycUser.firstName} {kycUser.lastName}
                                   </h4>
-                                  <p className="text-xs text-muted-foreground mt-0.5">{kycUser.email}</p>
+                                  <p className="text-xs text-slate-400 mt-0.5">{kycUser.email}</p>
                                   <Badge variant="outline" className="mt-2 text-xs">
                                     {kycUser.kycStatus}
                                   </Badge>
@@ -1720,10 +1720,10 @@ export default function Admin() {
 
           {/* Projects Tab */}
           <TabsContent value="projects">
-            <Card>
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Project Management</CardTitle>
-                <CardDescription>Create and manage investment projects</CardDescription>
+                <CardTitle className="text-white">Project Management</CardTitle>
+                <CardDescription className="text-slate-400">Create and manage investment projects</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1742,10 +1742,10 @@ export default function Admin() {
 
           {/* Users Tab */}
           <TabsContent value="users">
-            <Card>
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>View and manage all platform users</CardDescription>
+                <CardTitle className="text-white">User Management</CardTitle>
+                <CardDescription className="text-slate-400">View and manage all platform users</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1755,10 +1755,10 @@ export default function Admin() {
                   {allUsersData && allUsersData.users.length > 0 ? (
                     <div className="space-y-4">
                       {allUsersData.users.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={u.id} className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5">
                           <div className="flex-1">
-                            <h4 className="font-semibold">{u.firstName} {u.lastName}</h4>
-                            <p className="text-sm text-muted-foreground">{u.email}</p>
+                            <h4 className="font-semibold text-white">{u.firstName} {u.lastName}</h4>
+                            <p className="text-sm text-slate-400">{u.email}</p>
                             <div className="flex flex-wrap gap-2 mt-1">
                               <Badge variant="outline">{u.role}</Badge>
                               <Badge variant={u.kycStatus === 'approved' ? 'default' : 'secondary'}>{u.kycStatus}</Badge>
@@ -1825,10 +1825,10 @@ export default function Admin() {
 
           {/* Wallets Tab */}
           <TabsContent value="wallets">
-            <Card>
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>User Wallets</CardTitle>
-                <CardDescription>View all user wallets and balances</CardDescription>
+                <CardTitle className="text-white">User Wallets</CardTitle>
+                <CardDescription className="text-slate-400">View all user wallets and balances</CardDescription>
               </CardHeader>
               <CardContent>
                 {walletsData && walletsData.wallets.length > 0 ? (
@@ -1836,40 +1836,40 @@ export default function Admin() {
                     {walletsData.wallets.map((wallet) => {
                       const cryptoBalances = (wallet.cryptoBalances || {}) as Record<string, string>;
                       return (
-                        <div key={wallet.id} className="p-4 border rounded-lg" data-testid={`wallet-${wallet.id}`}>
+                        <div key={wallet.id} className="p-4 border border-white/10 rounded-lg bg-white/5" data-testid={`wallet-${wallet.id}`}>
                           <div className="flex items-start justify-between mb-3">
                             <div>
-                              <h4 className="font-semibold">
+                              <h4 className="font-semibold text-white">
                                 {wallet.userFirstName} {wallet.userLastName}
                               </h4>
-                              <p className="text-sm text-muted-foreground">{wallet.userEmail}</p>
+                              <p className="text-sm text-slate-400">{wallet.userEmail}</p>
                               <Badge variant="outline" className="mt-1">{wallet.userRole}</Badge>
                             </div>
                             <div className="text-right">
-                              <p className="text-xs text-muted-foreground">Wallet ID</p>
-                              <p className="text-xs font-mono">{wallet.id.substring(0, 8)}...</p>
+                              <p className="text-xs text-slate-400">Wallet ID</p>
+                              <p className="text-xs font-mono text-slate-300">{wallet.id.substring(0, 8)}...</p>
                             </div>
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div className="space-y-2">
-                              <p className="text-sm font-medium">Fiat Balance</p>
+                              <p className="text-sm font-medium text-slate-400">Fiat Balance</p>
                               <p className="text-lg font-bold" data-testid={`fiat-balance-${wallet.id}`}>
                                 ₦{parseFloat(wallet.fiatBalance || "0").toLocaleString()}
                               </p>
                             </div>
                             
                             <div className="space-y-2">
-                              <p className="text-sm font-medium">Crypto Balances</p>
+                              <p className="text-sm font-medium text-slate-400">Crypto Balances</p>
                               <div className="space-y-1">
-                                <p className="text-sm" data-testid={`xlm-balance-${wallet.id}`}>
+                                <p className="text-sm text-white" data-testid={`xlm-balance-${wallet.id}`}>
                                   <span className="font-semibold">XLM:</span> {cryptoBalances.XLM || "0"}
                                 </p>
-                                <p className="text-sm" data-testid={`usdc-balance-${wallet.id}`}>
+                                <p className="text-sm text-white" data-testid={`usdc-balance-${wallet.id}`}>
                                   <span className="font-semibold">USDC:</span> {cryptoBalances.USDC || "0"}
                                 </p>
                                 {Object.keys(cryptoBalances).filter(key => key !== 'XLM' && key !== 'USDC').map(token => (
-                                  <p key={token} className="text-sm">
+                                  <p key={token} className="text-sm text-white">
                                     <span className="font-semibold">{token}:</span> {cryptoBalances[token]}
                                   </p>
                                 ))}
@@ -1877,10 +1877,10 @@ export default function Admin() {
                             </div>
                           </div>
 
-                          <div className="mt-4 pt-4 border-t">
-                            <p className="text-xs text-muted-foreground mb-1">Stellar Public Key</p>
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <p className="text-xs text-slate-400 mb-1">Stellar Public Key</p>
                             <div className="flex items-center gap-2 mb-2">
-                              <p className="text-xs font-mono break-all flex-1" data-testid={`stellar-key-${wallet.id}`}>
+                              <p className="text-xs font-mono break-all flex-1 text-slate-300" data-testid={`stellar-key-${wallet.id}`}>
                                 {wallet.stellarPublicKey}
                               </p>
                               <Button
@@ -1895,7 +1895,7 @@ export default function Admin() {
                             </div>
                           </div>
 
-                          <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                          <div className="flex gap-4 mt-2 text-xs text-slate-500">
                             <span>Created: {new Date(wallet.createdAt).toLocaleDateString()}</span>
                             <span>Updated: {new Date(wallet.updatedAt).toLocaleDateString()}</span>
                           </div>
