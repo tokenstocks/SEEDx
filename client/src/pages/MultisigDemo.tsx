@@ -9,11 +9,11 @@ import { motion } from "framer-motion";
 
 export default function MultisigDemo() {
   // Fetch real pending deposits/withdrawals from backend first to determine signer states
-  const { data: deposits, isLoading: depositsLoading } = useQuery<any[]>({
+  const { data: depositsData, isLoading: depositsLoading } = useQuery<{ deposits: any[]; total: number }>({
     queryKey: ["/api/admin/deposits"],
   });
 
-  const { data: withdrawals, isLoading: withdrawalsLoading } = useQuery<any[]>({
+  const { data: withdrawalsData, isLoading: withdrawalsLoading } = useQuery<{ withdrawals: any[]; total: number }>({
     queryKey: ["/api/admin/withdrawals"],
   });
 
@@ -21,12 +21,15 @@ export default function MultisigDemo() {
     queryKey: ["/api/admin/redemptions/pending"],
   });
 
+  // Extract arrays from API responses
+  const deposits = depositsData?.deposits || [];
+  const withdrawals = withdrawalsData?.withdrawals || [];
   const redemptions = redemptionsData?.pendingRedemptions || [];
 
   // Count pending items to determine signer states dynamically
-  const pendingDepositsCount = deposits?.filter(d => d.status === "pending").length || 0;
-  const pendingWithdrawalsCount = withdrawals?.filter(w => w.status === "pending").length || 0;
-  const pendingRedemptionsCount = redemptions?.filter(r => r.status === "pending").length || 0;
+  const pendingDepositsCount = deposits.filter(d => d.status === "pending").length;
+  const pendingWithdrawalsCount = withdrawals.filter(w => w.status === "pending").length;
+  const pendingRedemptionsCount = redemptions.filter(r => r.status === "pending").length;
   const totalPendingCount = pendingDepositsCount + pendingWithdrawalsCount + pendingRedemptionsCount;
 
   // Dynamic signer states based on actual pending items
