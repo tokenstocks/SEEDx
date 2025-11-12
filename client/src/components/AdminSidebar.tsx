@@ -170,7 +170,7 @@ export function AdminSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-white/10 px-6 py-4">
+      <SidebarHeader className="bg-slate-950 border-b border-white/10 px-6 py-4">
         <Link href="/admin" className="flex items-center gap-3 group">
           <img 
             src={seedxLogo} 
