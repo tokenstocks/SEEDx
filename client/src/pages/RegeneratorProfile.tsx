@@ -69,10 +69,10 @@ export default function RegeneratorProfile() {
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const { data: kycData } = useQuery<{
-    status: string;
-    rejectionReason?: string;
+    kycStatus: string;
+    kycDocuments?: any;
   }>({
-    queryKey: ["/api/users/me/kyc"],
+    queryKey: ["/api/users/kyc-status"],
     refetchOnMount: "always",
     staleTime: 0,
   });
@@ -137,7 +137,7 @@ export default function RegeneratorProfile() {
 
   // Account lifecycle status helper (computed after queries are declared)
   const accountLifecycleStatus = useMemo(() => {
-    const kycStatus = kycData?.status || user.kycStatus || "pending";
+    const kycStatus = kycData?.kycStatus || user.kycStatus || "pending";
     const walletActivated = walletData?.activated || walletData?.activationStatus === "active";
     
     // Decision tree for account lifecycle
@@ -702,20 +702,20 @@ export default function RegeneratorProfile() {
                   <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10" data-testid="card-kyc-status">
                     <div>
                       <p className="text-sm text-slate-400 mb-1">Verification Status</p>
-                      {getKycStatusBadge(kycData?.status || "not_submitted")}
+                      {getKycStatusBadge(kycData?.kycStatus || "not_submitted")}
                     </div>
-                    {kycData?.status !== "approved" && (
+                    {kycData?.kycStatus !== "approved" && (
                       <Button
                         onClick={() => navigate("/kyc")}
                         className="bg-blue-600 hover:bg-blue-700"
                         data-testid="button-kyc-action"
                       >
-                        {kycData?.status === "pending" ? "View Status" : "Complete KYC"}
+                        {kycData?.kycStatus === "pending" ? "View Status" : "Complete KYC"}
                       </Button>
                     )}
                   </div>
 
-                  {kycData?.status === "pending" && (
+                  {kycData?.kycStatus === "pending" && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4" data-testid="alert-kyc-pending">
                       <p className="text-sm text-blue-300">
                         <Clock className="w-4 h-4 inline mr-2" />
@@ -725,22 +725,18 @@ export default function RegeneratorProfile() {
                     </div>
                   )}
 
-                  {kycData?.status === "rejected" && (
+                  {kycData?.kycStatus === "rejected" && (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4" data-testid="alert-kyc-rejected">
                       <p className="text-sm text-red-300">
                         <XCircle className="w-4 h-4 inline mr-2" />
                         Your KYC submission was rejected. Please review the feedback and
                         resubmit with updated documents.
                       </p>
-                      {kycData?.rejectionReason && (
-                        <p className="text-sm text-slate-400 mt-2" data-testid="text-rejection-reason">
-                          Reason: {kycData.rejectionReason}
-                        </p>
-                      )}
+                      {/* Rejection reason not available in /api/users/kyc-status response */}
                     </div>
                   )}
 
-                  {kycData?.status === "approved" && (
+                  {kycData?.kycStatus === "approved" && (
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4" data-testid="alert-kyc-approved">
                       <p className="text-sm text-emerald-300">
                         <CheckCircle2 className="w-4 h-4 inline mr-2" />
@@ -749,7 +745,7 @@ export default function RegeneratorProfile() {
                     </div>
                   )}
 
-                  {!kycData?.status && (
+                  {!kycData?.kycStatus && (
                     <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4" data-testid="alert-kyc-not-submitted">
                       <p className="text-sm text-orange-300">
                         <AlertCircle className="w-4 h-4 inline mr-2" />
@@ -973,7 +969,7 @@ export default function RegeneratorProfile() {
                     data-testid="button-go-to-kyc"
                   >
                     <Shield className="w-4 h-4 mr-2" />
-                    {kycData?.status === "approved" ? "View KYC" : "Complete KYC"}
+                    {kycData?.kycStatus === "approved" ? "View KYC" : "Complete KYC"}
                   </Button>
                   
                   {/* Deposit Funds Button - Disabled when KYC not approved */}

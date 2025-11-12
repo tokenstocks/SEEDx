@@ -130,7 +130,7 @@ export default function KYCVerification() {
       await response.json();
       
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users/me/kyc"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/kyc-status"] });
 
       toast({
         title: "Documents Submitted Successfully!",

@@ -102,10 +102,10 @@ export default function Portfolio() {
   }, [setLocation]);
 
   const { data: kycData } = useQuery<{
-    status: string;
-    rejectionReason?: string;
+    kycStatus: string;
+    kycDocuments?: any;
   }>({
-    queryKey: ["/api/users/me/kyc"],
+    queryKey: ["/api/users/kyc-status"],
     enabled: !!user,
   });
 
@@ -123,7 +123,7 @@ export default function Portfolio() {
     enabled: !!user,
   });
 
-  const isOnboardingComplete = kycData?.status === "approved" && walletData?.activated;
+  const isOnboardingComplete = kycData?.kycStatus === "approved" && walletData?.activated;
 
   useEffect(() => {
     const hasSeenModal = sessionStorage.getItem("onboarding_modal_shown");
@@ -495,13 +495,13 @@ export default function Portfolio() {
             <AlertDescription className="flex items-center justify-between">
               <div className="flex-1 text-white">
                 <span className="font-semibold">Complete Your Setup:</span>{" "}
-                {kycData?.status !== "approved" && "Get KYC verified"}
-                {kycData?.status !== "approved" && !walletData?.activated && " and "}
+                {kycData?.kycStatus !== "approved" && "Get KYC verified"}
+                {kycData?.kycStatus !== "approved" && !walletData?.activated && " and "}
                 {!walletData?.activated && "activate your wallet"}
                 {" to start participating in projects."}
               </div>
               <div className="flex items-center gap-2">
-                {kycData?.status !== "approved" && (
+                {kycData?.kycStatus !== "approved" && (
                   <Button
                     size="sm"
                     onClick={() => setLocation("/regenerator-profile")}
@@ -1025,9 +1025,9 @@ export default function Portfolio() {
           <div className="space-y-4 py-4">
             <div className="flex items-start gap-4 p-4 rounded-lg border border-white/10 bg-white/5">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                kycData?.status === "approved" ? "bg-emerald-600" : "bg-slate-700"
+                kycData?.kycStatus === "approved" ? "bg-emerald-600" : "bg-slate-700"
               }`}>
-                {kycData?.status === "approved" ? (
+                {kycData?.kycStatus === "approved" ? (
                   <CheckCircle className="w-5 h-5 text-white" />
                 ) : (
                   <span className="text-white font-semibold">1</span>
@@ -1038,7 +1038,7 @@ export default function Portfolio() {
                 <p className="text-sm text-slate-400 mb-2">
                   Submit your identity documents for verification. This typically takes 1-2 business days.
                 </p>
-                {kycData?.status !== "approved" && (
+                {kycData?.kycStatus !== "approved" && (
                   <Button
                     size="sm"
                     onClick={() => {
@@ -1057,7 +1057,7 @@ export default function Portfolio() {
                     Completed
                   </Badge>
                 )}
-                {kycData?.status === "pending" && (
+                {kycData?.kycStatus === "pending" && (
                   <Badge variant="secondary" data-testid="badge-modal-kyc-pending">
                     <Clock className="w-3 h-3 mr-1" />
                     Under Review

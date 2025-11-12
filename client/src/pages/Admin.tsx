@@ -755,6 +755,7 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
       // Invalidate user profile queries so frontend updates
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/kyc-status"] });
       setApprovalDialog(null);
       resetForm();
       
@@ -790,6 +791,7 @@ export default function Admin() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/kyc-status"] });
       setApprovalDialog(null);
       resetForm();
     },
