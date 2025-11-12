@@ -3472,7 +3472,7 @@ router.post("/bank-deposits/:id/approve", authenticate, requireAdmin, async (req
       if (userWallet.activationStatus !== "active") {
         console.log(`   🔓 Wallet not activated. Starting activation...`);
         const { activateRegeneratorWallet } = await import("../lib/walletActivation");
-        const activationResult = await activateRegeneratorWallet(userWallet.cryptoWalletPublicKey, "2.5");
+        const activationResult = await activateRegeneratorWallet(userWallet.cryptoWalletPublicKey, "3.0");
 
         if (!activationResult.success) {
           throw new Error(`Wallet activation failed: ${activationResult.error}`);

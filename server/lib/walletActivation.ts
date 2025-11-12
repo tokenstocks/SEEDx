@@ -32,11 +32,11 @@ interface WalletActivationResult {
  * - Minimum account balance: (2 + subentries) × 0.5 XLM
  * - New account: 1 XLM minimum
  * - Account + 2 trustlines: 2 XLM minimum
- * - Starting balance of 2.5 XLM provides 0.5 XLM buffer for fees
+ * - Starting balance of 3.0 XLM provides 1.0 XLM buffer for fees and safety margin
  */
 export async function activateRegeneratorWallet(
   userPublicKey: string,
-  startingBalance: string = "2.5"
+  startingBalance: string = "3.0"
 ): Promise<WalletActivationResult> {
   const txHashes: string[] = [];
 
