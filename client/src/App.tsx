@@ -70,8 +70,6 @@ function AdminRoutes() {
         <Route path="/admin/lp-pool" component={AdminLPPool} />
         <Route path="/admin/lp-allocations" component={AdminLPAllocations} />
         <Route path="/admin/multisig" component={MultisigDemo} />
-        <Route path="/admin/deployment" component={DeploymentDemo} />
-        <Route path="/admin/flow" component={FlowDemo} />
       </Switch>
     </AdminLayout>
   );
@@ -96,6 +94,9 @@ function Router() {
       {/* DEPRECATED: /wallet-funding-request route removed - wallets auto-activate on first bank deposit */}
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
+      {/* Demo pages - public access without AdminLayout */}
+      <Route path="/admin/deployment" component={DeploymentDemo} />
+      <Route path="/admin/flow" component={FlowDemo} />
       <Route path="/admin/:rest*" component={AdminRoutes} />
       <Route path="/admin" component={AdminRoutes} />
       <Route path="/about" component={About} />
