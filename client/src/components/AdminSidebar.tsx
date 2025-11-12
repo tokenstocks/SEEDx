@@ -170,15 +170,17 @@ export function AdminSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-white/10 px-6 py-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
+        <Link href="/admin" className="flex items-center gap-3 group">
+          <img 
+            src="/attached_assets/image_1762970335693.png" 
+            alt="SEEDx" 
+            className="h-10 w-auto transition-transform group-hover:scale-105"
+          />
           <div>
-            <h2 className="text-lg font-semibold text-white">SEEDx Admin</h2>
+            <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
             <p className="text-xs text-slate-400">Platform Management</p>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
       <SidebarContent className="bg-slate-950">
         {menuSections.map((section) => (
