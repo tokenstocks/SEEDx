@@ -13,7 +13,7 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -79,3 +79,10 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * Optional-auth query function for demo pages.
+ * Returns null on 401 instead of redirecting to login.
+ * Use this for components that should gracefully handle unauthenticated access.
+ */
+export const optionalAuthQueryFn = getQueryFn({ on401: "returnNull" });

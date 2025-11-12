@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { optionalAuthQueryFn } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, useReducedMotion } from "framer-motion";
@@ -24,12 +25,15 @@ interface FlowNode {
 export function CapitalFlowVisualization() {
   const shouldReduceMotion = useReducedMotion();
 
-  // Fetch treasury balance for live metrics
-  const { data: treasuryData } = useQuery<{ balance: string; currency: string }>({
+  // Fetch treasury balance for live metrics (with optional auth - returns null on 401 without redirecting)
+  const { data: treasuryData } = useQuery({
     queryKey: ["/api/system/treasury-balance"],
+    queryFn: optionalAuthQueryFn as () => Promise<{ balance: string; currency: string } | null>,
   });
 
-  const treasuryBalance = parseFloat(treasuryData?.balance || "0");
+  // Use mock data if auth fails (demo mode)
+  const treasuryBalance = parseFloat((treasuryData as any)?.balance || "500000");
+  const isDemo = !treasuryData;
 
   // Define the regenerative capital flow nodes
   const flowNodes: FlowNode[] = [
