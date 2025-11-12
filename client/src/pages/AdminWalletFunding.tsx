@@ -50,6 +50,7 @@ export default function AdminWalletFunding() {
   const approvedRequests = approvedRequestsData?.requests || [];
   const rejectedRequests = rejectedRequestsData?.requests || [];
   const processedRequests = [...approvedRequests, ...rejectedRequests];
+  const loadingProcessed = loadingApproved || loadingRejected;
 
   const approveMutation = useMutation({
     mutationFn: async (requestId: string) => {
