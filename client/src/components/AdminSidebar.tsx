@@ -57,6 +57,12 @@ const menuSections = [
         icon: Users,
         testId: "link-admin-regenerators",
       },
+      {
+        title: "KYC Reviews",
+        url: "/admin/kyc",
+        icon: Shield,
+        testId: "link-admin-kyc",
+      },
     ],
   },
   {
