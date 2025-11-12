@@ -41,10 +41,12 @@ export default function AdminRedemptions() {
     setUser(parsedUser);
   }, [setLocation]);
 
-  const { data: pendingRedemptions, isLoading, refetch } = useQuery<{ pendingRedemptions: RedemptionRequest[] }>({
+  const { data: pendingRedemptionsData, isLoading, refetch } = useQuery<{ redemptions: RedemptionRequest[]; count: number }>({
     queryKey: ["/api/admin/redemptions/pending"],
     enabled: !!user,
   });
+
+  const pendingRedemptions = pendingRedemptionsData?.redemptions || [];
 
   const processRedemptionMutation = useMutation({
     mutationFn: async (data: { id: string; action: 'approve' | 'reject'; adminNotes?: string }) => {
@@ -147,9 +149,9 @@ export default function AdminRedemptions() {
                   </div>
                 ))}
               </div>
-            ) : pendingRedemptions && pendingRedemptions.pendingRedemptions.length > 0 ? (
+            ) : pendingRedemptions && pendingRedemptions.length > 0 ? (
               <div className="space-y-3">
-                {pendingRedemptions.pendingRedemptions.map((redemption) => (
+                {pendingRedemptions.map((redemption) => (
                   <div
                     key={redemption.id}
                     className="p-4 border border-white/10 rounded-lg bg-white/5"

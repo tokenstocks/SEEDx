@@ -17,14 +17,14 @@ export default function MultisigDemo() {
     queryKey: ["/api/admin/withdrawals"],
   });
 
-  const { data: redemptionsData, isLoading: redemptionsLoading } = useQuery<{ pendingRedemptions: any[] }>({
+  const { data: redemptionsData, isLoading: redemptionsLoading } = useQuery<{ redemptions: any[]; count: number }>({
     queryKey: ["/api/admin/redemptions/pending"],
   });
 
   // Extract arrays from API responses
   const deposits = depositsData?.deposits || [];
   const withdrawals = withdrawalsData?.withdrawals || [];
-  const redemptions = redemptionsData?.pendingRedemptions || [];
+  const redemptions = redemptionsData?.redemptions || [];
 
   // Count pending items to determine signer states dynamically
   const pendingDepositsCount = deposits.filter(d => d.status === "pending").length;
