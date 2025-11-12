@@ -987,12 +987,12 @@ export default function Admin() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-7xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -1000,8 +1000,8 @@ export default function Admin() {
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-              <p className="text-muted-foreground">Manage platform operations</p>
+              <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+              <p className="text-slate-400">Manage platform operations</p>
             </div>
             <div className="flex items-center gap-2">
               <Link href="/admin/onchain-verification">
@@ -1024,40 +1024,40 @@ export default function Admin() {
 
         {/* Metrics */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-400">Total Users</CardTitle>
+              <Users className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{metrics?.metrics.totalUsers || 0}</div>
+              <div className="text-2xl font-bold text-white">{metrics?.metrics.totalUsers || 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending KYC</CardTitle>
-              <FileCheck className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-400">Pending KYC</CardTitle>
+              <FileCheck className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{metrics?.metrics.pendingKycCount || 0}</div>
+              <div className="text-2xl font-bold text-orange-400">{metrics?.metrics.pendingKycCount || 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Deposits</CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-400">Pending Deposits</CardTitle>
+              <DollarSign className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{metrics?.metrics.pendingDepositsCount || 0}</div>
+              <div className="text-2xl font-bold text-blue-400">{metrics?.metrics.pendingDepositsCount || 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Withdrawals</CardTitle>
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-400">Pending Withdrawals</CardTitle>
+              <TrendingUp className="w-4 h-4 text-slate-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{metrics?.metrics.pendingWithdrawalsCount || 0}</div>
+              <div className="text-2xl font-bold text-purple-400">{metrics?.metrics.pendingWithdrawalsCount || 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -1069,81 +1069,81 @@ export default function Admin() {
 
         {/* Phase 4-C: Regenerative Capital System */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Regenerative Capital Management</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Regenerative Capital Management</h2>
           <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Link href="/admin/investments">
-              <Card className="hover-elevate cursor-pointer" data-testid="card-investments">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-investments">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <TrendingUp className="w-5 h-5" />
                     Investments
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-400">
                     Monitor all Regenerator investments
                   </CardDescription>
                 </CardHeader>
               </Card>
             </Link>
             <Link href="/admin/lp-pool">
-              <Card className="hover-elevate cursor-pointer" data-testid="card-lp-pool">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-lp-pool">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <DollarSign className="w-5 h-5" />
                     LP Pool
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-400">
                     Monitor liquidity pool health
                   </CardDescription>
                 </CardHeader>
               </Card>
             </Link>
             <Link href="/admin/redemptions">
-              <Card className="hover-elevate cursor-pointer" data-testid="card-redemptions">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-redemptions">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <RefreshCw className="w-5 h-5" />
                     Redemptions
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-400">
                     Review token redemption requests
                   </CardDescription>
                 </CardHeader>
               </Card>
             </Link>
             <Link href="/admin/treasury">
-              <Card className="hover-elevate cursor-pointer" data-testid="card-treasury">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-treasury">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <DollarSign className="w-5 h-5" />
                     Treasury Pool
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-400">
                     Monitor treasury health & reconciliation
                   </CardDescription>
                 </CardHeader>
               </Card>
             </Link>
             <Link href="/admin/cashflows">
-              <Card className="hover-elevate cursor-pointer" data-testid="card-cashflows">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-cashflows">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <TrendingUp className="w-5 h-5" />
                     Cashflows
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-400">
                     Verify project revenue cashflows
                   </CardDescription>
                 </CardHeader>
               </Card>
             </Link>
             <Link href="/admin/audit">
-              <Card className="hover-elevate cursor-pointer" data-testid="card-audit">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-audit">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <Shield className="w-5 h-5" />
                     Audit Logs
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-slate-400">
                     View compliance audit trail
                   </CardDescription>
                 </CardHeader>
@@ -1183,25 +1183,25 @@ export default function Admin() {
 
           {/* Deposits Tab */}
           <TabsContent value="deposits">
-            <Card>
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Pending Deposit Requests</CardTitle>
-                <CardDescription>Review and approve deposit requests</CardDescription>
+                <CardTitle className="text-white">Pending Deposit Requests</CardTitle>
+                <CardDescription className="text-slate-400">Review and approve deposit requests</CardDescription>
               </CardHeader>
               <CardContent>
                 {deposits && deposits.deposits.length > 0 ? (
                   <div className="space-y-4">
                     {deposits.deposits.map((deposit) => (
-                      <div key={deposit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={deposit.id} className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5">
                         <div>
-                          <h4 className="font-semibold">
+                          <h4 className="font-semibold text-white">
                             {deposit.userFirstName} {deposit.userLastName}
                           </h4>
-                          <p className="text-sm text-muted-foreground">{deposit.userEmail}</p>
-                          <p className="text-sm mt-1">
+                          <p className="text-sm text-slate-400">{deposit.userEmail}</p>
+                          <p className="text-sm mt-1 text-white">
                             Amount: <span className="font-semibold">{formatCurrency(deposit.amount)}</span>
                           </p>
-                          <p className="text-xs text-muted-foreground">Ref: {deposit.transactionReference}</p>
+                          <p className="text-xs text-slate-500">Ref: {deposit.transactionReference}</p>
                         </div>
                         <Button
                           onClick={() => setApprovalDialog({ type: 'deposit', item: deposit })}
@@ -1213,7 +1213,7 @@ export default function Admin() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center py-8 text-muted-foreground">No pending deposits</p>
+                  <p className="text-center py-8 text-slate-400">No pending deposits</p>
                 )}
               </CardContent>
             </Card>
@@ -1221,10 +1221,10 @@ export default function Admin() {
 
           {/* Bank Deposits Tab */}
           <TabsContent value="bank-deposits">
-            <Card>
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Pending Bank Deposits (NGN)</CardTitle>
-                <CardDescription>Review and approve regenerator bank transfer deposits</CardDescription>
+                <CardTitle className="text-white">Pending Bank Deposits (NGN)</CardTitle>
+                <CardDescription className="text-slate-400">Review and approve regenerator bank transfer deposits</CardDescription>
               </CardHeader>
               <CardContent>
                 {bankDeposits && bankDeposits.deposits.length > 0 ? (
@@ -1290,7 +1290,7 @@ export default function Admin() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-center py-8 text-muted-foreground">No pending bank deposits</p>
+                  <p className="text-center py-8 text-slate-400">No pending bank deposits</p>
                 )}
               </CardContent>
             </Card>
@@ -1298,22 +1298,22 @@ export default function Admin() {
 
           {/* Withdrawals Tab */}
           <TabsContent value="withdrawals">
-            <Card>
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Pending Withdrawal Requests</CardTitle>
-                <CardDescription>Review and approve withdrawal requests</CardDescription>
+                <CardTitle className="text-white">Pending Withdrawal Requests</CardTitle>
+                <CardDescription className="text-slate-400">Review and approve withdrawal requests</CardDescription>
               </CardHeader>
               <CardContent>
                 {withdrawals && withdrawals.withdrawals.length > 0 ? (
                   <div className="space-y-4">
                     {withdrawals.withdrawals.map((withdrawal) => (
-                      <div key={withdrawal.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={withdrawal.id} className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5">
                         <div>
-                          <h4 className="font-semibold">
+                          <h4 className="font-semibold text-white">
                             {withdrawal.userFirstName} {withdrawal.userLastName}
                           </h4>
-                          <p className="text-sm text-muted-foreground">{withdrawal.userEmail}</p>
-                          <p className="text-sm mt-1">
+                          <p className="text-sm text-slate-400">{withdrawal.userEmail}</p>
+                          <p className="text-sm mt-1 text-white">
                             Amount: <span className="font-semibold">{formatCurrency(withdrawal.amount)}</span>
                           </p>
                           <Badge variant="outline" className="mt-1">{withdrawal.destinationType}</Badge>
@@ -1328,7 +1328,7 @@ export default function Admin() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center py-8 text-muted-foreground">No pending withdrawals</p>
+                  <p className="text-center py-8 text-slate-400">No pending withdrawals</p>
                 )}
               </CardContent>
             </Card>
@@ -1816,7 +1816,7 @@ export default function Admin() {
                       ))}
                     </div>
                   ) : allUsersData ? (
-                    <p className="text-center py-8 text-muted-foreground">No users found</p>
+                    <p className="text-center py-8 text-slate-400">No users found</p>
                   ) : null}
                 </div>
               </CardContent>
@@ -1904,7 +1904,7 @@ export default function Admin() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-center py-8 text-muted-foreground">No wallets found</p>
+                  <p className="text-center py-8 text-slate-400">No wallets found</p>
                 )}
               </CardContent>
             </Card>
