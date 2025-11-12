@@ -17,9 +17,11 @@ export default function MultisigDemo() {
     queryKey: ["/api/admin/withdrawals"],
   });
 
-  const { data: redemptions, isLoading: redemptionsLoading } = useQuery<any[]>({
-    queryKey: ["/api/admin/redemptions"],
+  const { data: redemptionsData, isLoading: redemptionsLoading } = useQuery<{ pendingRedemptions: any[] }>({
+    queryKey: ["/api/admin/redemptions/pending"],
   });
+
+  const redemptions = redemptionsData?.pendingRedemptions || [];
 
   // Count pending items to determine signer states dynamically
   const pendingDepositsCount = deposits?.filter(d => d.status === "pending").length || 0;
@@ -68,7 +70,8 @@ export default function MultisigDemo() {
 
   const allPending = [...pendingDeposits, ...pendingWithdrawals, ...pendingRedemptions];
   const signaturesRequired = 2; // 2-of-3 multisig
-  const signaturesCollected = mockSigners.filter(s => s.status === "approved").length;
+  // For demo purposes: signatures collected is 0 when items are pending
+  const signaturesCollected = 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
