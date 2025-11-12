@@ -19,10 +19,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Search, ChevronLeft, ChevronRight, ArrowUpDown, Download } from "lucide-react";
+import { TrendingUp, Search, ChevronLeft, ChevronRight, ArrowUpDown, Download, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { InvestmentDetailDrawer } from "@/components/InvestmentDetailDrawer";
+import { Link } from "wouter";
 
 interface Investment {
   id: string;
@@ -171,11 +172,23 @@ export default function AdminInvestments() {
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white" data-testid="text-page-title">
-              Investment Dashboard
-            </h1>
-            <p className="text-slate-400 mt-1">Monitor all Regenerator investments across projects</p>
+          <div className="flex items-center gap-4">
+            <Link href="/admin">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="text-slate-400 hover:text-white"
+                data-testid="button-back-to-admin"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-white" data-testid="text-page-title">
+                Investment Dashboard
+              </h1>
+              <p className="text-slate-400 mt-1">Monitor all Regenerator investments across projects</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button
