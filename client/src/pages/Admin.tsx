@@ -1070,7 +1070,7 @@ export default function Admin() {
         {/* Phase 4-C: Regenerative Capital System */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Regenerative Capital Management</h2>
-          <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <Link href="/admin/investments">
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-investments">
                 <CardHeader>
@@ -1154,18 +1154,15 @@ export default function Admin() {
 
         {/* Tabs for Different Actions */}
         <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full md:w-auto grid-cols-5 md:grid-cols-11">
+          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-6 gap-1">
             <TabsTrigger value="admin-wallet" data-testid="tab-admin-wallet">My Wallet</TabsTrigger>
-            <TabsTrigger value="platform" data-testid="tab-platform">Platform</TabsTrigger>
             <TabsTrigger value="deposits" data-testid="tab-deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
             <TabsTrigger value="kyc" data-testid="tab-kyc">KYC Requests</TabsTrigger>
             <TabsTrigger value="bank-deposits" data-testid="tab-bank-deposits">Bank Deposits</TabsTrigger>
-            <TabsTrigger value="wallet-activation" data-testid="tab-wallet-activation">Wallet Activation</TabsTrigger>
             <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
-            <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
-            <TabsTrigger value="wallets" data-testid="tab-wallets">Wallets</TabsTrigger>
-            <TabsTrigger value="settings" data-testid="tab-settings">
+            {/* Removed: Platform (redundant), Users/Wallets (in sidebar), Wallet Activation (merged into bank deposits workflow), Settings (moved to sidebar) */}
+            <TabsTrigger value="settings" className="md:ml-auto" data-testid="tab-settings">
               <Settings className="w-4 h-4 mr-1" />
               Settings
             </TabsTrigger>

@@ -193,7 +193,14 @@ export function AdminSidebar() {
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild isActive={isActive} data-testid={item.testId}>
-                        <Link href={item.url}>
+                        <Link 
+                          href={item.url}
+                          className={`flex items-center gap-3 px-6 py-2.5 rounded-md transition-colors ${
+                            isActive 
+                              ? 'bg-emerald-500/10 text-emerald-400' 
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
                           <item.icon className="w-4 h-4" />
                           <span>{item.title}</span>
                         </Link>
