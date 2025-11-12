@@ -4887,4 +4887,254 @@ router.get("/lp-pool/regeneration-rate", authenticate, requireAdmin, async (req,
   }
 });
 
+/**
+ * GET /api/admin/projects/:id/investment-analytics
+ * Get comprehensive investment analytics for a project (admin only)
+ */
+router.get("/projects/:id/investment-analytics", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+
+    // Verify project exists
+    const project = await db.query.projects.findFirst({
+      where: (projects, { eq }) => eq(projects.id, projectId),
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Get total raised and investment stats
+    const [totalStats] = await db
+      .select({
+        totalRaised: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        investorCount: sql<number>`COUNT(DISTINCT ${investments.userId})`,
+        totalInvestments: count(),
+        avgInvestment: sql<string>`COALESCE(AVG(${investments.amount}), 0)`,
+        maxInvestment: sql<string>`COALESCE(MAX(${investments.amount}), 0)`,
+      })
+      .from(investments)
+      .where(eq(investments.projectId, projectId));
+
+    // Get funding velocity (investments per day over last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [recentStats] = await db
+      .select({
+        recentCount: count(),
+        recentTotal: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+      })
+      .from(investments)
+      .where(
+        and(
+          eq(investments.projectId, projectId),
+          gte(investments.createdAt, thirtyDaysAgo)
+        )
+      );
+
+    // Calculate daily velocity (monetary amount per day, not count)
+    const daysElapsed = Math.max(1, Math.ceil((Date.now() - thirtyDaysAgo.getTime()) / (1000 * 60 * 60 * 24)));
+    const recentTotalAmount = parseFloat(recentStats?.recentTotal || "0");
+    const recentCount = recentStats?.recentCount || 0;
+    
+    // Only calculate velocity if there were recent investments
+    const dailyVelocity = recentCount > 0 ? recentTotalAmount / daysElapsed : 0;
+    const weeklyVelocity = dailyVelocity * 7;
+
+    // Get funding target from project
+    const fundingTarget = parseFloat(project.fundingGoal || "0");
+    const totalRaised = parseFloat(totalStats.totalRaised || "0");
+    const fundingProgress = fundingTarget > 0 ? (totalRaised / fundingTarget) * 100 : 0;
+
+    // Projected completion (based on monetary velocity)
+    const remaining = Math.max(0, fundingTarget - totalRaised);
+    const daysToCompletion = dailyVelocity > 0 && remaining > 0
+      ? remaining / dailyVelocity
+      : null;
+
+    res.json({
+      projectId,
+      projectName: project.name,
+      totalRaised: totalStats.totalRaised,
+      fundingTarget: project.fundingGoal,
+      fundingProgress: fundingProgress.toFixed(2),
+      investorCount: totalStats.investorCount || 0,
+      totalInvestments: totalStats.totalInvestments || 0,
+      avgInvestment: totalStats.avgInvestment,
+      largestInvestment: totalStats.maxInvestment,
+      velocity: {
+        dailyAvg: dailyVelocity.toFixed(2),
+        weeklyAvg: weeklyVelocity.toFixed(2),
+        last30Days: recentStats?.recentCount || 0,
+        last30DaysTotal: recentStats?.recentTotal || "0",
+      },
+      projectedCompletion: daysToCompletion ? {
+        daysRemaining: Math.ceil(daysToCompletion),
+        estimatedDate: new Date(Date.now() + daysToCompletion * 24 * 60 * 60 * 1000).toISOString(),
+      } : null,
+    });
+  } catch (error) {
+    console.error("Get project investment analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch investment analytics" });
+  }
+});
+
+/**
+ * GET /api/admin/projects/:id/investors
+ * Get list of investors with token holdings for a project (admin only)
+ * Query params: anonymize=true (optional) - anonymize email addresses
+ */
+router.get("/projects/:id/investors", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    const anonymize = req.query.anonymize === 'true';
+
+    // Verify project exists
+    const project = await db.query.projects.findFirst({
+      where: (projects, { eq }) => eq(projects.id, projectId),
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Get investors with their total investments and token holdings
+    const investorsData = await db
+      .select({
+        userId: investments.userId,
+        userEmail: users.email,
+        totalInvested: sql<string>`SUM(${investments.amount})`,
+        investmentCount: count(investments.id),
+        tokensReceived: sql<string>`SUM(${investments.tokensReceived})`,
+        firstInvestment: sql<Date>`MIN(${investments.createdAt})`,
+        lastInvestment: sql<Date>`MAX(${investments.createdAt})`,
+      })
+      .from(investments)
+      .leftJoin(users, eq(investments.userId, users.id))
+      .where(eq(investments.projectId, projectId))
+      .groupBy(investments.userId, users.email)
+      .orderBy(desc(sql`SUM(${investments.amount})`));
+
+    // Get current token balances
+    const tokenBalances = await db
+      .select({
+        userId: projectTokenBalances.userId,
+        currentBalance: projectTokenBalances.tokenAmount,
+        liquidTokens: projectTokenBalances.liquidTokens,
+        lockedTokens: projectTokenBalances.lockedTokens,
+      })
+      .from(projectTokenBalances)
+      .where(eq(projectTokenBalances.projectId, projectId));
+
+    const balanceMap = new Map(tokenBalances.map(b => [b.userId, b]));
+
+    // Combine data
+    const investors = investorsData.map((inv) => {
+      const balance = balanceMap.get(inv.userId);
+      
+      return {
+        userId: inv.userId,
+        email: anonymize ? inv.userEmail?.replace(/(.{2})(.*)(@.*)/, '$1***$3') : inv.userEmail,
+        totalInvested: inv.totalInvested,
+        investmentCount: inv.investmentCount,
+        tokensReceived: inv.tokensReceived,
+        currentTokenBalance: balance?.currentBalance || "0.00",
+        liquidTokens: balance?.liquidTokens || "0.00",
+        lockedTokens: balance?.lockedTokens || "0.00",
+        firstInvestment: inv.firstInvestment,
+        lastInvestment: inv.lastInvestment,
+      };
+    });
+
+    res.json({
+      projectId,
+      projectName: project.name,
+      totalInvestors: investors.length,
+      anonymized: anonymize,
+      investors,
+    });
+  } catch (error) {
+    console.error("Get project investors error:", error);
+    res.status(500).json({ error: "Failed to fetch investors list" });
+  }
+});
+
+/**
+ * GET /api/admin/projects/:id/investment-timeline
+ * Get daily/weekly investment timeline for chart visualization (admin only)
+ * Query params: interval=daily|weekly (default: daily), days=number (default: 30)
+ */
+router.get("/projects/:id/investment-timeline", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    const interval = (req.query.interval as string) || 'daily';
+    const days = parseInt(req.query.days as string) || 30;
+
+    // Verify project exists
+    const project = await db.query.projects.findFirst({
+      where: (projects, { eq }) => eq(projects.id, projectId),
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    let timelineData;
+
+    if (interval === 'weekly') {
+      // Weekly aggregation
+      timelineData = await db
+        .select({
+          period: sql<string>`TO_CHAR(DATE_TRUNC('week', ${investments.createdAt}), 'YYYY-MM-DD')`,
+          investmentCount: count(),
+          totalAmount: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+          uniqueInvestors: sql<number>`COUNT(DISTINCT ${investments.userId})`,
+        })
+        .from(investments)
+        .where(
+          and(
+            eq(investments.projectId, projectId),
+            gte(investments.createdAt, startDate)
+          )
+        )
+        .groupBy(sql`DATE_TRUNC('week', ${investments.createdAt})`)
+        .orderBy(sql`DATE_TRUNC('week', ${investments.createdAt})`);
+    } else {
+      // Daily aggregation
+      timelineData = await db
+        .select({
+          period: sql<string>`TO_CHAR(DATE_TRUNC('day', ${investments.createdAt}), 'YYYY-MM-DD')`,
+          investmentCount: count(),
+          totalAmount: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+          uniqueInvestors: sql<number>`COUNT(DISTINCT ${investments.userId})`,
+        })
+        .from(investments)
+        .where(
+          and(
+            eq(investments.projectId, projectId),
+            gte(investments.createdAt, startDate)
+          )
+        )
+        .groupBy(sql`DATE_TRUNC('day', ${investments.createdAt})`)
+        .orderBy(sql`DATE_TRUNC('day', ${investments.createdAt})`);
+    }
+
+    res.json({
+      projectId,
+      projectName: project.name,
+      interval,
+      days,
+      dataPoints: timelineData.length,
+      timeline: timelineData,
+    });
+  } catch (error) {
+    console.error("Get investment timeline error:", error);
+    res.status(500).json({ error: "Failed to fetch investment timeline" });
+  }
+});
+
 export default router;

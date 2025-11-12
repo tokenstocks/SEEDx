@@ -12,11 +12,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink, History, Leaf } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, Package, ArrowLeft, FileDown, Upload, CheckCircle, ExternalLink, History, Leaf, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import type { NavEntry } from "@/types/phase4";
 import UnifiedHeader from "@/components/UnifiedHeader";
 import { motion } from "framer-motion";
+import InvestmentAnalytics from "@/components/project/InvestmentAnalytics";
 
 interface Project {
   id: string;
@@ -343,6 +344,7 @@ export default function ProjectDetail() {
           {user?.role === "admin" && (
             <TabsList className="bg-white/5 border border-white/10">
               <TabsTrigger value="overview" data-testid="tab-overview" className="data-[state=active]:bg-white/10 data-[state=active]:text-white">Overview</TabsTrigger>
+              <TabsTrigger value="analytics" data-testid="tab-analytics" className="data-[state=active]:bg-white/10 data-[state=active]:text-white">Investment Analytics</TabsTrigger>
               <TabsTrigger value="nav" data-testid="tab-nav" className="data-[state=active]:bg-white/10 data-[state=active]:text-white">NAV Management</TabsTrigger>
             </TabsList>
           )}
@@ -655,6 +657,13 @@ export default function ProjectDetail() {
               </div>
             </div>
           </TabsContent>
+
+          {/* Investment Analytics Tab (Admin Only) */}
+          {user?.role === "admin" && params?.id && (
+            <TabsContent value="analytics">
+              <InvestmentAnalytics projectId={params.id} />
+            </TabsContent>
+          )}
 
           {/* NAV Management Tab (Admin Only) */}
           {user?.role === "admin" && (
