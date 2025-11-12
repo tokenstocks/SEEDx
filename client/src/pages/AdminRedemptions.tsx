@@ -114,27 +114,27 @@ export default function AdminRedemptions() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-7xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Admin Dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Redemption Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-white">Redemption Management</h1>
+          <p className="text-slate-400">
             Review and process investor token redemption requests
           </p>
         </div>
 
-        <Card>
+        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Pending Redemption Requests</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white">Pending Redemption Requests</CardTitle>
+            <CardDescription className="text-slate-400">
               These redemptions are awaiting admin review and approval
             </CardDescription>
           </CardHeader>
@@ -152,15 +152,15 @@ export default function AdminRedemptions() {
                 {pendingRedemptions.pendingRedemptions.map((redemption) => (
                   <div
                     key={redemption.id}
-                    className="p-4 border rounded-lg"
+                    className="p-4 border border-white/10 rounded-lg bg-white/5"
                     data-testid={`redemption-${redemption.id}`}
                   >
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-lg mb-1">
+                        <h4 className="font-semibold text-lg mb-1 text-white">
                           {redemption.userFirstName} {redemption.userLastName}
                         </h4>
-                        <p className="text-sm text-muted-foreground">{redemption.userEmail}</p>
+                        <p className="text-sm text-slate-400">{redemption.userEmail}</p>
                       </div>
                       <div className="flex-shrink-0">
                         {getStatusBadge(redemption.status)}
@@ -169,33 +169,33 @@ export default function AdminRedemptions() {
 
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Project</p>
-                        <p className="font-medium">{redemption.projectName || "Unknown Project"}</p>
-                        <p className="text-sm text-muted-foreground">{redemption.projectTokenSymbol}</p>
+                        <p className="text-xs text-slate-400 mb-1">Project</p>
+                        <p className="font-medium text-white">{redemption.projectName || "Unknown Project"}</p>
+                        <p className="text-sm text-slate-400">{redemption.projectTokenSymbol}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Tokens to Redeem</p>
-                        <p className="font-medium">
+                        <p className="text-xs text-slate-400 mb-1">Tokens to Redeem</p>
+                        <p className="font-medium text-white">
                           {parseFloat(redemption.tokensAmount).toLocaleString(undefined, { maximumFractionDigits: 7 })} tokens
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">NAV at Request</p>
-                        <p className="font-medium">
+                        <p className="text-xs text-slate-400 mb-1">NAV at Request</p>
+                        <p className="font-medium text-white">
                           {redemption.navAtRequest ? formatCurrency(redemption.navAtRequest) : "N/A"}
                         </p>
-                        <p className="text-xs text-muted-foreground">(Locked to prevent manipulation)</p>
+                        <p className="text-xs text-slate-400">(Locked to prevent manipulation)</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Estimated Payout</p>
-                        <p className="font-medium text-lg">
+                        <p className="text-xs text-slate-400 mb-1">Estimated Payout</p>
+                        <p className="font-medium text-lg text-white">
                           {formatCurrency(redemption.redemptionValueNgnts)} NGNTS
                         </p>
                       </div>
                     </div>
 
                     <div className="mb-4">
-                      <p className="text-xs text-muted-foreground mb-1">Funding Source</p>
+                      <p className="text-xs text-slate-400 mb-1">Funding Source</p>
                       <div className="flex flex-wrap gap-2">
                         {redemption.fundingPlan?.projectCashflow && (
                           <Badge variant="secondary">
@@ -213,14 +213,14 @@ export default function AdminRedemptions() {
                           </Badge>
                         )}
                         {!redemption.fundingPlan || Object.keys(redemption.fundingPlan).length === 0 && (
-                          <span className="text-sm text-muted-foreground">Not yet determined</span>
+                          <span className="text-sm text-slate-400">Not yet determined</span>
                         )}
                       </div>
                     </div>
 
                     <div className="mb-4">
-                      <p className="text-xs text-muted-foreground mb-1">Requested</p>
-                      <p className="text-sm">{new Date(redemption.createdAt).toLocaleString()}</p>
+                      <p className="text-xs text-slate-400 mb-1">Requested</p>
+                      <p className="text-sm text-white">{new Date(redemption.createdAt).toLocaleString()}</p>
                     </div>
 
                     {redemption.status === "pending" && (
@@ -248,9 +248,9 @@ export default function AdminRedemptions() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <RefreshCw className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No pending redemptions</h3>
-                <p className="text-muted-foreground">
+                <RefreshCw className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2 text-white">No pending redemptions</h3>
+                <p className="text-slate-400">
                   All redemption requests have been processed
                 </p>
               </div>
@@ -275,14 +275,14 @@ export default function AdminRedemptions() {
             {selectedRedemption && (
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Investor</p>
-                  <p className="font-medium">
+                  <p className="text-sm text-slate-400">Investor</p>
+                  <p className="font-medium text-white">
                     {selectedRedemption.userFirstName} {selectedRedemption.userLastName}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Redemption Value</p>
-                  <p className="font-semibold text-lg">
+                  <p className="text-sm text-slate-400">Redemption Value</p>
+                  <p className="font-semibold text-lg text-white">
                     {formatCurrency(selectedRedemption.redemptionValueNgnts)} NGNTS
                   </p>
                 </div>

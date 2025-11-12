@@ -63,27 +63,27 @@ export default function AdminAudit() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-7xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Admin Dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Audit Log Viewer</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-white">Audit Log Viewer</h1>
+          <p className="text-slate-400">
             Complete compliance trail of all administrative actions
           </p>
         </div>
 
-        <Card className="mb-6">
+        <Card className="mb-6 bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Filters</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white">Filters</CardTitle>
+            <CardDescription className="text-slate-400">
               Search and filter audit logs
             </CardDescription>
           </CardHeader>
@@ -119,10 +119,10 @@ export default function AdminAudit() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Audit Trail</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white">Audit Trail</CardTitle>
+            <CardDescription className="text-slate-400">
               {filteredLogs.length} {filteredLogs.length === 1 ? 'entry' : 'entries'} found
             </CardDescription>
           </CardHeader>
@@ -140,7 +140,7 @@ export default function AdminAudit() {
                 {filteredLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="p-4 border rounded-lg"
+                    className="p-4 border border-white/10 rounded-lg bg-white/5"
                     data-testid={`audit-log-${log.id}`}
                   >
                     <div className="flex items-start justify-between gap-4 mb-3">
@@ -149,32 +149,32 @@ export default function AdminAudit() {
                           <Badge variant={getActionColor(log.action)}>
                             {log.action}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-slate-400">
                             {new Date(log.createdAt).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm font-medium">
+                        <p className="text-sm font-medium text-white">
                           {log.adminName || log.adminEmail || "Unknown Admin"}
                         </p>
                         {log.adminEmail && log.adminName && (
-                          <p className="text-xs text-muted-foreground">{log.adminEmail}</p>
+                          <p className="text-xs text-slate-400">{log.adminEmail}</p>
                         )}
                       </div>
                     </div>
 
                     {log.target && (
                       <div className="mb-3">
-                        <p className="text-xs text-muted-foreground mb-1">Target</p>
-                        <div className="p-2 bg-muted rounded text-xs font-mono">
-                          {log.target.type && <span className="text-muted-foreground">Type: {log.target.type} </span>}
-                          {log.target.id && <span className="text-muted-foreground">ID: {log.target.id}</span>}
+                        <p className="text-xs text-slate-400 mb-1">Target</p>
+                        <div className="p-2 bg-white/5 rounded text-xs font-mono">
+                          {log.target.type && <span className="text-slate-400">Type: {log.target.type} </span>}
+                          {log.target.id && <span className="text-slate-400">ID: {log.target.id}</span>}
                         </div>
                       </div>
                     )}
 
                     {log.details && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Details</p>
+                        <p className="text-xs text-slate-400 mb-1">Details</p>
                         <details className="text-xs">
                           <summary className="cursor-pointer text-primary hover:underline">
                             View Details
@@ -212,17 +212,17 @@ export default function AdminAudit() {
               <div className="text-center py-12">
                 {searchQuery || actionFilter !== "all" ? (
                   <>
-                    <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No matching logs found</h3>
-                    <p className="text-muted-foreground">
+                    <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-white">No matching logs found</h3>
+                    <p className="text-slate-400">
                       Try adjusting your filters or search query
                     </p>
                   </>
                 ) : (
                   <>
-                    <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No audit logs yet</h3>
-                    <p className="text-muted-foreground">
+                    <Shield className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-white">No audit logs yet</h3>
+                    <p className="text-slate-400">
                       Administrative actions will be logged here for compliance
                     </p>
                   </>

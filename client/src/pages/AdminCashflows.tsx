@@ -112,34 +112,34 @@ export default function AdminCashflows() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-7xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Admin Dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Cashflow Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-white">Cashflow Management</h1>
+          <p className="text-slate-400">
             Review and verify project revenue cashflows
           </p>
         </div>
 
-        <Card>
+        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <CardTitle>Project Cashflows</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Project Cashflows</CardTitle>
+                <CardDescription className="text-slate-400">
                   Track and verify real-world revenue from agricultural projects
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground">Filter by status:</Label>
+                <Label className="text-sm text-slate-400">Filter by status:</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40" data-testid="select-status-filter">
                     <SelectValue />
@@ -168,15 +168,15 @@ export default function AdminCashflows() {
                 {filteredCashflows.map((cashflow) => (
                   <div
                     key={cashflow.id}
-                    className="p-4 border rounded-lg"
+                    className="p-4 border border-white/10 rounded-lg bg-white/5"
                     data-testid={`cashflow-${cashflow.id}`}
                   >
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-lg mb-1">
+                        <h4 className="font-semibold text-lg mb-1 text-white">
                           {cashflow.projectName || "Unknown Project"}
                         </h4>
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-2xl font-bold text-emerald-400">
                           {formatCurrency(cashflow.amountNgnts)} NGNTS
                         </p>
                       </div>
@@ -188,23 +188,23 @@ export default function AdminCashflows() {
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       {cashflow.source && (
                         <div>
-                          <p className="text-xs text-muted-foreground mb-1">Source</p>
-                          <p className="text-sm">{cashflow.source}</p>
+                          <p className="text-xs text-slate-400 mb-1">Source</p>
+                          <p className="text-sm text-white">{cashflow.source}</p>
                         </div>
                       )}
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Recorded At</p>
-                        <p className="text-sm">{new Date(cashflow.createdAt).toLocaleString()}</p>
+                        <p className="text-xs text-slate-400 mb-1">Recorded At</p>
+                        <p className="text-sm text-white">{new Date(cashflow.createdAt).toLocaleString()}</p>
                       </div>
                       {cashflow.verifiedBy && (
                         <>
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Verified By</p>
-                            <p className="text-sm">{cashflow.verifiedByEmail || cashflow.verifiedByName || "Admin"}</p>
+                            <p className="text-xs text-slate-400 mb-1">Verified By</p>
+                            <p className="text-sm text-white">{cashflow.verifiedByEmail || cashflow.verifiedByName || "Admin"}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Verified At</p>
-                            <p className="text-sm">
+                            <p className="text-xs text-slate-400 mb-1">Verified At</p>
+                            <p className="text-sm text-white">
                               {cashflow.verifiedAt ? new Date(cashflow.verifiedAt).toLocaleString() : "N/A"}
                             </p>
                           </div>
@@ -212,15 +212,15 @@ export default function AdminCashflows() {
                       )}
                       {cashflow.chainTxHash && (
                         <div className="md:col-span-2">
-                          <p className="text-xs text-muted-foreground mb-1">Blockchain Transaction</p>
-                          <p className="text-sm font-mono text-muted-foreground break-all">
+                          <p className="text-xs text-slate-400 mb-1">Blockchain Transaction</p>
+                          <p className="text-sm font-mono text-slate-400 break-all">
                             {cashflow.chainTxHash}
                           </p>
                         </div>
                       )}
                       {cashflow.sourceDocumentUrl && (
                         <div className="md:col-span-2">
-                          <p className="text-xs text-muted-foreground mb-1">Source Document</p>
+                          <p className="text-xs text-slate-400 mb-1">Source Document</p>
                           <a 
                             href={cashflow.sourceDocumentUrl}
                             target="_blank"
@@ -249,11 +249,11 @@ export default function AdminCashflows() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <DollarSign className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
+                <DollarSign className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2 text-white">
                   {statusFilter !== "all" ? `No ${statusFilter} cashflows` : "No cashflows recorded yet"}
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-slate-400">
                   {statusFilter !== "all" 
                     ? "Try changing the filter to see other cashflows"
                     : "Project revenue cashflows will appear here once recorded"
@@ -276,19 +276,19 @@ export default function AdminCashflows() {
             {selectedCashflow && (
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Project</p>
-                  <p className="font-medium">{selectedCashflow.projectName || "Unknown Project"}</p>
+                  <p className="text-sm text-slate-400">Project</p>
+                  <p className="font-medium text-white">{selectedCashflow.projectName || "Unknown Project"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Cashflow Amount</p>
-                  <p className="font-semibold text-xl text-green-600">
+                  <p className="text-sm text-slate-400">Cashflow Amount</p>
+                  <p className="font-semibold text-xl text-emerald-400">
                     {formatCurrency(selectedCashflow.amountNgnts)} NGNTS
                   </p>
                 </div>
                 {selectedCashflow.source && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Source</p>
-                    <p className="text-sm">{selectedCashflow.source}</p>
+                    <p className="text-sm text-slate-400">Source</p>
+                    <p className="text-sm text-white">{selectedCashflow.source}</p>
                   </div>
                 )}
                 <div>
