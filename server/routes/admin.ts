@@ -33,7 +33,7 @@ import {
   approveWalletFundingRequestSchema,
   createPlatformBankAccountSchema,
 } from "@shared/schema";
-import { eq, and, sql, gte, lte, desc, count } from "drizzle-orm";
+import { eq, and, or, sql, gte, lte, desc, count } from "drizzle-orm";
 import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
 import { encrypt } from "../lib/encryption";
@@ -5134,6 +5134,256 @@ router.get("/projects/:id/investment-timeline", authenticate, requireAdmin, asyn
   } catch (error) {
     console.error("Get investment timeline error:", error);
     res.status(500).json({ error: "Failed to fetch investment timeline" });
+  }
+});
+
+/**
+ * GET /api/admin/primers/stats
+ * Get aggregate statistics for all Primers (admin only)
+ */
+router.get("/primers/stats", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Get total number of Primers
+    const [primerCount] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.isPrimer, true));
+
+    // Get total contributed across all approved primer contributions
+    const [contributionStats] = await db
+      .select({
+        totalContributed: sql<string>`COALESCE(SUM(${primerContributions.amountNgnts}), 0)`,
+        approvedCount: count(),
+      })
+      .from(primerContributions)
+      .where(eq(primerContributions.status, "approved"));
+
+    // Get count of primers with at least one approved contribution (active primers)
+    const [activePrimerCount] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${primerContributions.primerId})` })
+      .from(primerContributions)
+      .where(eq(primerContributions.status, "approved"));
+
+    // Calculate average contribution from approved contributions
+    const totalContributed = parseFloat(contributionStats.totalContributed || "0");
+    const approvedCount = contributionStats.approvedCount || 0;
+    const avgContribution = approvedCount > 0 ? totalContributed / approvedCount : 0;
+
+    res.json({
+      totalPrimers: primerCount.count || 0,
+      activePrimers: activePrimerCount.count || 0,
+      totalContributed: totalContributed.toFixed(2),
+      avgContribution: avgContribution.toFixed(2),
+      totalApprovedContributions: approvedCount,
+    });
+  } catch (error) {
+    console.error("Get primer stats error:", error);
+    res.status(500).json({ error: "Failed to fetch primer statistics" });
+  }
+});
+
+/**
+ * GET /api/admin/primers
+ * List all Primers with filters and detailed information (admin only)
+ */
+router.get("/primers", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { kycStatus, search, fromDate, toDate, page = "1", limit = "50" } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build filter conditions
+    const conditions = [eq(users.isPrimer, true)];
+    
+    if (kycStatus && typeof kycStatus === "string") {
+      conditions.push(eq(users.kycStatus, kycStatus as any));
+    }
+
+    if (search && typeof search === "string") {
+      conditions.push(
+        or(
+          sql`LOWER(${users.email}) LIKE ${`%${search.toLowerCase()}%`}`,
+          sql`LOWER(${users.firstName}) LIKE ${`%${search.toLowerCase()}%`}`,
+          sql`LOWER(${users.lastName}) LIKE ${`%${search.toLowerCase()}%`}`
+        )!
+      );
+    }
+
+    // Date range filters
+    if (fromDate && typeof fromDate === "string") {
+      conditions.push(gte(users.createdAt, new Date(fromDate)));
+    }
+
+    if (toDate && typeof toDate === "string") {
+      conditions.push(lte(users.createdAt, new Date(toDate)));
+    }
+
+    // Get primers with contribution stats
+    const primers = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        phone: users.phone,
+        kycStatus: users.kycStatus,
+        walletActivationStatus: wallets.activationStatus,
+        stellarPublicKey: users.stellarPublicKey,
+        createdAt: users.createdAt,
+        totalContributed: sql<string>`COALESCE(SUM(CASE WHEN ${primerContributions.status} = 'approved' THEN ${primerContributions.amountNgnts} ELSE 0 END), 0)`,
+        pendingContributions: sql<number>`COUNT(CASE WHEN ${primerContributions.status} = 'pending' THEN 1 END)`,
+        approvedContributions: sql<number>`COUNT(CASE WHEN ${primerContributions.status} = 'approved' THEN 1 END)`,
+        rejectedContributions: sql<number>`COUNT(CASE WHEN ${primerContributions.status} = 'rejected' THEN 1 END)`,
+      })
+      .from(users)
+      .leftJoin(wallets, eq(users.id, wallets.userId))
+      .leftJoin(primerContributions, eq(users.id, primerContributions.primerId))
+      .where(and(...conditions))
+      .groupBy(users.id, wallets.activationStatus)
+      .orderBy(desc(users.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    // Get total count for pagination
+    const [{ count: total }] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(and(...conditions));
+
+    res.json({
+      primers,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Get primers error:", error);
+    res.status(500).json({ error: "Failed to fetch primers" });
+  }
+});
+
+/**
+ * GET /api/admin/primers/:id
+ * Get detailed information for a specific Primer (admin only)
+ */
+router.get("/primers/:id", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get primer user info
+    const [primer] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, id), eq(users.isPrimer, true)))
+      .limit(1);
+
+    if (!primer) {
+      return res.status(404).json({ error: "Primer not found" });
+    }
+
+    // Get wallet info
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, id))
+      .limit(1);
+
+    // Get contribution history
+    const contributions = await db
+      .select({
+        id: primerContributions.id,
+        amountNgnts: primerContributions.amountNgnts,
+        status: primerContributions.status,
+        paymentProof: primerContributions.paymentProof,
+        txHash: primerContributions.txHash,
+        lpPoolShareSnapshot: primerContributions.lpPoolShareSnapshot,
+        createdAt: primerContributions.createdAt,
+        approvedAt: primerContributions.approvedAt,
+        approvedBy: primerContributions.approvedBy,
+        rejectedReason: primerContributions.rejectedReason,
+        approverEmail: sql<string>`${users.email}`,
+      })
+      .from(primerContributions)
+      .leftJoin(users, eq(primerContributions.approvedBy, users.id))
+      .where(eq(primerContributions.primerId, id))
+      .orderBy(desc(primerContributions.createdAt));
+
+    // Get project allocations
+    const allocations = await db
+      .select({
+        id: primerProjectAllocations.id,
+        projectId: lpProjectAllocations.projectId,
+        projectName: projects.name,
+        shareAmountNgnts: primerProjectAllocations.shareAmountNgnts,
+        sharePercent: primerProjectAllocations.sharePercent,
+        poolOwnershipPercent: primerProjectAllocations.poolOwnershipPercent,
+        allocationDate: lpProjectAllocations.allocationDate,
+        totalAllocated: lpProjectAllocations.amountNgnts,
+        createdAt: primerProjectAllocations.createdAt,
+      })
+      .from(primerProjectAllocations)
+      .leftJoin(lpProjectAllocations, eq(primerProjectAllocations.allocationId, lpProjectAllocations.id))
+      .leftJoin(projects, eq(lpProjectAllocations.projectId, projects.id))
+      .where(eq(primerProjectAllocations.primerId, id))
+      .orderBy(desc(primerProjectAllocations.createdAt));
+
+    // Get KYC history
+    const kycHistory = await db
+      .select({
+        id: kycDecisions.id,
+        decision: kycDecisions.decision,
+        notes: kycDecisions.notes,
+        processedAt: kycDecisions.processedAt,
+        adminEmail: sql<string>`${users.email}`,
+        adminName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+      })
+      .from(kycDecisions)
+      .leftJoin(users, eq(kycDecisions.processedBy, users.id))
+      .where(eq(kycDecisions.userId, id))
+      .orderBy(desc(kycDecisions.processedAt));
+
+    // Calculate stats
+    const totalContributed = contributions
+      .filter(c => c.status === "approved")
+      .reduce((sum, c) => sum + parseFloat(c.amountNgnts), 0);
+
+    res.json({
+      primer: {
+        id: primer.id,
+        email: primer.email,
+        firstName: primer.firstName,
+        lastName: primer.lastName,
+        phone: primer.phone,
+        kycStatus: primer.kycStatus,
+        kycDocuments: primer.kycDocuments,
+        stellarPublicKey: primer.stellarPublicKey,
+        createdAt: primer.createdAt,
+      },
+      wallet: wallet ? {
+        id: wallet.id,
+        activationStatus: wallet.activationStatus,
+        ngnBalance: wallet.ngnBalance,
+        usdcBalance: wallet.usdcBalance,
+        xlmBalance: wallet.xlmBalance,
+      } : null,
+      stats: {
+        totalContributed: totalContributed.toFixed(2),
+        pendingContributions: contributions.filter(c => c.status === "pending").length,
+        approvedContributions: contributions.filter(c => c.status === "approved").length,
+        rejectedContributions: contributions.filter(c => c.status === "rejected").length,
+        totalAllocations: allocations.length,
+      },
+      contributions,
+      allocations,
+      kycHistory,
+    });
+  } catch (error) {
+    console.error("Get primer details error:", error);
+    res.status(500).json({ error: "Failed to fetch primer details" });
   }
 });
 
