@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, jsonb, uuid, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, jsonb, uuid, boolean, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -46,6 +46,9 @@ export const users = pgTable("users", {
     selfie?: string;
     addressProof?: string;
   }>(),
+  kycProcessedAt: timestamp("kyc_processed_at"),
+  kycProcessedBy: uuid("kyc_processed_by").references(() => users.id, { onDelete: "set null" }),
+  kycAdminNotes: text("kyc_admin_notes"),
   bankDetails: json("bank_details").$type<{
     accountName?: string;
     accountNumberEncrypted?: string;
@@ -66,6 +69,26 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// KYC Decisions Audit Log - Immutable history of all KYC status changes
+// Note: Uses 'no action' on delete to preserve regulatory compliance audit trail
+export const kycDecisions = pgTable("kyc_decisions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "no action" }),
+  previousStatus: kycStatusEnum("previous_status").notNull(),
+  newStatus: kycStatusEnum("new_status").notNull(),
+  processedBy: uuid("processed_by").notNull().references(() => users.id, { onDelete: "set null" }),
+  adminNotes: text("admin_notes"),
+  metadata: jsonb("metadata").$type<{
+    ipAddress?: string;
+    userAgent?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Index for efficient history queries per user
+  userIdCreatedAtIdx: index("kyc_decisions_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
+}));
 
 // Wallets table - Hybrid model (one wallet per user)
 export const wallets = pgTable("wallets", {
@@ -783,6 +806,11 @@ export const insertWalletSchema = createInsertSchema(wallets).omit({
   updatedAt: true,
 });
 
+export const insertKycDecisionSchema = createInsertSchema(kycDecisions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
   createdAt: true,
@@ -1138,6 +1166,8 @@ export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginSchema>;
 export type Wallet = typeof wallets.$inferSelect;
 export type InsertWallet = z.infer<typeof insertWalletSchema>;
+export type KycDecision = typeof kycDecisions.$inferSelect;
+export type InsertKycDecision = z.infer<typeof insertKycDecisionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type DepositRequest = typeof depositRequests.$inferSelect;
