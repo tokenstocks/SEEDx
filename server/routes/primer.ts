@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import multer from "multer";
 import { db } from "../db";
 import {
   primerContributions,
@@ -12,9 +13,26 @@ import {
   approvePrimerContributionSchema,
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
+import { uploadFile } from "../lib/supabase";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 const router = Router();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only JPEG, PNG, WebP, and PDF are allowed."));
+    }
+  },
+});
 
 /**
  * Middleware to check if user is a Primer (server-side validation)
@@ -322,64 +340,105 @@ router.get("/allocations", authMiddleware, primerMiddleware, async (req: Request
 });
 
 /**
- * POST /api/primer/contribute
+ * POST /api/primer/contributions
  * Submit a new LP Pool contribution request
  */
-router.post("/contribute", authMiddleware, primerMiddleware, async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+router.post(
+  "/contributions", 
+  authMiddleware, 
+  primerMiddleware, 
+  upload.single("paymentProof"), 
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
 
-    const primerId = req.user.userId;
+      const primerId = req.user.userId;
 
-    // Validate input
-    const validatedData = createPrimerContributionSchema.parse(req.body);
-    const { amountNgnts, paymentProof } = validatedData;
+      // Validate input - paymentProof field in body is ignored (file upload takes precedence)
+      const validatedData = createPrimerContributionSchema.parse(req.body);
+      const { grossAmountNgn, platformFeeNgn, amountNgnts, paymentMethod, referenceCode } = validatedData;
 
-    // Create transaction record
-    const [transaction] = await db
-      .insert(transactions)
-      .values({
-        userId: primerId,
-        type: "deposit",
-        amount: amountNgnts,
-        currency: "NGN",
-        status: "pending",
-        notes: "Primer LP Pool contribution",
-      })
-      .returning();
+      // Require payment proof file upload
+      if (!req.file) {
+        return res.status(400).json({ 
+          error: "Payment proof is required",
+          details: "Please upload a valid payment proof (JPEG, PNG, WebP, or PDF)" 
+        });
+      }
 
-    // Create primer contribution record
-    const [contribution] = await db
-      .insert(primerContributions)
-      .values({
-        primerId,
-        transactionId: transaction.id,
-        amountNgnts,
-        status: "pending",
-        paymentProof: paymentProof || null,
-      })
-      .returning();
+      // Upload payment proof via multipart file upload
+      let paymentProofUrl: string | null = null;
+      if (req.file) {
+        try {
+          const fileName = `primer-proof/${primerId}/${Date.now()}-${req.file.originalname}`;
+          paymentProofUrl = await uploadFile(
+            "kyc",
+            fileName,
+            req.file.buffer,
+            req.file.mimetype
+          );
+        } catch (uploadError) {
+          console.error("Payment proof upload error:", uploadError);
+          // Continue without proof if Supabase is not configured
+          if (process.env.NODE_ENV === "development") {
+            console.warn("Continuing without payment proof (Supabase not configured)");
+          } else {
+            throw uploadError;
+          }
+        }
+      }
 
-    res.status(201).json({
-      message: "Contribution request submitted successfully",
-      contribution: {
-        id: contribution.id,
-        amountNgnts: contribution.amountNgnts,
-        status: contribution.status,
-        createdAt: contribution.createdAt,
-      },
-    });
-  } catch (error: any) {
-    console.error("Submit contribution error:", error);
-    if (error.name === "ZodError") {
-      res.status(400).json({ error: "Invalid input data", details: error.errors });
-    } else {
-      res.status(500).json({ error: "Failed to submit contribution" });
+      // Create transaction record
+      const [transaction] = await db
+        .insert(transactions)
+        .values({
+          userId: primerId,
+          type: "deposit",
+          amount: amountNgnts,
+          currency: "NGN",
+          status: "pending",
+          notes: "Primer LP Pool contribution",
+        })
+        .returning();
+
+      // Create primer contribution record with all audit trail fields
+      const [contribution] = await db
+        .insert(primerContributions)
+        .values({
+          primerId,
+          transactionId: transaction.id,
+          grossAmountNgn,
+          platformFeeNgn,
+          amountNgnts,
+          paymentMethod,
+          referenceCode,
+          status: "pending",
+          paymentProof: paymentProofUrl,
+        })
+        .returning();
+
+      res.status(201).json({
+        message: "Contribution request submitted successfully",
+        contribution: {
+          id: contribution.id,
+          amountNgnts: contribution.amountNgnts,
+          status: contribution.status,
+          paymentProof: contribution.paymentProof,
+          createdAt: contribution.createdAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Submit contribution error:", error);
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Invalid input data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to submit contribution" });
+      }
     }
   }
-});
+);
 
 export default router;

@@ -479,7 +479,11 @@ export const primerContributions = pgTable("primer_contributions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   primerId: uuid("primer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   transactionId: uuid("transaction_id").references(() => transactions.id),
-  amountNgnts: decimal("amount_ngnts", { precision: 18, scale: 2 }).notNull(),
+  grossAmountNgn: decimal("gross_amount_ngn", { precision: 18, scale: 2 }), // Original NGN deposit amount
+  platformFeeNgn: decimal("platform_fee_ngn", { precision: 18, scale: 2 }), // Fee charged
+  amountNgnts: decimal("amount_ngnts", { precision: 18, scale: 2 }).notNull(), // Net NGNTS after fees
+  paymentMethod: text("payment_method"), // e.g., "bank_transfer", "cash"
+  referenceCode: text("reference_code"), // Unique reference for tracking
   status: primerContributionStatusEnum("status").notNull().default("pending"),
   paymentProof: text("payment_proof"),
   txHash: text("tx_hash"),
@@ -1117,8 +1121,12 @@ export const insertPrimerContributionSchema = createInsertSchema(primerContribut
 });
 
 export const createPrimerContributionSchema = z.object({
-  amountNgnts: z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal"),
-  paymentProof: z.string().optional(),
+  grossAmountNgn: z.string().regex(/^\d+(\.\d{1,2})?$/, "Gross amount must be a valid decimal"),
+  platformFeeNgn: z.string().regex(/^\d+(\.\d{1,2})?$/, "Platform fee must be a valid decimal"),
+  amountNgnts: z.string().regex(/^\d+(\.\d{1,2})?$/, "Net amount must be a valid decimal"),
+  paymentMethod: z.string().optional(),
+  referenceCode: z.string().optional(),
+  // paymentProof handled via multipart file upload (req.file), not as a string field
 });
 
 export const approvePrimerContributionSchema = z.object({

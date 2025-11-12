@@ -120,9 +120,9 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
       const refCode = referenceCode || `PRIMER-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
       
       const formData = new FormData();
-      formData.append("amountNGN", amount);
-      formData.append("netNGNTS", feePreview.netNGNTS);
-      formData.append("platformFeeNGN", feePreview.platformFeeNGN);
+      formData.append("grossAmountNgn", amount);
+      formData.append("platformFeeNgn", feePreview.platformFeeNGN);
+      formData.append("amountNgnts", feePreview.netNGNTS);
       formData.append("paymentMethod", paymentMethod);
       formData.append("referenceCode", refCode);
       if (proofFile) {
