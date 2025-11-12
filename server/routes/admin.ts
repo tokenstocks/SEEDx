@@ -326,6 +326,65 @@ router.put("/users/:id/kyc", authenticate, requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/users/:id/kyc-history
+ * Get full KYC decision history for a user (admin only)
+ */
+router.get("/users/:id/kyc-history", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify user exists
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Fetch KYC decision history with admin details via LEFT JOIN
+    const history = await db
+      .select({
+        id: kycDecisions.id,
+        previousStatus: kycDecisions.previousStatus,
+        newStatus: kycDecisions.newStatus,
+        adminNotes: kycDecisions.adminNotes,
+        metadata: kycDecisions.metadata,
+        createdAt: kycDecisions.createdAt,
+        processedByEmail: users.email,
+        processedByFirstName: users.firstName,
+        processedByLastName: users.lastName,
+      })
+      .from(kycDecisions)
+      .leftJoin(users, eq(kycDecisions.processedBy, users.id))
+      .where(eq(kycDecisions.userId, id))
+      .orderBy(desc(kycDecisions.createdAt));
+
+    res.json({
+      userId: id,
+      history: history.map((record) => ({
+        id: record.id,
+        previousStatus: record.previousStatus,
+        newStatus: record.newStatus,
+        adminNotes: record.adminNotes,
+        metadata: record.metadata,
+        createdAt: record.createdAt,
+        processedBy: record.processedByEmail ? {
+          email: record.processedByEmail,
+          firstName: record.processedByFirstName,
+          lastName: record.processedByLastName,
+        } : null,
+      })),
+    });
+  } catch (error: any) {
+    console.error("Fetch KYC history error:", error);
+    res.status(500).json({ error: "Failed to fetch KYC history" });
+  }
+});
+
+/**
  * PUT /api/admin/users/:id/bank-details
  * Approve or reject bank details (admin only)
  */
