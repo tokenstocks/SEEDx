@@ -3145,30 +3145,28 @@ router.post("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
 
 /**
  * GET /api/admin/settings/bank-account
- * Get platform bank account details for fiat deposits
+ * Get platform bank account details for fiat deposits (structured approach using platformBankAccounts)
  */
 router.get("/settings/bank-account", authenticate, requireAdmin, async (req, res) => {
   try {
-    const settingKeys = [
-      "bank_account_name",
-      "bank_name",
-      "bank_account_number",
-      "bank_routing_code",
-    ];
-
-    const settings = await db
+    const [activeAccount] = await db
       .select()
-      .from(platformSettings)
-      .where(sql`${platformSettings.settingKey} IN (${sql.raw(settingKeys.map(() => '?').join(','))})`, ...settingKeys);
+      .from(platformBankAccounts)
+      .where(eq(platformBankAccounts.isActive, true))
+      .orderBy(desc(platformBankAccounts.updatedAt))
+      .limit(1);
 
-    const bankAccount = {
-      accountName: settings.find(s => s.settingKey === "bank_account_name")?.settingValue || "",
-      bankName: settings.find(s => s.settingKey === "bank_name")?.settingValue || "",
-      accountNumber: settings.find(s => s.settingKey === "bank_account_number")?.settingValue || "",
-      routingCode: settings.find(s => s.settingKey === "bank_routing_code")?.settingValue || "",
-    };
+    if (!activeAccount) {
+      res.status(404).json({ error: "No active bank account configured" });
+      return;
+    }
 
-    res.json(bankAccount);
+    res.json({
+      accountName: activeAccount.accountName,
+      bankName: activeAccount.bankName,
+      accountNumber: activeAccount.accountNumber,
+      routingCode: activeAccount.routingCode || "",
+    });
   } catch (error: any) {
     console.error("Get bank account settings error:", error);
     res.status(500).json({ error: "Failed to get bank account settings" });

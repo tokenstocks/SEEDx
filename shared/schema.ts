@@ -322,7 +322,8 @@ export const platformBankAccounts = pgTable("platform_bank_accounts", {
   title: text("title").notNull(), // e.g., "Bank 1", "Bank 2"
   bankName: text("bank_name").notNull(), // e.g., "First Bank of Nigeria"
   accountNumber: text("account_number").notNull(),
-  companyName: text("company_name").notNull(), // e.g., "SEEDx Ltd"
+  accountName: text("account_name").notNull(), // Account holder name
+  routingCode: text("routing_code"), // Bank routing/sort code (optional)
   isActive: boolean("is_active").notNull().default(false), // Only one can be active at a time
   createdBy: uuid("created_by").references(() => users.id),
   updatedBy: uuid("updated_by").references(() => users.id),
