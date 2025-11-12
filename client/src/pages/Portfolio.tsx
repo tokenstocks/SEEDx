@@ -759,25 +759,25 @@ export default function Portfolio() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Link href="/regenerator-profile" className="block">
-                    <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700" data-testid="button-go-to-settings">
+                    <Button className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="button-go-to-settings">
                       <PlusCircle className="w-4 h-4" />
                       Add Capital
                     </Button>
                   </Link>
                   <Link href="/projects" className="block">
-                    <Button variant="outline" className="w-full justify-start gap-2" data-testid="button-browse-projects">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-white border-white/20 hover:bg-white/5" data-testid="button-browse-projects">
                       <Building2 className="w-4 h-4" />
                       Browse Cooperatives
                     </Button>
                   </Link>
                   <Link href="/marketplace" className="block">
-                    <Button variant="outline" className="w-full justify-start gap-2">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-white border-white/20 hover:bg-white/5">
                       <ShoppingBag className="w-4 h-4" />
                       Marketplace
                     </Button>
                   </Link>
                   <Link href="/regenerator-profile" className="block">
-                    <Button variant="outline" className="w-full justify-start gap-2">
+                    <Button variant="outline" className="w-full justify-start gap-2 text-white border-white/20 hover:bg-white/5">
                       <BarChart3 className="w-4 h-4" />
                       View Settings
                     </Button>
