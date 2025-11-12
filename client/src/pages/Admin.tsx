@@ -13,13 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield, Settings, LogOut } from "lucide-react";
+import { Users, DollarSign, FileCheck, TrendingUp, ArrowLeft, CheckCircle, XCircle, RefreshCw, Shield, Settings, LogOut, ChevronLeft, ChevronRight, FileText, User as UserIcon } from "lucide-react";
 import { Link } from "wouter";
 import { BlockchainActivityFeed } from "@/components/BlockchainActivityFeed";
 import PlatformWallets from "@/pages/PlatformWallets";
 import AdminWalletFunding from "@/pages/AdminWalletFunding";
 import AdminBankAccounts from "@/pages/AdminBankAccounts";
 import AdminPlatformFees from "@/pages/AdminPlatformFees";
+import { DocumentGallery } from "@/components/DocumentGallery";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -277,7 +279,7 @@ function AdminWalletCard() {
 export default function Admin() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<any>(null);
-  const { toast } = useToast();
+  const { toast} = useToast();
   const [approvalDialog, setApprovalDialog] = useState<{
     type: 'deposit' | 'withdrawal' | 'kyc' | 'bank_details' | 'bank_deposit';
     item: any;
@@ -286,6 +288,11 @@ export default function Admin() {
   const [approvedAmount, setApprovedAmount] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [createProjectDialog, setCreateProjectDialog] = useState(false);
+  
+  // KYC split-pane state
+  const [selectedKycIndex, setSelectedKycIndex] = useState<number>(0);
+  const [kycAction, setKycAction] = useState<'approve' | 'reject'>('approve');
+  const [kycNotes, setKycNotes] = useState("");
   const [projectForm, setProjectForm] = useState({
     name: "",
     description: "",
@@ -379,6 +386,43 @@ export default function Admin() {
     }
   }, [bankAccountSettings]);
 
+  // Reset/clamp selectedKycIndex when usersData changes
+  useEffect(() => {
+    const kycUsers = usersData?.users || [];
+    if (kycUsers.length === 0) {
+      setSelectedKycIndex(0);
+    } else if (selectedKycIndex >= kycUsers.length) {
+      setSelectedKycIndex(Math.max(0, kycUsers.length - 1));
+    }
+  }, [usersData, selectedKycIndex]);
+
+  // Keyboard shortcuts for KYC navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const kycUsers = usersData?.users || [];
+      if (kycUsers.length === 0) return;
+
+      // Only handle shortcuts when not focused on input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault();
+          setSelectedKycIndex(prev => Math.min(prev + 1, kycUsers.length - 1));
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          setSelectedKycIndex(prev => Math.max(0, prev - 1));
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [usersData]);
+
   const processDepositMutation = useMutation({
     mutationFn: async ({ id, action, approvedAmount, adminNotes }: any) => {
       const res = await apiRequest("PUT", `/api/admin/deposits/${id}`, {
@@ -437,6 +481,19 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
       setApprovalDialog(null);
       resetForm();
+      
+      // Auto-advance to next KYC in split-pane view
+      const kycUsers = usersData?.users || [];
+      if (kycUsers.length > 0) {
+        setSelectedKycIndex(prev => {
+          const newLength = kycUsers.length - 1; // After removing current item
+          if (newLength === 0) return 0; // No items left
+          if (prev >= newLength) return Math.max(0, newLength - 1); // Was on last item, go to new last item
+          return prev; // Stay at current position
+        });
+      }
+      setKycNotes("");
+      setKycAction('approve');
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -998,39 +1055,219 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* KYC Tab */}
+          {/* KYC Tab - Split Pane Layout */}
           <TabsContent value="kyc">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending KYC Verifications</CardTitle>
-                <CardDescription>Review user identity documents</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {usersData && usersData.users.length > 0 ? (
-                  <div className="space-y-4">
-                    {usersData.users.map((kycUser) => (
-                      <div key={kycUser.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <h4 className="font-semibold">
-                            {kycUser.firstName} {kycUser.lastName}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">{kycUser.email}</p>
-                          <Badge variant="outline" className="mt-1">{kycUser.kycStatus}</Badge>
-                        </div>
-                        <Button
-                          onClick={() => setApprovalDialog({ type: 'kyc', item: kycUser })}
-                          data-testid={`button-review-kyc-${kycUser.id}`}
-                        >
-                          Review
-                        </Button>
+            {usersData && usersData.users.length > 0 ? (
+              <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-300px)]">
+                {/* Left Panel - KYC Request List */}
+                <Card className="w-full md:w-2/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Pending KYC Requests</CardTitle>
+                    <CardDescription>
+                      {usersData.users.length} request{usersData.users.length !== 1 ? 's' : ''} awaiting review
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[calc(100vh-420px)]">
+                      <div className="space-y-2 p-4">
+                        {usersData.users.map((kycUser, index) => (
+                          <Card
+                            key={kycUser.id}
+                            className={`cursor-pointer transition-colors ${
+                              selectedKycIndex === index ? 'bg-accent border-primary' : 'hover-elevate'
+                            }`}
+                            onClick={() => setSelectedKycIndex(index)}
+                            data-testid={`kyc-list-item-${index}`}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-sm">
+                                    {kycUser.firstName} {kycUser.lastName}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{kycUser.email}</p>
+                                  <Badge variant="outline" className="mt-2 text-xs">
+                                    {kycUser.kycStatus}
+                                  </Badge>
+                                </div>
+                                {selectedKycIndex === index && (
+                                  <div className="w-1 h-8 bg-primary rounded-full ml-2" />
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center py-8 text-muted-foreground">No pending KYC requests</p>
-                )}
-              </CardContent>
-            </Card>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Right Panel - KYC Detail View */}
+                <Card className="w-full md:w-3/5">
+                  {(() => {
+                    const selectedKycUser = usersData.users[selectedKycIndex];
+                    if (!selectedKycUser) {
+                      return (
+                        <CardContent className="flex flex-col items-center justify-center h-full py-12">
+                          <FileText className="w-12 h-12 text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground">Select a KYC request to review</p>
+                        </CardContent>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {/* Navigation Header */}
+                        <CardHeader className="pb-3 border-b">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-lg">
+                                {selectedKycUser.firstName} {selectedKycUser.lastName}
+                              </CardTitle>
+                              <CardDescription className="text-xs mt-1">
+                                Request {selectedKycIndex + 1} of {usersData.users.length}
+                              </CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedKycIndex(prev => Math.max(0, prev - 1))}
+                                disabled={selectedKycIndex === 0}
+                                data-testid="button-prev-kyc"
+                                aria-label="Previous KYC request"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedKycIndex(prev => Math.min(prev + 1, usersData.users.length - 1))}
+                                disabled={selectedKycIndex >= usersData.users.length - 1}
+                                data-testid="button-next-kyc"
+                                aria-label="Next KYC request"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        <ScrollArea className="h-[calc(100vh-520px)]">
+                          <CardContent className="space-y-6 p-6">
+                            {/* Personal Information Section */}
+                            <div className="space-y-3">
+                              <h3 className="font-semibold text-sm flex items-center gap-2">
+                                <UserIcon className="w-4 h-4" />
+                                Personal Information
+                              </h3>
+                              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Email</Label>
+                                  <p className="text-sm font-medium">{selectedKycUser.email}</p>
+                                </div>
+                                {selectedKycUser.phone && (
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">Phone</Label>
+                                    <p className="text-sm font-medium">{selectedKycUser.phone}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Document Gallery Section */}
+                            <div className="space-y-3">
+                              <h3 className="font-semibold text-sm flex items-center gap-2">
+                                <FileText className="w-4 h-4" />
+                                Identity Documents
+                              </h3>
+                              {selectedKycUser.kycDocuments ? (
+                                <DocumentGallery documents={selectedKycUser.kycDocuments} />
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-8 border rounded-lg">
+                                  No documents uploaded
+                                </p>
+                              )}
+                            </div>
+                          </CardContent>
+                        </ScrollArea>
+
+                        {/* Decision Footer */}
+                        <div className="border-t p-4 space-y-4">
+                          <div className="flex gap-4">
+                            <Button
+                              variant={kycAction === 'approve' ? 'default' : 'outline'}
+                              onClick={() => setKycAction('approve')}
+                              className="flex-1"
+                              data-testid="button-kyc-approve-option"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Approve
+                            </Button>
+                            <Button
+                              variant={kycAction === 'reject' ? 'destructive' : 'outline'}
+                              onClick={() => setKycAction('reject')}
+                              className="flex-1"
+                              data-testid="button-kyc-reject-option"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Reject
+                            </Button>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="kyc-notes" className="text-xs">
+                              Admin Notes {kycAction === 'reject' && '(Required for rejection)'}
+                            </Label>
+                            <Textarea
+                              id="kyc-notes"
+                              placeholder={kycAction === 'reject' ? 'Provide reason for rejection...' : 'Add any notes for this decision...'}
+                              value={kycNotes}
+                              onChange={(e) => setKycNotes(e.target.value)}
+                              rows={2}
+                              data-testid="textarea-kyc-notes"
+                            />
+                          </div>
+
+                          <Button
+                            className="w-full"
+                            variant={kycAction === 'approve' ? 'default' : 'destructive'}
+                            onClick={() => {
+                              if (kycAction === 'reject' && !kycNotes.trim()) {
+                                toast({
+                                  title: "Notes Required",
+                                  description: "Please provide a reason for rejection",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              processKycMutation.mutate({
+                                id: selectedKycUser.id,
+                                action: kycAction,
+                                adminNotes: kycNotes,
+                              });
+                            }}
+                            disabled={processKycMutation.isPending}
+                            data-testid="button-confirm-kyc-decision"
+                          >
+                            {processKycMutation.isPending
+                              ? "Processing..."
+                              : `Confirm ${kycAction === 'approve' ? 'Approval' : 'Rejection'}`}
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </Card>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No pending KYC requests</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Wallet Activation Tab */}
