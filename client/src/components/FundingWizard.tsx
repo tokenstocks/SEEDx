@@ -65,17 +65,60 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
   const shouldFetchFees = isAmountValid && step === 2;
   
   const { data: feePreview, isLoading: feeLoading, error: feeError } = useQuery<BankDepositFeePreview>({
-    queryKey: ["/api/regenerator/bank-deposit/fee-preview", { amount }],
+    queryKey: ["/api/regenerator/bank-deposits/preview", amount],
+    queryFn: async () => {
+      const res = await fetch("/api/regenerator/bank-deposits/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({ amountNGN: amount }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load fees");
+      }
+      return res.json();
+    },
     enabled: shouldFetchFees,
     refetchInterval: false,
     staleTime: 30000,
   });
 
   const canProceedToStep3 = isAmountValid && feePreview && !feeError;
+  
+  // Debug logging for button state
+  useEffect(() => {
+    if (step === 2) {
+      console.log("[FundingWizard Step 2 Debug]", {
+        amount,
+        parsedAmount,
+        isAmountValid,
+        hasFeePreview: !!feePreview,
+        feeError: feeError?.message,
+        feeLoading,
+        canProceedToStep3,
+        feePreviewData: feePreview
+      });
+    }
+  }, [step, amount, parsedAmount, isAmountValid, feePreview, feeError, feeLoading, canProceedToStep3]);
 
   // Bank account details query - fetch when user reaches Step 3
   const { data: bankAccount, isLoading: bankLoading } = useQuery<BankAccountDetails>({
-    queryKey: ["/api/admin/settings/bank-account"],
+    queryKey: ["/api/settings/bank-account"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/bank-account", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load bank account details");
+      }
+      return res.json();
+    },
     enabled: step === 3,
     staleTime: 60000,
   });
