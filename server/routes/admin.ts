@@ -46,6 +46,7 @@ import { determineFundingSource } from "../lib/redemptionOps";
 import { auditActionWithState } from "../middleware/auditMiddleware";
 import { burnProjectToken, transferNgntsFromPlatformWallet, ensureTrustline } from "../lib/stellarOps";
 import { primerContributions, lpProjectAllocations, primerProjectAllocations } from "@shared/schema";
+import { getAllRates } from "../lib/exchangeRates";
 
 const router = Router();
 
@@ -4671,6 +4672,204 @@ router.get("/investments/:id", authenticate, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Get investment detail error:", error);
     res.status(500).json({ error: "Failed to fetch investment details" });
+  }
+});
+
+/**
+ * GET /api/admin/lp-pool/balance
+ * Get LP Pool wallet balances from Stellar (admin only)
+ */
+router.get("/lp-pool/balance", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Get LP Pool wallet from database
+    const lpWallet = await db.query.platformWallets.findFirst({
+      where: (wallets, { eq }) => eq(wallets.walletType, "liquidity_pool"),
+    });
+
+    if (!lpWallet) {
+      return res.status(404).json({ error: "LP Pool wallet not found" });
+    }
+
+    // Query Stellar for live balances
+    const account = await horizonServer.loadAccount(lpWallet.publicKey);
+    
+    let ngntsBalance = "0";
+    let usdcBalance = "0";
+    let xlmBalance = "0";
+
+    // Parse balances from Stellar account (type-safe)
+    account.balances.forEach((balance) => {
+      if (balance.asset_type === "native") {
+        xlmBalance = balance.balance;
+      } else if (balance.asset_type === "credit_alphanum4" || balance.asset_type === "credit_alphanum12") {
+        // Type guard ensures asset_code exists
+        if (balance.asset_code === "NGNTS") {
+          ngntsBalance = balance.balance;
+        } else if (balance.asset_code === "USDC") {
+          usdcBalance = balance.balance;
+        }
+      }
+      // Skip liquidity_pool balance lines
+    });
+
+    // Get exchange rates from shared utility (no HTTP self-call)
+    const rates = await getAllRates();
+
+    // Convert all to NGN
+    const ngntsNGN = parseFloat(ngntsBalance); // 1:1
+    const usdcNGN = parseFloat(usdcBalance) * parseFloat(rates.usdcNgn);
+    const xlmNGN = parseFloat(xlmBalance) * parseFloat(rates.xlmNgn);
+    const totalNGN = ngntsNGN + usdcNGN + xlmNGN;
+
+    res.json({
+      balances: {
+        ngnts: ngntsBalance,
+        usdc: usdcBalance,
+        xlm: xlmBalance,
+      },
+      totalValueNGN: totalNGN.toFixed(2),
+      composition: {
+        ngntsPercent: totalNGN > 0 ? ((ngntsNGN / totalNGN) * 100).toFixed(2) : "0",
+        usdcPercent: totalNGN > 0 ? ((usdcNGN / totalNGN) * 100).toFixed(2) : "0",
+        xlmPercent: totalNGN > 0 ? ((xlmNGN / totalNGN) * 100).toFixed(2) : "0",
+      },
+      walletAddress: lpWallet.publicKey,
+      lastSynced: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("Get LP Pool balance error:", error);
+    res.status(500).json({ error: "Failed to fetch LP Pool balance", details: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/lp-pool/flows
+ * Get LP Pool inflows and outflows (admin only)
+ */
+router.get("/lp-pool/flows", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    const startDate = dateFrom ? new Date(dateFrom as string) : twentyFourHoursAgo;
+    const endDate = dateTo ? new Date(dateTo as string) : now;
+
+    // Calculate inflows (primer contributions + regenerator investments)
+    const [primerInflows] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${primerContributions.amountNgnts}), 0)`,
+        count: count(),
+      })
+      .from(primerContributions)
+      .where(
+        and(
+          eq(primerContributions.status, "completed"),
+          gte(primerContributions.createdAt, startDate),
+          lte(primerContributions.createdAt, endDate)
+        )
+      );
+
+    const [investmentInflows] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        count: count(),
+      })
+      .from(investments)
+      .where(
+        and(
+          gte(investments.createdAt, startDate),
+          lte(investments.createdAt, endDate)
+        )
+      );
+
+    // Calculate outflows (LP allocations to projects)
+    const [lpAllocations] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${lpProjectAllocations.totalAmountNgnts}), 0)`,
+        count: count(),
+      })
+      .from(lpProjectAllocations)
+      .where(
+        and(
+          gte(lpProjectAllocations.createdAt, startDate),
+          lte(lpProjectAllocations.createdAt, endDate)
+        )
+      );
+
+    const totalInflows = parseFloat(primerInflows.total || "0") + parseFloat(investmentInflows.total || "0");
+    const totalOutflows = parseFloat(lpAllocations.total || "0");
+    const netFlow = totalInflows - totalOutflows;
+
+    res.json({
+      period: {
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      },
+      inflows: {
+        total: totalInflows.toFixed(2),
+        primerContributions: parseFloat(primerInflows.total || "0").toFixed(2),
+        primerCount: primerInflows.count,
+        regeneratorInvestments: parseFloat(investmentInflows.total || "0").toFixed(2),
+        investmentCount: investmentInflows.count,
+      },
+      outflows: {
+        total: totalOutflows.toFixed(2),
+        lpAllocations: parseFloat(lpAllocations.total || "0").toFixed(2),
+        allocationCount: lpAllocations.count,
+      },
+      netFlow: netFlow.toFixed(2),
+    });
+  } catch (error) {
+    console.error("Get LP Pool flows error:", error);
+    res.status(500).json({ error: "Failed to fetch LP Pool flows" });
+  }
+});
+
+/**
+ * GET /api/admin/lp-pool/regeneration-rate
+ * Calculate regeneration rate (regenerator investments / LP allocations × 100) (admin only)
+ */
+router.get("/lp-pool/regeneration-rate", authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Get total regenerator investments (all time)
+    const [totalInvestments] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        count: count(),
+      })
+      .from(investments);
+
+    // Get total LP allocations to projects (all time)
+    const [totalAllocations] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${lpProjectAllocations.totalAmountNgnts}), 0)`,
+        count: count(),
+      })
+      .from(lpProjectAllocations);
+
+    const investmentsTotal = parseFloat(totalInvestments.total || "0");
+    const allocationsTotal = parseFloat(totalAllocations.total || "0");
+    
+    // Calculate regeneration rate (guard against divide-by-zero)
+    const regenerationRate = allocationsTotal > 0 
+      ? (investmentsTotal / allocationsTotal) * 100 
+      : 0;
+
+    res.json({
+      regenerationRate: regenerationRate.toFixed(2),
+      totalInvestments: investmentsTotal.toFixed(2),
+      investmentCount: totalInvestments.count,
+      totalAllocations: allocationsTotal.toFixed(2),
+      allocationCount: totalAllocations.count,
+      interpretation: regenerationRate >= 100 
+        ? "Fully regenerated - investments have recovered all LP allocations"
+        : `${(100 - regenerationRate).toFixed(2)}% remaining to fully regenerate`,
+    });
+  } catch (error) {
+    console.error("Get regeneration rate error:", error);
+    res.status(500).json({ error: "Failed to calculate regeneration rate" });
   }
 });
 
