@@ -224,7 +224,7 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl border-white/10">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-xl border-white/10">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white flex items-center gap-3">
             <Coins className="w-7 h-7 text-emerald-400" />
