@@ -146,25 +146,25 @@ function KycAuditTrailView({
 
   if (!user) {
     return (
-      <Card className="w-full md:w-3/5">
+      <Card className="w-full md:w-3/5 bg-white/5 border-white/10 backdrop-blur-sm">
         <CardContent className="flex flex-col items-center justify-center h-full py-12">
-          <FileText className="w-12 h-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Select a user to view audit trail</p>
+          <FileText className="w-12 h-12 text-slate-400 mb-4" />
+          <p className="text-slate-400">Select a user to view audit trail</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full md:w-3/5">
+    <Card className="w-full md:w-3/5 bg-white/5 border-white/10 backdrop-blur-sm">
       {/* Navigation Header */}
-      <CardHeader className="pb-3 border-b">
+      <CardHeader className="pb-3 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg">
+            <CardTitle className="text-lg text-white">
               {user.firstName} {user.lastName}
             </CardTitle>
-            <CardDescription className="text-xs mt-1">
+            <CardDescription className="text-xs mt-1 text-slate-400">
               Record {index + 1} of {total}
             </CardDescription>
           </div>
@@ -197,22 +197,22 @@ function KycAuditTrailView({
         <CardContent className="p-6 space-y-6">
           {/* User Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground">User Information</h3>
+            <h3 className="text-sm font-semibold text-slate-400">User Information</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm font-medium" data-testid="text-user-email">{user.email}</p>
+                <p className="text-xs text-slate-400">Email</p>
+                <p className="text-sm font-medium text-white" data-testid="text-user-email">{user.email}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Phone</p>
-                <p className="text-sm font-medium" data-testid="text-user-phone">{user.phone || "Not provided"}</p>
+                <p className="text-xs text-slate-400">Phone</p>
+                <p className="text-sm font-medium text-white" data-testid="text-user-phone">{user.phone || "Not provided"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Role</p>
+                <p className="text-xs text-slate-400">Role</p>
                 <Badge variant="outline" className="text-xs" data-testid="badge-user-role">{user.role}</Badge>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Status</p>
+                <p className="text-xs text-slate-400">Status</p>
                 <Badge 
                   variant={user.kycStatus === 'approved' ? 'default' : 'destructive'} 
                   className="text-xs"
@@ -225,20 +225,20 @@ function KycAuditTrailView({
           </div>
 
           {/* Audit Trail Information */}
-          <div className="space-y-4 pt-4 border-t">
-            <h3 className="text-sm font-semibold text-muted-foreground">Audit Information</h3>
+          <div className="space-y-4 pt-4 border-t border-white/10">
+            <h3 className="text-sm font-semibold text-slate-400">Audit Information</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Processed Date</p>
-                <p className="text-sm font-medium" data-testid="text-processed-date">
+                <p className="text-xs text-slate-400">Processed Date</p>
+                <p className="text-sm font-medium text-white" data-testid="text-processed-date">
                   {user.kycProcessedAt 
                     ? new Date(user.kycProcessedAt).toLocaleString() 
                     : "Not available"}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Processed By</p>
-                <p className="text-sm font-medium" data-testid="text-processed-by">
+                <p className="text-xs text-slate-400">Processed By</p>
+                <p className="text-sm font-medium text-white" data-testid="text-processed-by">
                   {historyLoading ? (
                     "Loading..."
                   ) : latestDecision?.processedBy ? (
@@ -251,9 +251,9 @@ function KycAuditTrailView({
             </div>
             {user.kycAdminNotes && (
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Admin Notes</p>
+                <p className="text-xs text-slate-400 mb-2">Admin Notes</p>
                 <div 
-                  className="text-sm p-3 rounded-md bg-muted/50 border"
+                  className="text-sm p-3 rounded-md bg-white/5 border border-white/10 text-white"
                   data-testid="text-admin-notes"
                 >
                   {user.kycAdminNotes}
@@ -264,8 +264,8 @@ function KycAuditTrailView({
 
           {/* KYC Documents */}
           {user.kycDocuments && (
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-sm font-semibold text-muted-foreground">KYC Documents</h3>
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <h3 className="text-sm font-semibold text-slate-400">KYC Documents</h3>
               <DocumentGallery documents={user.kycDocuments} />
             </div>
           )}
@@ -273,11 +273,11 @@ function KycAuditTrailView({
           {/* Decision History Timeline */}
           {historyLoading ? (
             <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+              <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
             </div>
           ) : historyData && historyData.history.length > 0 ? (
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-sm font-semibold text-muted-foreground">Decision History</h3>
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <h3 className="text-sm font-semibold text-slate-400">Decision History</h3>
               <div className="space-y-4">
                 {historyData.history.map((record, idx) => (
                   <div 
@@ -287,22 +287,22 @@ function KycAuditTrailView({
                   >
                     {/* Timeline connector */}
                     {idx < historyData.history.length - 1 && (
-                      <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-border" />
+                      <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-white/10" />
                     )}
                     
                     {/* Icon */}
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center relative z-10">
-                      <FileCheck className="w-4 h-4 text-primary" />
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center relative z-10">
+                      <FileCheck className="w-4 h-4 text-emerald-500" />
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 pb-4">
                       <div className="flex items-start justify-between mb-1">
                         <div>
-                          <p className="text-sm font-medium">
+                          <p className="text-sm font-medium text-white">
                             {record.previousStatus} → {record.newStatus}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-slate-400">
                             {new Date(record.createdAt).toLocaleString()}
                           </p>
                         </div>
@@ -314,12 +314,12 @@ function KycAuditTrailView({
                         </Badge>
                       </div>
                       {record.processedBy && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-slate-400 mt-1">
                           By: {record.processedBy.firstName} {record.processedBy.lastName}
                         </p>
                       )}
                       {record.adminNotes && (
-                        <div className="mt-2 text-xs p-2 rounded bg-muted/30 border">
+                        <div className="mt-2 text-xs p-2 rounded bg-white/5 border border-white/10 text-white">
                           {record.adminNotes}
                         </div>
                       )}
@@ -365,10 +365,10 @@ function AdminWalletCard() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>My Admin Wallet</CardTitle>
-          <CardDescription>Manage your admin Stellar wallet</CardDescription>
+          <CardTitle className="text-white">My Admin Wallet</CardTitle>
+          <CardDescription className="text-slate-400">Manage your admin Stellar wallet</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -389,16 +389,16 @@ function AdminWalletCard() {
     : `https://stellar.expert/explorer/public/account/${wallet?.publicKey}`;
 
   return (
-    <Card>
+    <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle>My Admin Wallet</CardTitle>
-        <CardDescription>Manage your admin Stellar wallet for platform operations</CardDescription>
+        <CardTitle className="text-white">My Admin Wallet</CardTitle>
+        <CardDescription className="text-slate-400">Manage your admin Stellar wallet for platform operations</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Wallet Status */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Status:</span>
+            <span className="text-sm font-medium text-white">Status:</span>
             {wallet?.isActivated ? (
               <Badge variant="default" className="bg-green-600" data-testid="wallet-status-activated">
                 Activated
@@ -412,7 +412,7 @@ function AdminWalletCard() {
 
           {/* Public Key */}
           <div className="space-y-2">
-            <Label>Stellar Public Key</Label>
+            <Label className="text-slate-400">Stellar Public Key</Label>
             <div className="flex gap-2 items-center">
               <Input
                 value={wallet?.publicKey || ""}
@@ -446,21 +446,21 @@ function AdminWalletCard() {
           {/* Balances */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>XLM Balance</Label>
-              <p className="text-2xl font-bold" data-testid="text-xlm-balance">
+              <Label className="text-slate-400">XLM Balance</Label>
+              <p className="text-2xl font-bold text-white" data-testid="text-xlm-balance">
                 {wallet?.stellarBalance?.XLM || "0"} XLM
               </p>
             </div>
             <div className="space-y-2">
-              <Label>USDC Balance</Label>
-              <p className="text-2xl font-bold" data-testid="text-usdc-balance">
+              <Label className="text-slate-400">USDC Balance</Label>
+              <p className="text-2xl font-bold text-white" data-testid="text-usdc-balance">
                 {wallet?.stellarBalance?.USDC || "0"} USDC
               </p>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-3 pt-4 border-t">
+          <div className="flex flex-wrap gap-3 pt-4 border-t border-white/10">
             {isTestnet && (
               <Button
                 onClick={() => fundWalletMutation.mutate()}
@@ -480,7 +480,7 @@ function AdminWalletCard() {
           </div>
 
           {!isTestnet && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-slate-400">
               Note: Friendbot funding is only available on testnet.
             </p>
           )}
@@ -1233,10 +1233,10 @@ export default function Admin() {
                       const willActivateWallet = deposit.walletActivationStatus !== 'active';
                       
                       return (
-                        <div key={deposit.id} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`bank-deposit-${deposit.id}`}>
+                        <div key={deposit.id} className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5" data-testid={`bank-deposit-${deposit.id}`}>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold">
+                              <h4 className="font-semibold text-white">
                                 {deposit.userFirstName} {deposit.userLastName}
                               </h4>
                               {willActivateWallet && (
@@ -1245,20 +1245,20 @@ export default function Admin() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground">{deposit.userEmail}</p>
+                            <p className="text-sm text-slate-400">{deposit.userEmail}</p>
                             <div className="flex flex-wrap gap-2 mt-2">
-                              <p className="text-sm">
+                              <p className="text-sm text-white">
                                 Amount: <span className="font-semibold">₦{parseFloat(deposit.amountNGN).toLocaleString()}</span>
                               </p>
-                              <span className="text-muted-foreground">•</span>
-                              <p className="text-sm">
+                              <span className="text-slate-400">•</span>
+                              <p className="text-sm text-white">
                                 NGNTS Credit: <span className="font-semibold">{parseFloat(deposit.ngntsAmount).toLocaleString()}</span>
                               </p>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1" data-testid={`text-reference-${deposit.id}`}>
+                            <p className="text-xs text-slate-400 mt-1" data-testid={`text-reference-${deposit.id}`}>
                               Ref: {deposit.referenceCode}
                             </p>
-                            <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap gap-2 mt-2 text-xs text-slate-500">
                               <span>Submitted: {new Date(deposit.createdAt).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
@@ -1398,14 +1398,14 @@ export default function Admin() {
                 </Card>
 
                 {/* Right Panel - KYC Detail View */}
-                <Card className="w-full md:w-3/5">
+                <Card className="w-full md:w-3/5 bg-white/5 border-white/10 backdrop-blur-sm">
                   {(() => {
                     const selectedKycUser = pendingKycData.users[selectedKycIndex];
                     if (!selectedKycUser) {
                       return (
                         <CardContent className="flex flex-col items-center justify-center h-full py-12">
-                          <FileText className="w-12 h-12 text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">Select a KYC request to review</p>
+                          <FileText className="w-12 h-12 text-slate-400 mb-4" />
+                          <p className="text-slate-400">Select a KYC request to review</p>
                         </CardContent>
                       );
                     }
@@ -1413,13 +1413,13 @@ export default function Admin() {
                     return (
                       <>
                         {/* Navigation Header */}
-                        <CardHeader className="pb-3 border-b">
+                        <CardHeader className="pb-3 border-b border-white/10">
                           <div className="flex items-center justify-between">
                             <div>
-                              <CardTitle className="text-lg">
+                              <CardTitle className="text-lg text-white">
                                 {selectedKycUser.firstName} {selectedKycUser.lastName}
                               </CardTitle>
-                              <CardDescription className="text-xs mt-1">
+                              <CardDescription className="text-xs mt-1 text-slate-400">
                                 Request {selectedKycIndex + 1} of {pendingKycData.users.length}
                               </CardDescription>
                             </div>
@@ -1452,19 +1452,19 @@ export default function Admin() {
                           <CardContent className="space-y-6 p-6">
                             {/* Personal Information Section */}
                             <div className="space-y-3">
-                              <h3 className="font-semibold text-sm flex items-center gap-2">
+                              <h3 className="font-semibold text-sm flex items-center gap-2 text-white">
                                 <UserIcon className="w-4 h-4" />
                                 Personal Information
                               </h3>
-                              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30">
+                              <div className="grid grid-cols-2 gap-4 p-4 border border-white/10 rounded-lg bg-white/5">
                                 <div>
-                                  <Label className="text-xs text-muted-foreground">Email</Label>
-                                  <p className="text-sm font-medium">{selectedKycUser.email}</p>
+                                  <Label className="text-xs text-slate-400">Email</Label>
+                                  <p className="text-sm font-medium text-white">{selectedKycUser.email}</p>
                                 </div>
                                 {selectedKycUser.phone && (
                                   <div>
-                                    <Label className="text-xs text-muted-foreground">Phone</Label>
-                                    <p className="text-sm font-medium">{selectedKycUser.phone}</p>
+                                    <Label className="text-xs text-slate-400">Phone</Label>
+                                    <p className="text-sm font-medium text-white">{selectedKycUser.phone}</p>
                                   </div>
                                 )}
                               </div>
@@ -1472,14 +1472,14 @@ export default function Admin() {
 
                             {/* Document Gallery Section */}
                             <div className="space-y-3">
-                              <h3 className="font-semibold text-sm flex items-center gap-2">
+                              <h3 className="font-semibold text-sm flex items-center gap-2 text-white">
                                 <FileText className="w-4 h-4" />
                                 Identity Documents
                               </h3>
                               {selectedKycUser.kycDocuments ? (
                                 <DocumentGallery documents={selectedKycUser.kycDocuments} />
                               ) : (
-                                <p className="text-sm text-muted-foreground text-center py-8 border rounded-lg">
+                                <p className="text-sm text-slate-400 text-center py-8 border border-white/10 rounded-lg">
                                   No documents uploaded
                                 </p>
                               )}
@@ -1556,10 +1556,10 @@ export default function Admin() {
                 </Card>
               </div>
                 ) : (
-                  <Card>
+                  <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                      <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No pending KYC requests</p>
+                      <FileCheck className="w-12 h-12 text-slate-400 mb-4" />
+                      <p className="text-slate-400">No pending KYC requests</p>
                     </CardContent>
                   </Card>
                 )}
@@ -1570,10 +1570,10 @@ export default function Admin() {
                 {approvedKycData && approvedKycData.users.length > 0 ? (
                   <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-350px)]">
                     {/* Left Panel - Approved Users List */}
-                    <Card className="w-full md:w-2/5">
+                    <Card className="w-full md:w-2/5 bg-white/5 border-white/10 backdrop-blur-sm">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Approved Users</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-lg text-white">Approved Users</CardTitle>
+                        <CardDescription className="text-slate-400">
                           {approvedKycData.users.length} approved record{approvedKycData.users.length !== 1 ? 's' : ''}
                         </CardDescription>
                       </CardHeader>
@@ -1584,7 +1584,7 @@ export default function Admin() {
                               <Card
                                 key={kycUser.id}
                                 className={`cursor-pointer transition-colors ${
-                                  kycIndexMap.approved === index ? 'bg-accent border-primary' : 'hover-elevate'
+                                  kycIndexMap.approved === index ? 'bg-white/10 border-emerald-500/50' : 'bg-white/5 border-white/10 hover-elevate'
                                 }`}
                                 onClick={() => setKycIndexMap(prev => ({ ...prev, approved: index }))}
                                 data-testid={`approved-kyc-list-item-${index}`}
@@ -1592,10 +1592,10 @@ export default function Admin() {
                                 <CardContent className="p-4">
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                      <h4 className="font-semibold text-sm">
+                                      <h4 className="font-semibold text-sm text-white">
                                         {kycUser.firstName} {kycUser.lastName}
                                       </h4>
-                                      <p className="text-xs text-muted-foreground mt-0.5">{kycUser.email}</p>
+                                      <p className="text-xs text-slate-400 mt-0.5">{kycUser.email}</p>
                                       <div className="flex flex-wrap gap-2 mt-2">
                                         <Badge variant="default" className="text-xs">
                                           {kycUser.kycStatus}
@@ -1629,10 +1629,10 @@ export default function Admin() {
                     />
                   </div>
                 ) : (
-                  <Card>
+                  <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                      <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No approved KYC records</p>
+                      <FileCheck className="w-12 h-12 text-slate-400 mb-4" />
+                      <p className="text-slate-400">No approved KYC records</p>
                     </CardContent>
                   </Card>
                 )}
@@ -1643,10 +1643,10 @@ export default function Admin() {
                 {rejectedKycData && rejectedKycData.users.length > 0 ? (
                   <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-350px)]">
                     {/* Left Panel - Rejected Users List */}
-                    <Card className="w-full md:w-2/5">
+                    <Card className="w-full md:w-2/5 bg-white/5 border-white/10 backdrop-blur-sm">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Rejected Users</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-lg text-white">Rejected Users</CardTitle>
+                        <CardDescription className="text-slate-400">
                           {rejectedKycData.users.length} rejected record{rejectedKycData.users.length !== 1 ? 's' : ''}
                         </CardDescription>
                       </CardHeader>
@@ -1657,7 +1657,7 @@ export default function Admin() {
                               <Card
                                 key={kycUser.id}
                                 className={`cursor-pointer transition-colors ${
-                                  kycIndexMap.rejected === index ? 'bg-accent border-primary' : 'hover-elevate'
+                                  kycIndexMap.rejected === index ? 'bg-white/10 border-emerald-500/50' : 'bg-white/5 border-white/10 hover-elevate'
                                 }`}
                                 onClick={() => setKycIndexMap(prev => ({ ...prev, rejected: index }))}
                                 data-testid={`rejected-kyc-list-item-${index}`}
@@ -1665,10 +1665,10 @@ export default function Admin() {
                                 <CardContent className="p-4">
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                      <h4 className="font-semibold text-sm">
+                                      <h4 className="font-semibold text-sm text-white">
                                         {kycUser.firstName} {kycUser.lastName}
                                       </h4>
-                                      <p className="text-xs text-muted-foreground mt-0.5">{kycUser.email}</p>
+                                      <p className="text-xs text-slate-400 mt-0.5">{kycUser.email}</p>
                                       <div className="flex flex-wrap gap-2 mt-2">
                                         <Badge variant="destructive" className="text-xs">
                                           {kycUser.kycStatus}
@@ -1702,10 +1702,10 @@ export default function Admin() {
                     />
                   </div>
                 ) : (
-                  <Card>
+                  <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                      <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No rejected KYC records</p>
+                      <FileCheck className="w-12 h-12 text-slate-400 mb-4" />
+                      <p className="text-slate-400">No rejected KYC records</p>
                     </CardContent>
                   </Card>
                 )}
@@ -1959,19 +1959,19 @@ export default function Admin() {
                   <h4 className="font-semibold text-sm">Bank Details Information</h4>
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-xs text-muted-foreground">User's Registered Name</Label>
+                      <Label className="text-xs text-slate-400">User's Registered Name</Label>
                       <p className="text-sm font-medium">
                         {approvalDialog.item.firstName} {approvalDialog.item.lastName}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Account Name</Label>
+                      <Label className="text-xs text-slate-400">Account Name</Label>
                       <p className="text-sm font-medium" data-testid="text-bank-account-name">
                         {approvalDialog.item.bankDetails?.accountName || 'N/A'}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Account Number</Label>
+                      <Label className="text-xs text-slate-400">Account Number</Label>
                       <p className="text-sm font-medium font-mono" data-testid="text-bank-account-number">
                         {approvalDialog.item.bankDetails?.accountNumber 
                           ? `****${approvalDialog.item.bankDetails.accountNumber.slice(-4)}`
@@ -1979,19 +1979,19 @@ export default function Admin() {
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Bank Name</Label>
+                      <Label className="text-xs text-slate-400">Bank Name</Label>
                       <p className="text-sm font-medium" data-testid="text-bank-name">
                         {approvalDialog.item.bankDetails?.bankName || 'N/A'}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Bank Code</Label>
+                      <Label className="text-xs text-slate-400">Bank Code</Label>
                       <p className="text-sm font-medium">
                         {approvalDialog.item.bankDetails?.bankCode || 'N/A'}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Verification Document</Label>
+                      <Label className="text-xs text-slate-400">Verification Document</Label>
                       {approvalDialog.item.bankDetails?.verificationDocument ? (
                         <a 
                           href={approvalDialog.item.bankDetails.verificationDocument} 
@@ -2008,7 +2008,7 @@ export default function Admin() {
                           />
                         </a>
                       ) : (
-                        <p className="text-sm text-muted-foreground mt-1">No document uploaded</p>
+                        <p className="text-sm text-slate-400 mt-1">No document uploaded</p>
                       )}
                     </div>
                   </div>
@@ -2081,7 +2081,7 @@ export default function Admin() {
                   {!approvalDialog.item.kycDocuments.idCard && 
                    !approvalDialog.item.kycDocuments.selfie && 
                    !approvalDialog.item.kycDocuments.addressProof && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
+                    <p className="text-sm text-slate-400 text-center py-4">
                       No documents uploaded
                     </p>
                   )}
@@ -2122,7 +2122,7 @@ export default function Admin() {
                     onChange={(e) => setApprovedAmount(e.target.value)}
                     data-testid="input-amount"
                   />
-                  <p className="text-xs text-muted-foreground">Leave empty to use requested amount</p>
+                  <p className="text-xs text-slate-400">Leave empty to use requested amount</p>
                 </div>
               )}
 
@@ -2265,7 +2265,7 @@ export default function Admin() {
                   data-testid="input-project-photo"
                 />
                 {projectPhoto && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-slate-400">
                     Selected: {projectPhoto.name}
                   </p>
                 )}
@@ -2280,7 +2280,7 @@ export default function Admin() {
                   data-testid="input-teaser-document"
                 />
                 {teaserDocument && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-slate-400">
                     Selected: {teaserDocument.name}
                   </p>
                 )}
@@ -2296,7 +2296,7 @@ export default function Admin() {
                   data-testid="input-project-documents"
                 />
                 {projectDocuments && projectDocuments.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-slate-400">
                     Selected: {projectDocuments.length} file(s)
                   </p>
                 )}
