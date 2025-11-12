@@ -1,14 +1,12 @@
 /**
- * Fee calculation utilities for bank deposits
+ * Server-side wrapper for deposit fee calculations
+ * Fetches exchange rates and delegates to shared fee calculator
  */
 
 import { getAllRates } from "./exchangeRates";
+import { calculateDepositFees, STELLAR_GAS_FEE_XLM, WALLET_ACTIVATION_XLM } from "@shared/lib/depositFees";
 
-// Estimated Stellar gas fee in XLM (conservative estimate)
-const STELLAR_GAS_FEE_XLM = 0.001;
-
-// Wallet activation cost in XLM (covers account creation + trustlines)
-const WALLET_ACTIVATION_XLM = 2.0;
+export { STELLAR_GAS_FEE_XLM, WALLET_ACTIVATION_XLM };
 
 /**
  * Calculate platform fee for NGN deposit
@@ -40,33 +38,13 @@ export async function calculateDepositBreakdown(
   depositFeePercent: number,
   walletActivated: boolean
 ) {
-  const platformFee = calculatePlatformFee(amountNGN, depositFeePercent);
-  const gasFeeXLM = getStellarGasFee();
-
-  // Get XLM/NGN exchange rate
   const rates = await getAllRates();
   const xlmNgnRate = parseFloat(rates.xlmNgn);
-  const gasFeeNGN = gasFeeXLM * xlmNgnRate;
 
-  // Wallet activation fee (only if wallet not activated)
-  const walletActivationFee = !walletActivated ? WALLET_ACTIVATION_XLM * xlmNgnRate : 0;
-
-  // Calculate total fees in NGN (platform fee + gas fee + wallet activation if needed)
-  const totalFeesNGN = platformFee + gasFeeNGN + walletActivationFee;
-  
-  // NGNTS credited = deposit amount minus ALL fees
-  const ngntsAmount = amountNGN - totalFeesNGN;
-
-  return {
+  return calculateDepositFees({
     amountNGN,
-    platformFee,
-    platformFeePercent: depositFeePercent,
-    gasFeeXLM,
-    gasFeeNGN,
-    walletActivationFee,
+    feePercent: depositFeePercent,
     xlmNgnRate,
-    totalFeesNGN,
-    ngntsAmount,
-    needsWalletActivation: !walletActivated,
-  };
+    walletActivated,
+  });
 }

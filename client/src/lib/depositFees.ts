@@ -1,7 +1,26 @@
 /**
- * Client-side fee calculation utilities for bank deposits
- * Calculates deposit breakdown with platform fees, gas fees, and wallet activation costs
+ * Client-side wrapper for deposit fee calculations
+ * Re-exports shared utilities for frontend use
  */
+
+import { 
+  calculateDepositFees, 
+  formatNGN, 
+  formatPercent,
+  STELLAR_GAS_FEE_XLM,
+  WALLET_ACTIVATION_XLM
+} from "@shared/lib/depositFees";
+import type { DepositCalculationResult, DepositFeeBreakdown } from "@shared/lib/depositFees";
+
+export { 
+  calculateDepositFees, 
+  formatNGN, 
+  formatPercent,
+  STELLAR_GAS_FEE_XLM,
+  WALLET_ACTIVATION_XLM,
+  type DepositCalculationResult,
+  type DepositFeeBreakdown
+};
 
 export interface DepositBreakdown {
   amountNGN: number;
@@ -30,44 +49,22 @@ export function calculateDepositBreakdown(
   walletActivated: boolean,
   xlmNgnRate: number = 0
 ): DepositBreakdown {
-  // Platform fee (percentage of deposit)
-  const platformFee = (amountNGN * depositFeePercent) / 100;
-
-  // Wallet activation fee (2.0 XLM) if wallet not activated
-  // This covers Stellar account creation reserves + trustline setup
-  const WALLET_ACTIVATION_XLM = 2.0;
-  const walletActivationFee = !walletActivated && xlmNgnRate > 0
-    ? WALLET_ACTIVATION_XLM * xlmNgnRate
-    : 0;
-
-  // Total fees: platform + gas + wallet activation (if needed)
-  const totalFeesNGN = platformFee + gasFeeNGN + walletActivationFee;
-
-  // NGNTS credited = deposit amount minus ALL fees
-  const ngntsAmount = amountNGN - totalFeesNGN;
+  const result = calculateDepositFees({
+    amountNGN,
+    feePercent: depositFeePercent,
+    xlmNgnRate,
+    walletActivated,
+    gasFeeOverride: gasFeeNGN,
+  });
 
   return {
-    amountNGN,
-    platformFee,
-    platformFeePercent,
-    gasFeeNGN,
-    walletActivationFee,
-    totalFeesNGN,
-    ngntsAmount,
-    needsWalletActivation: !walletActivated,
+    amountNGN: result.amountNGN,
+    platformFee: result.platformFee,
+    platformFeePercent: result.platformFeePercent,
+    gasFeeNGN: result.gasFeeNGN,
+    walletActivationFee: result.walletActivationFee,
+    totalFeesNGN: result.totalFeesNGN,
+    ngntsAmount: result.ngntsAmount,
+    needsWalletActivation: result.needsWalletActivation,
   };
-}
-
-/**
- * Format currency as NGN with proper commas
- */
-export function formatNGN(amount: number): string {
-  return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-/**
- * Format percentage with proper precision
- */
-export function formatPercent(percent: number): string {
-  return `${percent.toFixed(1)}%`;
 }
