@@ -4691,7 +4691,16 @@ router.get("/lp-pool/balance", authenticate, requireAdmin, async (req, res) => {
     }
 
     // Query Stellar for live balances
-    const account = await horizonServer.loadAccount(lpWallet.publicKey);
+    let account;
+    try {
+      account = await horizonServer.loadAccount(lpWallet.publicKey);
+    } catch (stellarError: any) {
+      console.error("Stellar network error:", stellarError);
+      return res.status(502).json({ 
+        error: "Failed to query Stellar network", 
+        details: stellarError.message || "Network unavailable"
+      });
+    }
     
     let ngntsBalance = "0";
     let usdcBalance = "0";
@@ -4715,23 +4724,23 @@ router.get("/lp-pool/balance", authenticate, requireAdmin, async (req, res) => {
     // Get exchange rates from shared utility (no HTTP self-call)
     const rates = await getAllRates();
 
-    // Convert all to NGN
-    const ngntsNGN = parseFloat(ngntsBalance); // 1:1
-    const usdcNGN = parseFloat(usdcBalance) * parseFloat(rates.usdcNgn);
-    const xlmNGN = parseFloat(xlmBalance) * parseFloat(rates.xlmNgn);
+    // Convert all to NGN (ensure valid numbers)
+    const ngntsNGN = parseFloat(ngntsBalance) || 0;
+    const usdcNGN = (parseFloat(usdcBalance) || 0) * (parseFloat(rates.usdcNgn) || 0);
+    const xlmNGN = (parseFloat(xlmBalance) || 0) * (parseFloat(rates.xlmNgn) || 0);
     const totalNGN = ngntsNGN + usdcNGN + xlmNGN;
 
     res.json({
       balances: {
-        ngnts: ngntsBalance,
-        usdc: usdcBalance,
-        xlm: xlmBalance,
+        ngnts: parseFloat(ngntsBalance).toFixed(2),
+        usdc: parseFloat(usdcBalance).toFixed(2),
+        xlm: parseFloat(xlmBalance).toFixed(4),
       },
       totalValueNGN: totalNGN.toFixed(2),
       composition: {
-        ngntsPercent: totalNGN > 0 ? ((ngntsNGN / totalNGN) * 100).toFixed(2) : "0",
-        usdcPercent: totalNGN > 0 ? ((usdcNGN / totalNGN) * 100).toFixed(2) : "0",
-        xlmPercent: totalNGN > 0 ? ((xlmNGN / totalNGN) * 100).toFixed(2) : "0",
+        ngntsPercent: totalNGN > 0 ? ((ngntsNGN / totalNGN) * 100).toFixed(2) : "0.00",
+        usdcPercent: totalNGN > 0 ? ((usdcNGN / totalNGN) * 100).toFixed(2) : "0.00",
+        xlmPercent: totalNGN > 0 ? ((xlmNGN / totalNGN) * 100).toFixed(2) : "0.00",
       },
       walletAddress: lpWallet.publicKey,
       lastSynced: new Date().toISOString(),
@@ -4849,13 +4858,18 @@ router.get("/lp-pool/regeneration-rate", authenticate, requireAdmin, async (req,
       })
       .from(lpProjectAllocations);
 
-    const investmentsTotal = parseFloat(totalInvestments.total || "0");
-    const allocationsTotal = parseFloat(totalAllocations.total || "0");
+    const investmentsTotal = parseFloat(totalInvestments.total || "0") || 0;
+    const allocationsTotal = parseFloat(totalAllocations.total || "0") || 0;
     
-    // Calculate regeneration rate (guard against divide-by-zero)
-    const regenerationRate = allocationsTotal > 0 
-      ? (investmentsTotal / allocationsTotal) * 100 
-      : 0;
+    // Calculate regeneration rate (guard against divide-by-zero, ensure valid number)
+    let regenerationRate = 0;
+    if (allocationsTotal > 0) {
+      regenerationRate = (investmentsTotal / allocationsTotal) * 100;
+      // Ensure we have a valid number
+      if (!isFinite(regenerationRate)) {
+        regenerationRate = 0;
+      }
+    }
 
     res.json({
       regenerationRate: regenerationRate.toFixed(2),
@@ -4865,7 +4879,7 @@ router.get("/lp-pool/regeneration-rate", authenticate, requireAdmin, async (req,
       allocationCount: totalAllocations.count,
       interpretation: regenerationRate >= 100 
         ? "Fully regenerated - investments have recovered all LP allocations"
-        : `${(100 - regenerationRate).toFixed(2)}% remaining to fully regenerate`,
+        : `${Math.max(0, 100 - regenerationRate).toFixed(2)}% remaining to fully regenerate`,
     });
   } catch (error) {
     console.error("Get regeneration rate error:", error);

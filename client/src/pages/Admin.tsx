@@ -1095,7 +1095,7 @@ export default function Admin() {
         {/* Phase 4-C: Regenerative Capital System */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Regenerative Capital Management</h2>
-          <div className="grid md:grid-cols-5 gap-4">
+          <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Link href="/admin/investments">
               <Card className="hover-elevate cursor-pointer" data-testid="card-investments">
                 <CardHeader>
@@ -1105,6 +1105,19 @@ export default function Admin() {
                   </CardTitle>
                   <CardDescription>
                     Monitor all Regenerator investments
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/admin/lp-pool">
+              <Card className="hover-elevate cursor-pointer" data-testid="card-lp-pool">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    LP Pool
+                  </CardTitle>
+                  <CardDescription>
+                    Monitor liquidity pool health
                   </CardDescription>
                 </CardHeader>
               </Card>
