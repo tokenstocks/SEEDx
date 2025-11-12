@@ -127,7 +127,7 @@ export default function AdminLPPool() {
   const isCriticallyLow = balance && safeParseNumber(balance.totalValueNGN) < 1000000;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -138,8 +138,8 @@ export default function AdminLPPool() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">LP Pool Monitoring</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-3xl font-bold text-white">LP Pool Monitoring</h1>
+              <p className="text-slate-400">
                 Real-time liquidity pool health and capital flows
               </p>
             </div>
@@ -151,7 +151,7 @@ export default function AdminLPPool() {
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   Live
                 </Badge>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-slate-400">
                   Updated {new Date(balance.lastSynced).toLocaleTimeString()}
                 </span>
               </div>
@@ -179,13 +179,13 @@ export default function AdminLPPool() {
 
         {/* Error Alert */}
         {hasAnyError && (
-          <Card className="border-destructive bg-destructive/5" data-testid="alert-error">
+          <Card className="border-red-500/50 bg-red-500/10 backdrop-blur-sm" data-testid="alert-error">
             <CardContent className="flex items-center justify-between gap-3 pt-6">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <AlertTriangle className="h-5 w-5 text-red-400" />
                 <div>
-                  <p className="font-semibold text-destructive">Failed to Load LP Pool Data</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-semibold text-red-400">Failed to Load LP Pool Data</p>
+                  <p className="text-sm text-slate-300">
                     {balanceError ? "Balance error: Unable to query Stellar network. " : ""}
                     {flowsError ? "Flows error: Unable to fetch transaction data. " : ""}
                     {regenerationError ? "Regeneration error: Unable to calculate metrics. " : ""}
@@ -202,12 +202,12 @@ export default function AdminLPPool() {
 
         {/* Critical Alert */}
         {isCriticallyLow && (
-          <Card className="border-destructive bg-destructive/5" data-testid="alert-low-balance">
+          <Card className="border-red-500/50 bg-red-500/10 backdrop-blur-sm" data-testid="alert-low-balance">
             <CardContent className="flex items-center gap-3 pt-6">
-              <AlertCircle className="h-5 w-5 text-destructive" />
+              <AlertCircle className="h-5 w-5 text-red-400" />
               <div>
-                <p className="font-semibold text-destructive">Critical Pool Balance Alert</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-semibold text-red-400">Critical Pool Balance Alert</p>
+                <p className="text-sm text-slate-300">
                   LP Pool balance is below ₦1,000,000. Immediate attention required.
                 </p>
               </div>
@@ -218,33 +218,33 @@ export default function AdminLPPool() {
         {/* Hero Stats */}
         <div className="grid md:grid-cols-4 gap-4">
           {/* Total Pool Value */}
-          <Card className="bg-gradient-to-br from-emerald-500/10 via-background to-background border-t-4 border-t-emerald-500" data-testid="card-total-value">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm border-t-4 border-t-emerald-500" data-testid="card-total-value">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Pool Value</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-400">Total Pool Value</CardTitle>
             </CardHeader>
             <CardContent>
               {balanceLoading ? (
                 <Skeleton className="h-10 w-40" />
               ) : balance ? (
                 <div className="space-y-1">
-                  <p className="text-3xl font-bold" data-testid="text-total-value">
+                  <p className="text-3xl font-bold text-white" data-testid="text-total-value">
                     {formatNGN(balance.totalValueNGN)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-400">
                     Live from Stellar Network
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No data</p>
+                <p className="text-sm text-slate-400">No data</p>
               )}
             </CardContent>
           </Card>
 
           {/* 24h Inflows */}
-          <Card className="bg-gradient-to-br from-blue-500/10 via-background to-background border-t-4 border-t-blue-500" data-testid="card-inflows">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm border-t-4 border-t-blue-500" data-testid="card-inflows">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-blue-400" />
                 24h Inflows
               </CardTitle>
             </CardHeader>
@@ -253,24 +253,24 @@ export default function AdminLPPool() {
                 <Skeleton className="h-10 w-40" />
               ) : flows ? (
                 <div className="space-y-1">
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-inflows">
+                  <p className="text-3xl font-bold text-blue-400" data-testid="text-inflows">
                     {formatNGN(flows.inflows.total)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-400">
                     {flows.inflows.primerCount} Primers + {flows.inflows.investmentCount} Regenerators
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No data</p>
+                <p className="text-sm text-slate-400">No data</p>
               )}
             </CardContent>
           </Card>
 
           {/* 24h Outflows */}
-          <Card className="bg-gradient-to-br from-orange-500/10 via-background to-background border-t-4 border-t-orange-500" data-testid="card-outflows">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm border-t-4 border-t-orange-500" data-testid="card-outflows">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-orange-500" />
+              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-orange-400" />
                 24h Outflows
               </CardTitle>
             </CardHeader>
@@ -279,38 +279,38 @@ export default function AdminLPPool() {
                 <Skeleton className="h-10 w-40" />
               ) : flows ? (
                 <div className="space-y-1">
-                  <p className="text-3xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-outflows">
+                  <p className="text-3xl font-bold text-orange-400" data-testid="text-outflows">
                     {formatNGN(flows.outflows.total)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-400">
                     {flows.outflows.allocationCount} LP Allocations
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No data</p>
+                <p className="text-sm text-slate-400">No data</p>
               )}
             </CardContent>
           </Card>
 
           {/* Regeneration Rate */}
-          <Card className="bg-gradient-to-br from-purple-500/10 via-background to-background border-t-4 border-t-purple-500" data-testid="card-regeneration-rate">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm border-t-4 border-t-purple-500" data-testid="card-regeneration-rate">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Regeneration Rate</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-400">Regeneration Rate</CardTitle>
             </CardHeader>
             <CardContent>
               {regenerationLoading ? (
                 <Skeleton className="h-10 w-40" />
               ) : regeneration ? (
                 <div className="space-y-1">
-                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400" data-testid="text-regeneration-rate">
+                  <p className="text-3xl font-bold text-purple-400" data-testid="text-regeneration-rate">
                     {formatNumber(regeneration.regenerationRate)}%
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-400">
                     {safeParseNumber(regeneration.regenerationRate) >= 100 ? "Fully regenerated" : `${Math.max(0, 100 - safeParseNumber(regeneration.regenerationRate)).toFixed(0)}% to full regeneration`}
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No data</p>
+                <p className="text-sm text-slate-400">No data</p>
               )}
             </CardContent>
           </Card>
@@ -319,10 +319,10 @@ export default function AdminLPPool() {
         {/* Asset Composition & Details */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Asset Composition */}
-          <Card data-testid="card-composition">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm" data-testid="card-composition">
             <CardHeader>
-              <CardTitle>Asset Composition</CardTitle>
-              <CardDescription>Current distribution of assets in LP Pool</CardDescription>
+              <CardTitle className="text-white">Asset Composition</CardTitle>
+              <CardDescription className="text-slate-400">Current distribution of assets in LP Pool</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {balanceLoading ? (
@@ -336,16 +336,16 @@ export default function AdminLPPool() {
                   {/* NGNTS */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">NGNTS</span>
-                      <span className="text-muted-foreground">{balance.composition.ngntsPercent}%</span>
+                      <span className="font-medium text-white">NGNTS</span>
+                      <span className="text-slate-400">{balance.composition.ngntsPercent}%</span>
                     </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600"
                         style={{ width: `${balance.composition.ngntsPercent}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-400">
                       {formatNumber(balance.balances.ngnts)} NGNTS = {formatNGN(parseFloat(balance.balances.ngnts))}
                     </p>
                   </div>
@@ -353,16 +353,16 @@ export default function AdminLPPool() {
                   {/* USDC */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">USDC</span>
-                      <span className="text-muted-foreground">{balance.composition.usdcPercent}%</span>
+                      <span className="font-medium text-white">USDC</span>
+                      <span className="text-slate-400">{balance.composition.usdcPercent}%</span>
                     </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-blue-500 to-blue-600"
                         style={{ width: `${balance.composition.usdcPercent}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground" data-testid="text-usdc-balance">
+                    <p className="text-xs text-slate-400" data-testid="text-usdc-balance">
                       {formatNumber(balance.balances.usdc)} USDC
                     </p>
                   </div>
@@ -370,31 +370,31 @@ export default function AdminLPPool() {
                   {/* XLM */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">XLM (Network Gas)</span>
-                      <span className="text-muted-foreground">{balance.composition.xlmPercent}%</span>
+                      <span className="font-medium text-white">XLM (Network Gas)</span>
+                      <span className="text-slate-400">{balance.composition.xlmPercent}%</span>
                     </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-purple-500 to-purple-600"
                         style={{ width: `${balance.composition.xlmPercent}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground" data-testid="text-xlm-balance">
+                    <p className="text-xs text-slate-400" data-testid="text-xlm-balance">
                       {formatNumber(balance.balances.xlm)} XLM
                     </p>
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">No data available</p>
+                <p className="text-sm text-slate-400">No data available</p>
               )}
             </CardContent>
           </Card>
 
           {/* Net Flow & Regeneration Details */}
-          <Card data-testid="card-details">
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm" data-testid="card-details">
             <CardHeader>
-              <CardTitle>Capital Flow Summary</CardTitle>
-              <CardDescription>24-hour period analysis</CardDescription>
+              <CardTitle className="text-white">Capital Flow Summary</CardTitle>
+              <CardDescription className="text-slate-400">24-hour period analysis</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {flowsLoading || regenerationLoading ? (
@@ -402,45 +402,45 @@ export default function AdminLPPool() {
               ) : flows && regeneration ? (
                 <>
                   {/* Net Flow */}
-                  <div className="p-4 rounded-lg bg-muted/50 space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">24h Net Flow</p>
-                    <p className={`text-2xl font-bold ${safeParseNumber(flows.netFlow) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`} data-testid="text-net-flow">
+                  <div className="p-4 rounded-lg bg-white/5 space-y-2">
+                    <p className="text-sm font-medium text-slate-400">24h Net Flow</p>
+                    <p className={`text-2xl font-bold ${safeParseNumber(flows.netFlow) >= 0 ? 'text-emerald-400' : 'text-red-400'}`} data-testid="text-net-flow">
                       {safeParseNumber(flows.netFlow) >= 0 ? '+' : ''}{formatNGN(flows.netFlow)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-400">
                       {safeParseNumber(flows.netFlow) >= 0 ? 'Pool is growing' : 'Pool is contracting'}
                     </p>
                   </div>
 
                   {/* All-Time Stats */}
                   <div className="space-y-3">
-                    <p className="text-sm font-semibold">All-Time Statistics</p>
+                    <p className="text-sm font-semibold text-white">All-Time Statistics</p>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-muted-foreground">Total Investments</p>
-                        <p className="font-semibold" data-testid="text-total-investments">{formatNGN(regeneration.totalInvestments)}</p>
-                        <p className="text-xs text-muted-foreground">{regeneration.investmentCount} transactions</p>
+                        <p className="text-slate-400">Total Investments</p>
+                        <p className="font-semibold text-white" data-testid="text-total-investments">{formatNGN(regeneration.totalInvestments)}</p>
+                        <p className="text-xs text-slate-400">{regeneration.investmentCount} transactions</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Total Allocations</p>
-                        <p className="font-semibold" data-testid="text-total-allocations">{formatNGN(regeneration.totalAllocations)}</p>
-                        <p className="text-xs text-muted-foreground">{regeneration.allocationCount} allocations</p>
+                        <p className="text-slate-400">Total Allocations</p>
+                        <p className="font-semibold text-white" data-testid="text-total-allocations">{formatNGN(regeneration.totalAllocations)}</p>
+                        <p className="text-xs text-slate-400">{regeneration.allocationCount} allocations</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Wallet Address */}
                   {balance && (
-                    <div className="pt-3 border-t">
-                      <p className="text-sm text-muted-foreground mb-1">LP Pool Wallet</p>
-                      <code className="text-xs bg-muted px-2 py-1 rounded block truncate" data-testid="text-wallet-address">
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-sm text-slate-400 mb-1">LP Pool Wallet</p>
+                      <code className="text-xs bg-white/5 px-2 py-1 rounded block truncate text-slate-300" data-testid="text-wallet-address">
                         {balance.walletAddress}
                       </code>
                     </div>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">No data available</p>
+                <p className="text-sm text-slate-400">No data available</p>
               )}
             </CardContent>
           </Card>

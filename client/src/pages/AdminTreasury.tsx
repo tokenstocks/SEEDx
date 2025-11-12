@@ -118,39 +118,39 @@ export default function AdminTreasury() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="max-w-7xl mx-auto p-4 py-8">
         <div className="mb-8">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
             data-testid="link-back"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Admin Dashboard
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Treasury Pool Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-white">Treasury Pool Dashboard</h1>
+          <p className="text-slate-400">
             Monitor regenerative capital flows and treasury pool health
           </p>
         </div>
 
         {/* Summary Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Virtual Balance</CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-400">Virtual Balance</CardTitle>
+              <DollarSign className="w-4 h-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               {summaryLoading ? (
                 <Skeleton className="h-8 w-32" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold" data-testid="text-virtual-balance">
+                  <div className="text-2xl font-bold text-white" data-testid="text-virtual-balance">
                     {summary ? formatCurrency(summary.virtualBalance) : formatCurrency(0)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     NGNTS in treasury pool
                   </p>
                 </>
@@ -158,20 +158,20 @@ export default function AdminTreasury() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-400">Total Transactions</CardTitle>
+              <TrendingUp className="w-4 h-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               {summaryLoading ? (
                 <Skeleton className="h-8 w-20" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold" data-testid="text-total-transactions">
+                  <div className="text-2xl font-bold text-white" data-testid="text-total-transactions">
                     {summary?.totalTransactions || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     All-time treasury operations
                   </p>
                 </>
@@ -179,13 +179,13 @@ export default function AdminTreasury() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Reconciliation Status</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-400">Reconciliation Status</CardTitle>
               {reconciliation?.status === 'ok' ? (
-                <CheckCircle className="w-4 h-4 text-green-600" />
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-yellow-600" />
+                <AlertCircle className="w-4 h-4 text-yellow-400" />
               )}
             </CardHeader>
             <CardContent>
@@ -200,13 +200,13 @@ export default function AdminTreasury() {
                     {reconciliation.status.toUpperCase()}
                   </Badge>
                   {reconciliation.discrepancy && parseFloat(reconciliation.discrepancy) !== 0 && (
-                    <p className="text-xs text-yellow-600 mt-1">
+                    <p className="text-xs text-yellow-400 mt-1">
                       Discrepancy: {formatCurrency(reconciliation.discrepancy)}
                     </p>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Not run yet</p>
+                <p className="text-sm text-slate-400">Not run yet</p>
               )}
             </CardContent>
           </Card>
@@ -214,42 +214,42 @@ export default function AdminTreasury() {
 
         {/* Transaction Breakdown */}
         {summary && (
-          <Card className="mb-8">
+          <Card className="mb-8 bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Transaction Breakdown</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white">Transaction Breakdown</CardTitle>
+              <CardDescription className="text-slate-400">
                 Treasury pool operations by type
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-5 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Inflow</p>
-                  <p className="text-xl font-semibold text-green-600" data-testid="text-inflow-count">
+                  <p className="text-xs text-slate-400 mb-1">Inflow</p>
+                  <p className="text-xl font-semibold text-emerald-400" data-testid="text-inflow-count">
                     {summary.transactionBreakdown.inflow}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Allocation</p>
-                  <p className="text-xl font-semibold" data-testid="text-allocation-count">
+                  <p className="text-xs text-slate-400 mb-1">Allocation</p>
+                  <p className="text-xl font-semibold text-white" data-testid="text-allocation-count">
                     {summary.transactionBreakdown.allocation}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Buyback</p>
-                  <p className="text-xl font-semibold" data-testid="text-buyback-count">
+                  <p className="text-xs text-slate-400 mb-1">Buyback</p>
+                  <p className="text-xl font-semibold text-white" data-testid="text-buyback-count">
                     {summary.transactionBreakdown.buyback}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Replenish</p>
-                  <p className="text-xl font-semibold" data-testid="text-replenish-count">
+                  <p className="text-xs text-slate-400 mb-1">Replenish</p>
+                  <p className="text-xl font-semibold text-white" data-testid="text-replenish-count">
                     {summary.transactionBreakdown.replenish}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Fee</p>
-                  <p className="text-xl font-semibold" data-testid="text-fee-count">
+                  <p className="text-xs text-slate-400 mb-1">Fee</p>
+                  <p className="text-xl font-semibold text-white" data-testid="text-fee-count">
                     {summary.transactionBreakdown.fee}
                   </p>
                 </div>
@@ -259,11 +259,11 @@ export default function AdminTreasury() {
         )}
 
         {/* Regenerative Capital Management */}
-        <Card className="mb-8">
+        <Card className="mb-8 bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
-              <CardTitle>Regenerative Capital Loop</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white">Regenerative Capital Loop</CardTitle>
+              <CardDescription className="text-slate-400">
                 Process verified cashflows through 60/20/10/10 allocation cycle
               </CardDescription>
             </div>
@@ -307,25 +307,25 @@ export default function AdminTreasury() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-400">
                 The regenerative capital loop automatically distributes verified project cashflows to sustain treasury health, reward LP investors, and fund continued growth.
               </p>
               <div className="grid md:grid-cols-4 gap-4 pt-2">
-                <div className="p-3 bg-muted/50 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Treasury Allocation</p>
-                  <p className="text-lg font-bold">60%</p>
+                <div className="p-3 bg-white/5 rounded-md">
+                  <p className="text-xs text-slate-400 mb-1">Treasury Allocation</p>
+                  <p className="text-lg font-bold text-white">60%</p>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">LP Distribution</p>
-                  <p className="text-lg font-bold">20%</p>
+                <div className="p-3 bg-white/5 rounded-md">
+                  <p className="text-xs text-slate-400 mb-1">LP Distribution</p>
+                  <p className="text-lg font-bold text-white">20%</p>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Reinvestment</p>
-                  <p className="text-lg font-bold">10%</p>
+                <div className="p-3 bg-white/5 rounded-md">
+                  <p className="text-xs text-slate-400 mb-1">Reinvestment</p>
+                  <p className="text-lg font-bold text-white">10%</p>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Platform Fees</p>
-                  <p className="text-lg font-bold">10%</p>
+                <div className="p-3 bg-white/5 rounded-md">
+                  <p className="text-xs text-slate-400 mb-1">Platform Fees</p>
+                  <p className="text-lg font-bold text-white">10%</p>
                 </div>
               </div>
             </div>
@@ -333,10 +333,10 @@ export default function AdminTreasury() {
         </Card>
 
         {/* Balance History Chart */}
-        <Card className="mb-8">
+        <Card className="mb-8 bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Treasury Balance History</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white">Treasury Balance History</CardTitle>
+            <CardDescription className="text-slate-400">
               Historical balance snapshots (last 30 entries)
             </CardDescription>
           </CardHeader>
@@ -372,19 +372,19 @@ export default function AdminTreasury() {
               </ResponsiveContainer>
             ) : (
               <div className="text-center py-12">
-                <TrendingDown className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No snapshot data available yet</p>
+                <TrendingDown className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-400">No snapshot data available yet</p>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Reconciliation Details */}
-        <Card>
+        <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
-              <CardTitle>Reconciliation Report</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white">Reconciliation Report</CardTitle>
+              <CardDescription className="text-slate-400">
                 Compare computed balance with latest snapshot
               </CardDescription>
             </div>
@@ -406,14 +406,14 @@ export default function AdminTreasury() {
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Computed Balance</p>
-                    <p className="text-xl font-semibold" data-testid="text-computed-balance">
+                    <p className="text-xs text-slate-400 mb-1">Computed Balance</p>
+                    <p className="text-xl font-semibold text-white" data-testid="text-computed-balance">
                       {formatCurrency(reconciliation.computedBalance)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Last Snapshot Balance</p>
-                    <p className="text-xl font-semibold" data-testid="text-snapshot-balance">
+                    <p className="text-xs text-slate-400 mb-1">Last Snapshot Balance</p>
+                    <p className="text-xl font-semibold text-white" data-testid="text-snapshot-balance">
                       {reconciliation.lastSnapshotBalance 
                         ? formatCurrency(reconciliation.lastSnapshotBalance)
                         : "N/A"
@@ -424,17 +424,17 @@ export default function AdminTreasury() {
 
                 {reconciliation.lastSnapshotDate && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Last Snapshot Date</p>
-                    <p className="text-sm">{new Date(reconciliation.lastSnapshotDate).toLocaleString()}</p>
+                    <p className="text-xs text-slate-400 mb-1">Last Snapshot Date</p>
+                    <p className="text-sm text-white">{new Date(reconciliation.lastSnapshotDate).toLocaleString()}</p>
                   </div>
                 )}
 
                 {reconciliation.recommendations && reconciliation.recommendations.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium mb-2">Recommendations</p>
+                    <p className="text-sm font-medium text-white mb-2">Recommendations</p>
                     <ul className="list-disc list-inside space-y-1">
                       {reconciliation.recommendations.map((rec, index) => (
-                        <li key={index} className="text-sm text-muted-foreground">
+                        <li key={index} className="text-sm text-slate-400">
                           {rec}
                         </li>
                       ))}
@@ -443,12 +443,12 @@ export default function AdminTreasury() {
                 )}
 
                 {reconciliation.status === 'ok' ? (
-                  <div className="flex items-center gap-2 text-green-600">
+                  <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle className="w-4 h-4" />
                     <p className="text-sm font-medium">Treasury is reconciled</p>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-yellow-600">
+                  <div className="flex items-center gap-2 text-yellow-400">
                     <AlertCircle className="w-4 h-4" />
                     <p className="text-sm font-medium">Discrepancy detected - review required</p>
                   </div>
@@ -456,7 +456,7 @@ export default function AdminTreasury() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">Click "Run Reconciliation" to generate a report</p>
+                <p className="text-slate-400">Click "Run Reconciliation" to generate a report</p>
               </div>
             )}
           </CardContent>
