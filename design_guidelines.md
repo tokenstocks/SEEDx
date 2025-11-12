@@ -198,4 +198,15 @@ Structure: rounded-2xl, overflow-hidden, shadow-lg, hover:shadow-2xl transition
 - Blockchain verification CTAs on transaction confirmations
 - Security messaging on wallet/payment screens
 
+## Admin Interface Design
+
+For admin pages, refer to **[ADMIN_THEME_GUIDE.md](./ADMIN_THEME_GUIDE.md)** which provides:
+- Dark theme typography hierarchy for optimal readability
+- Glassmorphism card patterns with proper contrast
+- Table styling guidelines (headers vs. data cells)
+- Badge, input, and button styling on dark backgrounds
+- Audit checklist for theme consistency
+
+Admin pages use a dark slate-950 background with premium RWA aesthetic (inspired by BlackRock BUIDL, Ondo Finance) featuring glassmorphism cards, explicit white/grey text colors for high readability, and emerald accent colors for the SEEDx brand.
+
 This design creates a professional, trustworthy fintech platform while celebrating the agricultural nature of the investments through strategic imagery and modern, data-focused layouts.
