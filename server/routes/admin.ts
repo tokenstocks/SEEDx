@@ -5387,4 +5387,220 @@ router.get("/primers/:id", authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// ==================== Regenerator Management ====================
+
+// GET /api/admin/regenerators/stats - Get Regenerator statistics
+router.get("/regenerators/stats", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const stats = await db.select({
+      totalRegenerators: sql<number>`COUNT(DISTINCT ${users.id})`,
+      activeRegenerators: sql<number>`COUNT(DISTINCT CASE WHEN ${users.kycStatus} = 'approved' THEN ${users.id} END)`,
+      totalInvested: sql<string>`COALESCE(SUM(CASE WHEN ${investments.currency} = 'NGNTS' THEN ${investments.amount} ELSE 0 END), 0)`,
+      totalInvestments: sql<number>`COALESCE(COUNT(CASE WHEN ${investments.currency} = 'NGNTS' THEN ${investments.id} END), 0)`,
+    })
+    .from(users)
+    .leftJoin(investments, eq(users.id, investments.userId))
+    .where(eq(users.role, "investor"));
+
+    const result = stats[0];
+    
+    // Calculate average investment
+    const avgInvestment = Number(result.totalInvestments) > 0
+      ? (parseFloat(result.totalInvested) / Number(result.totalInvestments)).toFixed(2)
+      : "0.00";
+
+    res.json({
+      totalRegenerators: Number(result.totalRegenerators),
+      activeRegenerators: Number(result.activeRegenerators),
+      totalInvested: result.totalInvested,
+      avgInvestment,
+      totalInvestments: Number(result.totalInvestments),
+    });
+  } catch (error) {
+    console.error("Get regenerator stats error:", error);
+    res.status(500).json({ error: "Failed to fetch regenerator statistics" });
+  }
+});
+
+// GET /api/admin/regenerators - List regenerators with filters and pagination
+router.get("/regenerators", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { 
+      search, 
+      kycStatus, 
+      fromDate, 
+      toDate,
+      page = "1", 
+      limit = "50" 
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build conditions
+    const conditions = [eq(users.role, "investor")];
+    
+    if (search && typeof search === "string") {
+      conditions.push(
+        or(
+          sql`LOWER(${users.email}) LIKE ${'%' + search.toLowerCase() + '%'}`,
+          sql`LOWER(${users.firstName} || ' ' || ${users.lastName}) LIKE ${'%' + search.toLowerCase() + '%'}`
+        )!
+      );
+    }
+
+    if (kycStatus && kycStatus !== "all") {
+      conditions.push(eq(users.kycStatus, kycStatus as string));
+    }
+
+    if (fromDate) {
+      conditions.push(gte(users.createdAt, new Date(fromDate as string)));
+    }
+
+    if (toDate) {
+      conditions.push(lte(users.createdAt, new Date(toDate as string)));
+    }
+
+    // Get total count
+    const [{ count: total }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users)
+      .where(and(...conditions));
+
+    // Get regenerators with investment stats
+    const regenerators = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        phone: users.phone,
+        kycStatus: users.kycStatus,
+        walletActivationStatus: wallets.activationStatus,
+        totalInvested: sql<string>`COALESCE(SUM(CASE WHEN ${investments.currency} = 'NGNTS' THEN ${investments.amount} ELSE 0 END), 0)`,
+        investmentCount: sql<number>`COALESCE(COUNT(CASE WHEN ${investments.currency} = 'NGNTS' THEN ${investments.id} END), 0)`,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .leftJoin(wallets, eq(users.id, wallets.userId))
+      .leftJoin(investments, eq(users.id, investments.userId))
+      .where(and(...conditions))
+      .groupBy(users.id, wallets.id, wallets.activationStatus)
+      .orderBy(desc(users.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    res.json({
+      regenerators,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: Number(total),
+        totalPages: Math.ceil(Number(total) / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("List regenerators error:", error);
+    res.status(500).json({ error: "Failed to fetch regenerators" });
+  }
+});
+
+// GET /api/admin/regenerators/:id - Get regenerator details
+router.get("/regenerators/:id", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get regenerator info
+    const [regenerator] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, id), eq(users.role, "investor")))
+      .limit(1);
+
+    if (!regenerator) {
+      return res.status(404).json({ error: "Regenerator not found" });
+    }
+
+    // Get wallet info
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, id))
+      .limit(1);
+
+    // Get investment history with project names
+    const investmentHistory = await db
+      .select({
+        id: investments.id,
+        projectId: investments.projectId,
+        projectName: projects.name,
+        amount: investments.amount,
+        tokensReceived: investments.tokensReceived,
+        currency: investments.currency,
+        transactionId: investments.transactionId,
+        createdAt: investments.createdAt,
+      })
+      .from(investments)
+      .leftJoin(projects, eq(investments.projectId, projects.id))
+      .where(eq(investments.userId, id))
+      .orderBy(desc(investments.createdAt));
+
+    // Get KYC history
+    const kycHistory = await db
+      .select({
+        id: kycDecisions.id,
+        previousStatus: kycDecisions.previousStatus,
+        newStatus: kycDecisions.newStatus,
+        adminNotes: kycDecisions.adminNotes,
+        processedAt: kycDecisions.processedAt,
+        adminId: kycDecisions.processedBy,
+        adminName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+        adminEmail: users.email,
+      })
+      .from(kycDecisions)
+      .leftJoin(users, eq(kycDecisions.processedBy, users.id))
+      .where(eq(kycDecisions.userId, id))
+      .orderBy(desc(kycDecisions.processedAt));
+
+    // Calculate stats
+    const totalInvested = investmentHistory
+      .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
+
+    const uniqueProjects = new Set(investmentHistory.map(inv => inv.projectId)).size;
+
+    res.json({
+      regenerator: {
+        id: regenerator.id,
+        email: regenerator.email,
+        firstName: regenerator.firstName,
+        lastName: regenerator.lastName,
+        phone: regenerator.phone,
+        kycStatus: regenerator.kycStatus,
+        kycDocuments: regenerator.kycDocuments,
+        stellarPublicKey: regenerator.stellarPublicKey,
+        createdAt: regenerator.createdAt,
+      },
+      wallet: wallet ? {
+        id: wallet.id,
+        activationStatus: wallet.activationStatus,
+        ngnBalance: wallet.ngnBalance,
+        usdcBalance: wallet.usdcBalance,
+        xlmBalance: wallet.xlmBalance,
+      } : null,
+      stats: {
+        totalInvested: totalInvested.toFixed(2),
+        totalInvestments: investmentHistory.length,
+        uniqueProjects,
+        totalTokensReceived: investmentHistory.reduce((sum, inv) => sum + parseFloat(inv.tokensReceived), 0).toFixed(2),
+      },
+      investments: investmentHistory,
+      kycHistory,
+    });
+  } catch (error) {
+    console.error("Get regenerator details error:", error);
+    res.status(500).json({ error: "Failed to fetch regenerator details" });
+  }
+});
+
 export default router;
