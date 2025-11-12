@@ -114,11 +114,17 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
   const createContributionMutation = useMutation({
     mutationFn: async () => {
       if (!feePreview) throw new Error("Fee preview not loaded");
+      if (!paymentMethod) throw new Error("Payment method not selected");
+      
+      // Generate unique reference code if not already set
+      const refCode = referenceCode || `PRIMER-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
       
       const formData = new FormData();
       formData.append("amountNGN", amount);
       formData.append("netNGNTS", feePreview.netNGNTS);
       formData.append("platformFeeNGN", feePreview.platformFeeNGN);
+      formData.append("paymentMethod", paymentMethod);
+      formData.append("referenceCode", refCode);
       if (proofFile) {
         formData.append("paymentProof", proofFile);
       }
@@ -161,6 +167,14 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
   });
 
   const handleSubmit = () => {
+    if (!bankAccount) {
+      toast({
+        title: "Bank details unavailable",
+        description: "Please wait for bank details to load or try again",
+        variant: "destructive",
+      });
+      return;
+    }
     createContributionMutation.mutate();
   };
 
@@ -466,7 +480,7 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
                             </div>
                             <div className="flex justify-between items-center py-3 bg-blue-500/10 rounded-lg px-3 mt-4">
                               <span className="text-sm font-semibold text-white">You'll Receive</span>
-                              <span className="text-xl font-bold text-blue-400">
+                              <span className="text-xl font-bold text-blue-400" data-testid="text-net-ngnts">
                                 {parseFloat(feePreview.netNGNTS).toLocaleString()} NGNTS
                               </span>
                             </div>
@@ -560,12 +574,13 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
                         <div className="bg-white/5 rounded-lg p-3">
                           <div className="text-xs text-slate-400 mb-1">Bank Name</div>
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold text-white">{bankAccount.bankName}</span>
+                            <span className="font-semibold text-white" data-testid="text-bank-name">{bankAccount.bankName}</span>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => handleCopy(bankAccount.bankName)}
                               className="h-6"
+                              data-testid="button-copy-bank-name"
                             >
                               <Copy className="w-3 h-3" />
                             </Button>
@@ -575,12 +590,13 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
                         <div className="bg-white/5 rounded-lg p-3">
                           <div className="text-xs text-slate-400 mb-1">Account Number</div>
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold text-white text-lg">{bankAccount.accountNumber}</span>
+                            <span className="font-semibold text-white text-lg" data-testid="text-account-number">{bankAccount.accountNumber}</span>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => handleCopy(bankAccount.accountNumber)}
                               className="h-6"
+                              data-testid="button-copy-account-number"
                             >
                               <Copy className="w-3 h-3" />
                             </Button>
@@ -590,12 +606,13 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
                         <div className="bg-white/5 rounded-lg p-3">
                           <div className="text-xs text-slate-400 mb-1">Account Name</div>
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold text-white">{bankAccount.accountName}</span>
+                            <span className="font-semibold text-white" data-testid="text-account-name">{bankAccount.accountName}</span>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => handleCopy(bankAccount.accountName)}
                               className="h-6"
+                              data-testid="button-copy-account-name"
                             >
                               <Copy className="w-3 h-3" />
                             </Button>
@@ -604,7 +621,7 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
 
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mt-4">
                           <div className="text-xs text-blue-400 mb-1">Amount to Transfer</div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-white" data-testid="text-amount-to-transfer">
                             ₦{parseFloat(amount).toLocaleString()}
                           </div>
                         </div>
@@ -679,6 +696,7 @@ export function PrimerFundingWizard({ open, onOpenChange }: PrimerFundingWizardP
                               }
                             }}
                             className="text-red-400 hover:text-red-300"
+                            data-testid="button-remove-proof"
                           >
                             Remove
                           </Button>

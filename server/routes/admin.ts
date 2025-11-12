@@ -34,6 +34,7 @@ import {
   createPlatformBankAccountSchema,
 } from "@shared/schema";
 import { eq, and, or, sql, gte, lte, desc, count } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
 import { encrypt } from "../lib/encryption";
@@ -5292,38 +5293,40 @@ router.get("/primers/:id", authenticate, requireAdmin, async (req, res) => {
       .where(eq(wallets.userId, id))
       .limit(1);
 
-    // Get contribution history
-    const contributions = await db
+    // Create table alias for null-safe leftJoin projections
+    const approver = alias(users, "approver");
+
+    // Get contribution history with nested approver object
+    const contributionsRaw = await db
       .select({
-        id: primerContributions.id,
-        amountNgnts: primerContributions.amountNgnts,
-        status: primerContributions.status,
-        paymentProof: primerContributions.paymentProof,
-        txHash: primerContributions.txHash,
-        lpPoolShareSnapshot: primerContributions.lpPoolShareSnapshot,
-        createdAt: primerContributions.createdAt,
-        approvedAt: primerContributions.approvedAt,
-        approvedBy: primerContributions.approvedBy,
-        rejectedReason: primerContributions.rejectedReason,
-        approverEmail: sql<string>`${users.email}`,
+        contribution: primerContributions,
+        approver: approver,
       })
       .from(primerContributions)
-      .leftJoin(users, eq(primerContributions.approvedBy, users.id))
+      .leftJoin(approver, eq(primerContributions.approvedBy, approver.id))
       .where(eq(primerContributions.primerId, id))
       .orderBy(desc(primerContributions.createdAt));
 
-    // Get project allocations
-    const allocations = await db
+    const contributions = contributionsRaw.map(row => ({
+      id: row.contribution.id,
+      amountNgnts: row.contribution.amountNgnts,
+      status: row.contribution.status,
+      paymentProof: row.contribution.paymentProof,
+      txHash: row.contribution.txHash,
+      lpPoolShareSnapshot: row.contribution.lpPoolShareSnapshot,
+      createdAt: row.contribution.createdAt,
+      approvedAt: row.contribution.approvedAt,
+      approvedBy: row.contribution.approvedBy,
+      rejectedReason: row.contribution.rejectedReason,
+      approverEmail: row.approver?.email || null,
+    }));
+
+    // Get project allocations with nested objects
+    const allocationsRaw = await db
       .select({
-        id: primerProjectAllocations.id,
-        projectId: lpProjectAllocations.projectId,
-        projectName: projects.name,
-        shareAmountNgnts: primerProjectAllocations.shareAmountNgnts,
-        sharePercent: primerProjectAllocations.sharePercent,
-        poolOwnershipPercent: primerProjectAllocations.poolOwnershipPercent,
-        allocationDate: lpProjectAllocations.allocationDate,
-        totalAllocated: lpProjectAllocations.amountNgnts,
-        createdAt: primerProjectAllocations.createdAt,
+        allocation: primerProjectAllocations,
+        lpAllocation: lpProjectAllocations,
+        project: projects,
       })
       .from(primerProjectAllocations)
       .leftJoin(lpProjectAllocations, eq(primerProjectAllocations.allocationId, lpProjectAllocations.id))
@@ -5331,20 +5334,38 @@ router.get("/primers/:id", authenticate, requireAdmin, async (req, res) => {
       .where(eq(primerProjectAllocations.primerId, id))
       .orderBy(desc(primerProjectAllocations.createdAt));
 
-    // Get KYC history
-    const kycHistory = await db
+    const allocations = allocationsRaw.map(row => ({
+      id: row.allocation.id,
+      projectId: row.project?.id || null,
+      projectName: row.project?.name || null,
+      shareAmountNgnts: row.allocation.shareAmountNgnts,
+      sharePercent: row.allocation.sharePercent,
+      poolOwnershipPercent: row.allocation.poolOwnershipPercent,
+      allocationDate: row.lpAllocation?.allocationDate || null,
+      totalAllocated: row.lpAllocation?.amountNgnts || null,
+      createdAt: row.allocation.createdAt,
+    }));
+
+    // Get KYC history with nested admin object
+    const adminAlias = alias(users, "admin");
+    const kycHistoryRaw = await db
       .select({
-        id: kycDecisions.id,
-        decision: kycDecisions.decision,
-        notes: kycDecisions.notes,
-        processedAt: kycDecisions.processedAt,
-        adminEmail: sql<string>`${users.email}`,
-        adminName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+        decision: kycDecisions,
+        admin: adminAlias,
       })
       .from(kycDecisions)
-      .leftJoin(users, eq(kycDecisions.processedBy, users.id))
+      .leftJoin(adminAlias, eq(kycDecisions.processedBy, adminAlias.id))
       .where(eq(kycDecisions.userId, id))
-      .orderBy(desc(kycDecisions.processedAt));
+      .orderBy(desc(kycDecisions.createdAt));
+
+    const kycHistory = kycHistoryRaw.map(row => ({
+      id: row.decision.id,
+      decision: row.decision.newStatus,
+      notes: row.decision.adminNotes,
+      processedAt: row.decision.createdAt,
+      adminEmail: row.admin?.email || null,
+      adminName: row.admin ? `${row.admin.firstName} ${row.admin.lastName}` : null,
+    }));
 
     // Calculate stats
     const totalContributed = contributions
