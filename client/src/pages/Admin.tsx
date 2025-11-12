@@ -289,10 +289,26 @@ export default function Admin() {
   const [adminNotes, setAdminNotes] = useState("");
   const [createProjectDialog, setCreateProjectDialog] = useState(false);
   
-  // KYC split-pane state
-  const [selectedKycIndex, setSelectedKycIndex] = useState<number>(0);
+  // KYC split-pane state with sub-tabs
+  const [kycSubTab, setKycSubTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [kycIndexMap, setKycIndexMap] = useState({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
   const [kycAction, setKycAction] = useState<'approve' | 'reject'>('approve');
   const [kycNotes, setKycNotes] = useState("");
+  
+  // Helper to get/set current tab's selected index
+  const selectedKycIndex = kycIndexMap[kycSubTab];
+  const setSelectedKycIndex = (indexOrUpdater: number | ((prev: number) => number)) => {
+    setKycIndexMap(prev => ({
+      ...prev,
+      [kycSubTab]: typeof indexOrUpdater === 'function' 
+        ? indexOrUpdater(prev[kycSubTab])
+        : indexOrUpdater
+    }));
+  };
   const [projectForm, setProjectForm] = useState({
     name: "",
     description: "",
@@ -364,10 +380,28 @@ export default function Admin() {
     enabled: !!user,
   });
 
-  const { data: usersData } = useQuery<{ users: User[] }>({
+  // Three separate KYC queries for sub-tabs
+  const { data: pendingKycData } = useQuery<{ users: User[] }>({
     queryKey: ["/api/admin/users?kycStatus=submitted"],
     enabled: !!user,
   });
+
+  const { data: approvedKycData } = useQuery<{ users: User[] }>({
+    queryKey: ["/api/admin/users?kycStatus=approved"],
+    enabled: !!user,
+  });
+
+  const { data: rejectedKycData } = useQuery<{ users: User[] }>({
+    queryKey: ["/api/admin/users?kycStatus=rejected"],
+    enabled: !!user,
+  });
+
+  // Get current sub-tab's data
+  const usersData = kycSubTab === 'pending' 
+    ? pendingKycData 
+    : kycSubTab === 'approved' 
+    ? approvedKycData 
+    : rejectedKycData;
 
   const { data: bankAccountSettings } = useQuery<{
     accountName: string;
@@ -475,7 +509,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "KYC request processed successfully" });
+      // Invalidate all KYC query keys
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users?kycStatus=submitted"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users?kycStatus=approved"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users?kycStatus=rejected"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
       // Invalidate user profile queries so frontend updates
       queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
@@ -1057,20 +1094,36 @@ export default function Admin() {
 
           {/* KYC Tab - Split Pane Layout */}
           <TabsContent value="kyc">
-            {usersData && usersData.users.length > 0 ? (
-              <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-300px)]">
-                {/* Left Panel - KYC Request List */}
-                <Card className="w-full md:w-2/5">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Pending KYC Requests</CardTitle>
-                    <CardDescription>
-                      {usersData.users.length} request{usersData.users.length !== 1 ? 's' : ''} awaiting review
-                    </CardDescription>
-                  </CardHeader>
+            {/* Nested Tabs for KYC Status */}
+            <Tabs value={kycSubTab} onValueChange={(value) => setKycSubTab(value as 'pending' | 'approved' | 'rejected')}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="pending" data-testid="tab-kyc-pending">
+                  Pending {pendingKycData && `(${pendingKycData.users.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="approved" data-testid="tab-kyc-approved">
+                  Approved {approvedKycData && `(${approvedKycData.users.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="rejected" data-testid="tab-kyc-rejected">
+                  Rejected {rejectedKycData && `(${rejectedKycData.users.length})`}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Pending KYC Sub-Tab */}
+              <TabsContent value="pending">
+                {pendingKycData && pendingKycData.users.length > 0 ? (
+                  <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-350px)]">
+                    {/* Left Panel - KYC Request List */}
+                    <Card className="w-full md:w-2/5">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Pending KYC Requests</CardTitle>
+                        <CardDescription>
+                          {pendingKycData.users.length} request{pendingKycData.users.length !== 1 ? 's' : ''} awaiting review
+                        </CardDescription>
+                      </CardHeader>
                   <CardContent className="p-0">
                     <ScrollArea className="h-[calc(100vh-420px)]">
                       <div className="space-y-2 p-4">
-                        {usersData.users.map((kycUser, index) => (
+                        {pendingKycData.users.map((kycUser, index) => (
                           <Card
                             key={kycUser.id}
                             className={`cursor-pointer transition-colors ${
@@ -1105,7 +1158,7 @@ export default function Admin() {
                 {/* Right Panel - KYC Detail View */}
                 <Card className="w-full md:w-3/5">
                   {(() => {
-                    const selectedKycUser = usersData.users[selectedKycIndex];
+                    const selectedKycUser = pendingKycData.users[selectedKycIndex];
                     if (!selectedKycUser) {
                       return (
                         <CardContent className="flex flex-col items-center justify-center h-full py-12">
@@ -1125,7 +1178,7 @@ export default function Admin() {
                                 {selectedKycUser.firstName} {selectedKycUser.lastName}
                               </CardTitle>
                               <CardDescription className="text-xs mt-1">
-                                Request {selectedKycIndex + 1} of {usersData.users.length}
+                                Request {selectedKycIndex + 1} of {pendingKycData.users.length}
                               </CardDescription>
                             </div>
                             <div className="flex gap-2">
@@ -1142,8 +1195,8 @@ export default function Admin() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setSelectedKycIndex(prev => Math.min(prev + 1, usersData.users.length - 1))}
-                                disabled={selectedKycIndex >= usersData.users.length - 1}
+                                onClick={() => setSelectedKycIndex(prev => Math.min(prev + 1, pendingKycData.users.length - 1))}
+                                disabled={selectedKycIndex >= pendingKycData.users.length - 1}
                                 data-testid="button-next-kyc"
                                 aria-label="Next KYC request"
                               >
@@ -1260,14 +1313,36 @@ export default function Admin() {
                   })()}
                 </Card>
               </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No pending KYC requests</p>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No pending KYC requests</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Approved KYC Sub-Tab */}
+              <TabsContent value="approved">
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Approved KYC records will be shown here with audit trail</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Rejected KYC Sub-Tab */}
+              <TabsContent value="rejected">
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Rejected KYC records will be shown here with audit trail</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* Wallet Activation Tab */}
