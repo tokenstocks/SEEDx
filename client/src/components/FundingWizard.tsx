@@ -1,14 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Building2, Coins, Check, ChevronRight, ArrowDown, Calculator, Fuel, AlertCircle, Loader2 } from "lucide-react";
+import { Building2, Coins, Check, ChevronRight, ArrowDown, Calculator, Fuel, AlertCircle, Loader2, Copy, Upload, FileText, Image as ImageIcon, FileCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import type { BankDepositFeePreview } from "@shared/schema";
+
+type BankAccountDetails = {
+  accountName: string;
+  bankName: string;
+  accountNumber: string;
+  routingCode: string;
+};
 
 type PaymentMethod = "bank_transfer" | "usdc" | null;
 type WizardStep = 1 | 2 | 3;
@@ -19,14 +27,24 @@ interface FundingWizardProps {
 }
 
 export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [step, setStep] = useState<WizardStep>(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [amount, setAmount] = useState("");
+  const [referenceCode, setReferenceCode] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   const handleReset = () => {
     setStep(1);
     setPaymentMethod(null);
     setAmount("");
+    setReferenceCode("");
+    setProofFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // Reset wizard state immediately when dialog closes
@@ -53,6 +71,60 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
   });
 
   const canProceedToStep3 = isAmountValid && feePreview && !feeError;
+
+  // Bank account details query - fetch when user reaches Step 3
+  const { data: bankAccount, isLoading: bankLoading } = useQuery<BankAccountDetails>({
+    queryKey: ["/api/admin/settings/bank-account"],
+    enabled: step === 3,
+    staleTime: 60000,
+  });
+
+  // Generate reference code when moving to Step 3
+  useEffect(() => {
+    if (step === 3 && !referenceCode) {
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      setReferenceCode(`NGN-${timestamp}-${random}`);
+    }
+  }, [step, referenceCode]);
+
+  // File upload handler
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Only PNG, JPG, and PDF files are allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProofFile(file);
+  };
+
+  // Copy to clipboard helper
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard`,
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -401,7 +473,7 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
             </motion.div>
           )}
 
-          {/* Step 3: Review & Submit (Placeholder for now) */}
+          {/* Step 3: Invoice Review */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -417,11 +489,174 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
                   </Badge>
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">
-                  Review & Submit
+                  Complete Your Deposit
                 </h3>
-                <p className="text-sm text-slate-400">
-                  Step 3 implementation coming next
+                <p className="text-sm text-slate-400 mb-4">
+                  Transfer funds to the account below and upload your proof of payment
                 </p>
+
+                {/* Invoice Card */}
+                <Card className="bg-white/5 border-white/10 backdrop-blur-md">
+                  <CardContent className="p-6 space-y-6">
+                    {/* Reference Code */}
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Reference Code</p>
+                        <p className="text-lg font-mono font-semibold text-emerald-400">{referenceCode}</p>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => copyToClipboard(referenceCode, "Reference code")}
+                        className="hover-elevate"
+                        data-testid="button-copy-reference"
+                      >
+                        <Copy className="w-4 h-4 text-emerald-400" />
+                      </Button>
+                    </div>
+
+                    {/* Bank Account Details */}
+                    {bankLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse" />
+                        ))}
+                      </div>
+                    ) : bankAccount ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between p-4 rounded-lg bg-slate-800/50 border border-white/10">
+                          <div className="flex-1">
+                            <p className="text-xs text-slate-400 mb-1">Bank Name</p>
+                            <p className="text-base font-medium text-white">{bankAccount.bankName}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start justify-between p-4 rounded-lg bg-slate-800/50 border border-white/10">
+                          <div className="flex-1">
+                            <p className="text-xs text-slate-400 mb-1">Account Name</p>
+                            <p className="text-base font-medium text-white">{bankAccount.accountName}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start justify-between p-4 rounded-lg bg-slate-800/50 border border-white/10">
+                          <div className="flex-1">
+                            <p className="text-xs text-slate-400 mb-1">Account Number</p>
+                            <p className="text-lg font-mono font-semibold text-white">{bankAccount.accountNumber}</p>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => copyToClipboard(bankAccount.accountNumber, "Account number")}
+                            className="hover-elevate"
+                            data-testid="button-copy-account"
+                          >
+                            <Copy className="w-4 h-4 text-slate-400" />
+                          </Button>
+                        </div>
+
+                        {bankAccount.routingCode && (
+                          <div className="flex items-start justify-between p-4 rounded-lg bg-slate-800/50 border border-white/10">
+                            <div className="flex-1">
+                              <p className="text-xs text-slate-400 mb-1">Routing Code</p>
+                              <p className="text-base font-mono font-medium text-white">{bankAccount.routingCode}</p>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => copyToClipboard(bankAccount.routingCode, "Routing code")}
+                              className="hover-elevate"
+                              data-testid="button-copy-routing"
+                            >
+                              <Copy className="w-4 h-4 text-slate-400" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-red-400">
+                        <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm">Failed to load bank details</p>
+                      </div>
+                    )}
+
+                    {/* Amount to Send */}
+                    {feePreview && (
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20">
+                        <p className="text-xs text-slate-400 mb-2">Amount to Send</p>
+                        <p className="text-3xl font-bold text-white font-mono">
+                          ₦{feePreview.amountNGN.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                        </p>
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-1 text-sm">
+                          <div className="flex justify-between text-slate-300">
+                            <span>You will receive</span>
+                            <span className="font-mono text-emerald-400">₦{feePreview.ngntsAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} NGNTS</span>
+                          </div>
+                          <div className="flex justify-between text-slate-400 text-xs">
+                            <span>After fees</span>
+                            <span className="font-mono">-₦{feePreview.totalFeesNGN.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Proof of Payment Upload */}
+                <Card className="bg-white/5 border-white/10 backdrop-blur-md">
+                  <CardContent className="p-6">
+                    <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                      <Upload className="w-4 h-4 text-emerald-400" />
+                      Upload Proof of Payment
+                    </h4>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.pdf"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      data-testid="input-file-upload"
+                    />
+                    
+                    {proofFile ? (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <div className="flex-shrink-0">
+                          {proofFile.type.startsWith('image/') ? (
+                            <ImageIcon className="w-8 h-8 text-emerald-400" />
+                          ) : (
+                            <FileText className="w-8 h-8 text-emerald-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{proofFile.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {(proofFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setProofFile(null)}
+                          className="hover-elevate"
+                          data-testid="button-remove-file"
+                        >
+                          <AlertCircle className="w-4 h-4 text-orange-400" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full p-8 rounded-lg border-2 border-dashed border-white/20 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-center hover-elevate active-elevate-2"
+                        data-testid="button-select-file"
+                      >
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm text-slate-300 mb-1">Click to upload</p>
+                        <p className="text-xs text-slate-500">PNG, JPG or PDF (max 5MB)</p>
+                      </button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Navigation Buttons */}
                 <div className="flex justify-between gap-3 pt-4">
                   <Button
                     variant="outline"
@@ -433,9 +668,11 @@ export function FundingWizard({ open, onOpenChange }: FundingWizardProps) {
                   </Button>
                   <Button
                     onClick={handleClose}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={!proofFile}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                     data-testid="button-submit-funding"
                   >
+                    <FileCheck className="w-4 h-4 mr-2" />
                     I have sent the money
                   </Button>
                 </div>
