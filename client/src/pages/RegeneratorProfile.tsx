@@ -46,6 +46,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { BankDepositFeePreview, PlatformBankAccount } from "@shared/schema";
+import { FundingWizard } from "@/components/FundingWizard";
 
 export default function RegeneratorProfile() {
   const [, navigate] = useLocation();
@@ -53,6 +54,7 @@ export default function RegeneratorProfile() {
   const prefersReducedMotion = useReducedMotion();
   const { toast } = useToast();
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [fundingWizardOpen, setFundingWizardOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedReference, setCopiedReference] = useState(false);
   
@@ -741,9 +743,9 @@ export default function RegeneratorProfile() {
                     </div>
 
                     {/* Add Capital Button */}
-                    <div className="pt-4">
+                    <div className="pt-4 space-y-2">
                       <Button
-                        onClick={() => accountLifecycleStatus.canDeposit && setDepositDialogOpen(true)}
+                        onClick={() => accountLifecycleStatus.canDeposit && setFundingWizardOpen(true)}
                         disabled={!accountLifecycleStatus.canDeposit}
                         className={
                           accountLifecycleStatus.canDeposit
@@ -751,10 +753,21 @@ export default function RegeneratorProfile() {
                             : "w-full bg-slate-700 text-slate-400 cursor-not-allowed"
                         }
                         size="lg"
-                        data-testid="button-add-capital"
+                        data-testid="button-add-capital-new"
                       >
                         <Coins className="w-5 h-5 mr-2" />
-                        Add Capital to Wallet
+                        Add Capital to Wallet (New)
+                      </Button>
+                      <Button
+                        onClick={() => accountLifecycleStatus.canDeposit && setDepositDialogOpen(true)}
+                        disabled={!accountLifecycleStatus.canDeposit}
+                        variant="outline"
+                        className="w-full"
+                        size="lg"
+                        data-testid="button-add-capital-old"
+                      >
+                        <Coins className="w-5 h-5 mr-2" />
+                        Old Wizard (for comparison)
                       </Button>
                       {!accountLifecycleStatus.canDeposit && (
                         <p className="text-xs text-orange-400 mt-2 text-center">
@@ -1410,6 +1423,12 @@ export default function RegeneratorProfile() {
             </Tabs>
           </DialogContent>
         </Dialog>
+
+        {/* New Funding Wizard */}
+        <FundingWizard
+          open={fundingWizardOpen}
+          onOpenChange={setFundingWizardOpen}
+        />
       </div>
     </TooltipProvider>
   );
