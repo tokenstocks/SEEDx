@@ -4418,4 +4418,260 @@ router.patch("/bank-deposits/:id/decision", authenticate, requireAdmin, async (r
   }
 });
 
+/**
+ * GET /api/admin/investments
+ * List all investments with filters (admin only)
+ */
+router.get("/investments", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const {
+      projectId,
+      userId,
+      currency,
+      dateFrom,
+      dateTo,
+      search,
+      page = "1",
+      limit = "50",
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build base query
+    let query = db
+      .select({
+        id: investments.id,
+        userId: investments.userId,
+        userEmail: users.email,
+        projectId: investments.projectId,
+        projectName: projects.name,
+        amount: investments.amount,
+        tokensReceived: investments.tokensReceived,
+        currency: investments.currency,
+        transactionId: investments.transactionId,
+        createdAt: investments.createdAt,
+        txHash: transactions.reference,
+      })
+      .from(investments)
+      .leftJoin(users, eq(investments.userId, users.id))
+      .leftJoin(projects, eq(investments.projectId, projects.id))
+      .leftJoin(transactions, eq(investments.transactionId, transactions.id))
+      .$dynamic();
+
+    const conditions = [];
+
+    // Apply filters
+    if (projectId) {
+      conditions.push(eq(investments.projectId, projectId as string));
+    }
+    if (userId) {
+      conditions.push(eq(investments.userId, userId as string));
+    }
+    if (currency) {
+      conditions.push(eq(investments.currency, currency as any));
+    }
+    if (dateFrom) {
+      conditions.push(gte(investments.createdAt, new Date(dateFrom as string)));
+    }
+    if (dateTo) {
+      conditions.push(lte(investments.createdAt, new Date(dateTo as string)));
+    }
+
+    // Apply search (user email or project name)
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        sql`(${users.email} ILIKE ${searchTerm} OR ${projects.name} ILIKE ${searchTerm})`
+      );
+    }
+
+    // Apply conditions
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    // Get total count for pagination
+    let countQuery = db
+      .select({ count: count() })
+      .from(investments)
+      .leftJoin(users, eq(investments.userId, users.id))
+      .leftJoin(projects, eq(investments.projectId, projects.id))
+      .$dynamic();
+    
+    if (conditions.length > 0) {
+      countQuery = countQuery.where(and(...conditions));
+    }
+    
+    const [{ count: totalCount }] = await countQuery;
+
+    // Get paginated results
+    const investmentsList = await query
+      .orderBy(desc(investments.createdAt))
+      .limit(limitNum)
+      .offset(offset);
+
+    res.json({
+      investments: investmentsList,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Get investments error:", error);
+    res.status(500).json({ error: "Failed to fetch investments" });
+  }
+});
+
+/**
+ * GET /api/admin/investments/stats
+ * Get aggregate investment statistics (admin only)
+ */
+router.get("/investments/stats", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Get all-time stats
+    const [allTimeStats] = await db
+      .select({
+        totalInvested: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        investmentCount: count(),
+        avgInvestment: sql<string>`COALESCE(AVG(${investments.amount}), 0)`,
+      })
+      .from(investments);
+
+    // Get today's stats
+    const [todayStats] = await db
+      .select({
+        totalInvestedToday: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        countToday: count(),
+      })
+      .from(investments)
+      .where(gte(investments.createdAt, today));
+
+    // Get 24h stats
+    const [twentyFourHourStats] = await db
+      .select({
+        total24h: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        count24h: count(),
+      })
+      .from(investments)
+      .where(gte(investments.createdAt, twentyFourHoursAgo));
+
+    // Get breakdown by currency
+    const currencyBreakdown = await db
+      .select({
+        currency: investments.currency,
+        totalAmount: sql<string>`COALESCE(SUM(${investments.amount}), 0)`,
+        count: count(),
+      })
+      .from(investments)
+      .groupBy(investments.currency);
+
+    res.json({
+      allTime: {
+        totalInvested: parseFloat(allTimeStats.totalInvested || "0"),
+        investmentCount: allTimeStats.investmentCount,
+        avgInvestment: parseFloat(allTimeStats.avgInvestment || "0"),
+      },
+      today: {
+        totalInvested: parseFloat(todayStats.totalInvestedToday || "0"),
+        count: todayStats.countToday,
+      },
+      last24h: {
+        totalInvested: parseFloat(twentyFourHourStats.total24h || "0"),
+        count: twentyFourHourStats.count24h,
+      },
+      byCurrency: currencyBreakdown.map((item) => ({
+        currency: item.currency,
+        totalAmount: parseFloat(item.totalAmount || "0"),
+        count: item.count,
+      })),
+    });
+  } catch (error) {
+    console.error("Get investment stats error:", error);
+    res.status(500).json({ error: "Failed to fetch investment statistics" });
+  }
+});
+
+/**
+ * GET /api/admin/investments/:id
+ * Get detailed investment information (admin only)
+ */
+router.get("/investments/:id", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get investment with full details
+    const [investment] = await db
+      .select({
+        id: investments.id,
+        userId: investments.userId,
+        userEmail: users.email,
+        userKycStatus: users.kycStatus,
+        userWalletAddress: wallets.cryptoWalletPublicKey,
+        projectId: investments.projectId,
+        projectName: projects.name,
+        projectTokenSymbol: projects.tokenSymbol,
+        amount: investments.amount,
+        tokensReceived: investments.tokensReceived,
+        currency: investments.currency,
+        transactionId: investments.transactionId,
+        createdAt: investments.createdAt,
+      })
+      .from(investments)
+      .leftJoin(users, eq(investments.userId, users.id))
+      .leftJoin(wallets, eq(investments.userId, wallets.userId))
+      .leftJoin(projects, eq(investments.projectId, projects.id))
+      .where(eq(investments.id, id));
+
+    if (!investment) {
+      return res.status(404).json({ error: "Investment not found" });
+    }
+
+    // Get transaction details if available
+    let transactionDetails = null;
+    if (investment.transactionId) {
+      const [txn] = await db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, investment.transactionId));
+
+      transactionDetails = txn;
+    }
+
+    // Get current NAV for the project (if available)
+    const currentNav = await db.query.projectNavHistory.findFirst({
+      where: (navHistory, { eq, and }) =>
+        and(
+          eq(navHistory.projectId, investment.projectId),
+          eq(navHistory.isSuperseded, false)
+        ),
+      orderBy: (navHistory, { desc }) => [desc(navHistory.effectiveAt)],
+    });
+
+    // Calculate NAV at time of purchase (approximate from amount / tokens)
+    const navAtPurchase =
+      parseFloat(investment.amount) / parseFloat(investment.tokensReceived);
+
+    res.json({
+      investment: {
+        ...investment,
+        navAtPurchase,
+        currentNav: currentNav ? parseFloat(currentNav.navPerToken) : null,
+      },
+      transaction: transactionDetails,
+    });
+  } catch (error) {
+    console.error("Get investment detail error:", error);
+    res.status(500).json({ error: "Failed to fetch investment details" });
+  }
+});
+
 export default router;

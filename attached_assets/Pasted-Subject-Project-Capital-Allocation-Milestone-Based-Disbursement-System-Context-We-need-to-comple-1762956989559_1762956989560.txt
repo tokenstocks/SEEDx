@@ -1,0 +1,516 @@
+Subject: Project Capital Allocation & Milestone-Based Disbursement System
+Context:
+We need to complete the Primer → LP Pool → Project → Regenerator capital flow. Currently missing: how LP capital gets allocated to projects and how projects spend that capital transparently.
+
+The Complete Capital Flow:
+Phase 1: Primer Deposits to LP Pool ✅ (Mostly exists)
+1. Primer deposits ₦10M via bank transfer
+2. Admin approves deposit
+3. Platform mints ₦10M NGNTS → LP Pool Wallet (NOT user wallet)
+4. Update primer_contributions table
+5. Primer dashboard shows LP Pool contribution
+What we need:
+
+Ensure deposit approval sends NGNTS to LP Pool Wallet (not Primer's personal wallet)
+Track Primer's % share of LP Pool
+Display LP Pool total balance in admin dashboard
+Phase 2: Admin Allocates LP Capital to Project ⚠️ (NEEDS TO BE BUILT)
+ADMIN > PROJECTS > [Select Project] > ALLOCATE LP FUNDS
+
+Current LP Pool Balance: ₦15,000,000 NGNTS
+Available for Allocation: ₦12,000,000 (₦3M already allocated)
+
+Project: Rice Farm Expansion
+Project Wallet: GD7X...ABC (auto-filled from project record)
+
+Allocation Amount: [₦3,000,000]
+Purpose: [Operational capital for farming operations]
+
+[Allocate Funds]
+On Submit:
+
+Stellar Transaction: Transfer ₦3M NGNTS from LP Pool Wallet → Project Wallet
+Database Updates:
+sql
+Copy
+-- Create allocation record
+INSERT INTO projectAllocations (
+  projectId, 
+  amount, 
+  allocatedBy, 
+  lpPoolBalanceBefore, 
+  lpPoolBalanceAfter,
+  stellarTxHash,
+  status
+) VALUES (
+  'rice-farm-id',
+  3000000,
+  'admin-user-id',
+  15000000,
+  12000000,
+  'ABC123...',
+  'completed'
+);
+
+-- Update project
+UPDATE projects SET
+  allocatedCapital = 3000000,
+  status = 'funded',
+  fundedAt = NOW()
+WHERE id = 'rice-farm-id';
+
+-- Create ledger entry
+INSERT INTO projectWalletLedger (
+  projectId,
+  type: 'allocation',
+  amount: 3000000,
+  currency: 'NGNTS',
+  balanceBefore: 0,
+  balanceAfter: 3000000,
+  stellarTxHash: 'ABC123...',
+  description: 'Initial LP Pool allocation'
+);
+Admin Dashboard Updates:
+LP Pool available balance: ₦15M → ₦12M
+Project status: "Pending" → "Funded"
+Show allocation in LP Pool activity feed
+Primer Dashboards Update:
+Show LP Pool allocation activity
+Update LP Pool metrics (allocated vs available)
+Phase 3: Admin Tokenizes Project ⚠️ (NEEDS TO BE BUILT)
+ADMIN > PROJECTS > Rice Farm > TOKENIZE PROJECT
+
+Allocated Capital: ₦3,000,000 NGNTS
+Initial NAV per Token: [₦1,250] (admin sets)
+Total Tokens to Mint: 2,400 (auto-calculated: ₦3M / ₦1,250)
+
+Token Details:
+Token Symbol: [RICE]
+Token Code: [RICE-FARM-001]
+Token Issuer: [Treasury Wallet - auto-filled]
+
+[Mint Tokens & Activate Project]
+On Submit:
+
+Stellar Transaction: Treasury Wallet mints 2,400 RICE tokens → Distribution Wallet
+Database Updates:
+sql
+Copy
+-- Create token record
+INSERT INTO projectTokens (
+  projectId,
+  tokenSymbol: 'RICE',
+  tokenCode: 'RICE-FARM-001',
+  issuerAddress: 'TREASURY_WALLET_ADDRESS',
+  totalSupply: 2400,
+  availableForSale: 2400,
+  initialNav: 1250,
+  stellarAssetCode: 'RICE',
+  stellarIssuer: 'TREASURY_WALLET_ADDRESS'
+);
+
+-- Update project
+UPDATE projects SET
+  status = 'active',
+  tokenizedAt = NOW(),
+  tokensAvailable = 2400,
+  targetRaise = 3000000
+WHERE id = 'rice-farm-id';
+
+-- Create initial NAV record
+INSERT INTO projectNavHistory (
+  projectId,
+  navPerToken: 1250,
+  totalProjectValue: 3000000,
+  totalTokens: 2400,
+  calculatedAt: NOW()
+);
+Project becomes visible to Regenerators on /projects page
+Admin sees confirmation: "Rice Farm is now live for investments"
+Phase 4: Regenerator Invests ✅ (Already exists, just verify routing)
+Regenerator buys 40 RICE tokens for ₦50,000 NGNTS
+
+Payment destination: LP Pool Wallet ✅ (NOT Project Wallet)
+Verify this flow:
+
+Regenerator wallet: -₦50k NGNTS, +40 RICE tokens
+LP Pool Wallet: +₦50k NGNTS ← REGENERATION HAPPENS HERE
+Project stats: raised ₦50k, 40 tokens sold
+Primer dashboards update (LP Pool increased)
+Phase 5: Project Milestone Disbursements ⚠️ (NEEDS TO BE BUILT)
+Problem: Project has ₦3M NGNTS on-chain, but needs NGN in bank account to buy seeds, pay workers, etc.
+
+Solution: Milestone-based disbursement system with admin approval.
+
+5A: Project Owner Requests Disbursement
+PROJECT OWNER DASHBOARD > My Project > REQUEST FUNDS
+
+Current Project Wallet Balance: ₦3,000,000 NGNTS
+
+Milestone Request:
+Milestone Number: [1]
+Title: [Seed & Fertilizer Purchase]
+Amount Needed: [₦500,000]
+Description: [Purchase 2 tons of certified rice seeds and organic fertilizer from AgriSupply Ltd]
+
+Bank Account for Disbursement:
+Bank: [GTBank] (from verified project bank accounts)
+Account Number: [0123456789]
+Account Name: [Rice Farm Cooperative]
+
+Supporting Documents:
+[Upload] Supplier quote/invoice (PDF, JPG, PNG - max 5MB)
+
+[Submit Request]
+On Submit:
+
+sql
+Copy
+INSERT INTO projectMilestones (
+  projectId,
+  milestoneNumber: 1,
+  title: 'Seed & Fertilizer Purchase',
+  description: '...',
+  requestedAmount: 500000,
+  status: 'pending',
+  requestedBy: 'project-owner-id',
+  bankName: 'GTBank',
+  bankAccountNumber: '0123456789',
+  bankAccountName: 'Rice Farm Cooperative',
+  supportingDocuments: ['doc1.pdf'],
+  createdAt: NOW()
+);
+Notifications:
+
+Admin receives alert: "New milestone request from Rice Farm"
+Project owner sees: "Request submitted, awaiting admin approval"
+5B: Admin Reviews & Approves
+ADMIN > PROJECTS > Rice Farm > MILESTONES TAB
+
+Pending Milestone Requests (1)
+
+┌──────────────────────────────────────────────────────┐
+│ Milestone #1: Seed & Fertilizer Purchase             │
+│ Requested: ₦500,000                                  │
+│ Project Balance: ₦3,000,000 NGNTS                    │
+│                                                      │
+│ Description:                                         │
+│ Purchase 2 tons of certified rice seeds and organic │
+│ fertilizer from AgriSupply Ltd                       │
+│                                                      │
+│ Bank Details:                                        │
+│ GTBank - 0123456789 (Rice Farm Cooperative)         │
+│                                                      │
+│ Documents: [📄 supplier_quote.pdf] [View]           │
+│                                                      │
+│ Requested: Nov 12, 2025 10:30 AM                    │
+│ Requested by: John Farmer (project owner)           │
+│                                                      │
+│ [Approve & Disburse] [Reject] [Request More Info]   │
+└──────────────────────────────────────────────────────┘
+On "Approve & Disburse":
+
+Stellar Transaction:
+javascript
+Copy
+// BURN ₦500k NGNTS from Project Wallet
+// (NOT send to Treasury - just burn it)
+await stellarService.burnToken({
+  fromWallet: projectWallet,
+  amount: 500000,
+  asset: 'NGNTS'
+});
+Off-Ramp (Platform handles):
+javascript
+Copy
+// Platform converts NGNTS → NGN and sends to project bank
+await bankingService.transferNGN({
+  amount: 500000,
+  toBankName: 'GTBank',
+  toAccountNumber: '0123456789',
+  toAccountName: 'Rice Farm Cooperative',
+  reference: 'MILESTONE-RICE-001',
+  narration: 'Milestone 1: Seed & Fertilizer Purchase'
+});
+Database Updates:
+sql
+Copy
+-- Update milestone
+UPDATE projectMilestones SET
+  status = 'disbursed',
+  approvedAmount = 500000,
+  approvedBy = 'admin-user-id',
+  approvedAt = NOW(),
+  disbursedAt = NOW(),
+  stellarTxHash = 'BURN_TX_HASH',
+  bankTransferReference = 'BANK_REF_123'
+WHERE id = 'milestone-1-id';
+
+-- Create wallet ledger entry
+INSERT INTO projectWalletLedger (
+  projectId,
+  type: 'milestone_disbursement',
+  amount: -500000,
+  currency: 'NGNTS',
+  balanceBefore: 3000000,
+  balanceAfter: 2500000,
+  stellarTxHash: 'BURN_TX_HASH',
+  description: 'Milestone 1: Seed & Fertilizer Purchase',
+  relatedMilestoneId: 'milestone-1-id'
+);
+
+-- Update project
+UPDATE projects SET
+  totalDisbursed = 500000,
+  walletBalance = 2500000
+WHERE id = 'rice-farm-id';
+Notifications:
+Project owner: "Milestone approved! ₦500k sent to your bank account"
+Admin confirmation: "Disbursement completed"
+Regenerator Visibility:
+Regenerators see milestone progress on project page
+Transparency: "₦500k disbursed for seeds (Nov 12)"
+5C: Project Owner Submits Proof of Spending (Optional but recommended)
+PROJECT OWNER > My Project > MILESTONES
+
+Milestone #1: Seed & Fertilizer Purchase
+Status: Disbursed ✅
+Amount: ₦500,000
+Disbursed: Nov 12, 2025
+
+[Upload Receipts/Proof of Purchase]
+
+Upload: [receipt.pdf] [photo1.jpg] [photo2.jpg]
+Notes: [Seeds delivered and stored. Planting begins Nov 15]
+
+[Submit Proof]
+Admin reviews proof → Marks milestone as "Completed"
+
+Phase 6: NAV Recalculation After Disbursements ⚠️ (NEEDS LOGIC)
+After milestone disbursement, NAV should update:
+
+javascript
+Copy
+// NAV Calculation Logic
+function calculateProjectNAV(projectId) {
+  const project = getProject(projectId);
+  
+  // Assets
+  const onChainBalance = project.walletBalance; // ₦2.5M NGNTS remaining
+  const physicalAssets = project.totalDisbursed; // ₦500k spent on seeds
+  const expectedRevenue = project.projectedHarvestValue; // ₦4M (admin sets)
+  
+  // Total project value
+  const totalValue = onChainBalance + physicalAssets + expectedRevenue;
+  // ₦2.5M + ₦500k + ₦4M = ₦7M
+  
+  // NAV per token
+  const totalTokens = project.totalTokensIssued; // 2,400
+  const navPerToken = totalValue / totalTokens;
+  // ₦7M / 2,400 = ₦2,917
+  
+  // Save to history
+  saveNavHistory({
+    projectId,
+    navPerToken: 2917,
+    totalProjectValue: 7000000,
+    onChainBalance: 2500000,
+    physicalAssets: 500000,
+    expectedRevenue: 4000000,
+    totalTokens: 2400,
+    calculatedAt: NOW()
+  });
+  
+  return navPerToken;
+}
+When to recalculate NAV:
+
+After milestone disbursement
+After project revenue received
+After harvest/sales
+Admin can manually trigger recalculation
+Display to Regenerators:
+
+RICE Token NAV History:
+- Nov 10: ₦1,250 (Initial tokenization)
+- Nov 12: ₦2,917 (After seed purchase milestone) ↑ 133%
+- Dec 1: ₦3,500 (After planting milestone) ↑ 20%
+Database Schema Additions Needed:
+sql
+Copy
+-- Track LP allocations to projects
+CREATE TABLE projectAllocations (
+  id UUID PRIMARY KEY,
+  projectId UUID REFERENCES projects(id),
+  amount DECIMAL NOT NULL,
+  allocatedBy UUID REFERENCES users(id),
+  lpPoolBalanceBefore DECIMAL,
+  lpPoolBalanceAfter DECIMAL,
+  stellarTxHash TEXT,
+  status TEXT DEFAULT 'completed',
+  createdAt TIMESTAMP DEFAULT NOW()
+);
+
+-- Track milestone-based disbursements
+CREATE TABLE projectMilestones (
+  id UUID PRIMARY KEY,
+  projectId UUID REFERENCES projects(id),
+  milestoneNumber INT,
+  title TEXT NOT NULL,
+  description TEXT,
+  requestedAmount DECIMAL NOT NULL,
+  approvedAmount DECIMAL,
+  status TEXT DEFAULT 'pending', -- pending, approved, disbursed, completed, rejected
+  requestedBy UUID REFERENCES users(id),
+  approvedBy UUID REFERENCES users(id),
+  bankName TEXT,
+  bankAccountNumber TEXT,
+  bankAccountName TEXT,
+  supportingDocuments JSONB, -- Array of file URLs
+  receipts JSONB, -- Proof of spending uploaded later
+  stellarTxHash TEXT, -- Burn transaction
+  bankTransferReference TEXT,
+  requestedAt TIMESTAMP DEFAULT NOW(),
+  approvedAt TIMESTAMP,
+  disbursedAt TIMESTAMP,
+  completedAt TIMESTAMP
+);
+
+-- Detailed ledger for project wallet (already exists, verify fields)
+CREATE TABLE projectWalletLedger (
+  id UUID PRIMARY KEY,
+  projectId UUID REFERENCES projects(id),
+  type TEXT, -- 'allocation', 'milestone_disbursement', 'revenue_inflow', 'distribution_outflow'
+  amount DECIMAL,
+  currency TEXT,
+  balanceBefore DECIMAL,
+  balanceAfter DECIMAL,
+  stellarTxHash TEXT,
+  description TEXT,
+  relatedMilestoneId UUID REFERENCES projectMilestones(id),
+  createdAt TIMESTAMP DEFAULT NOW()
+);
+
+-- Enhanced NAV history (verify existing schema has these fields)
+CREATE TABLE projectNavHistory (
+  id UUID PRIMARY KEY,
+  projectId UUID REFERENCES projects(id),
+  navPerToken DECIMAL NOT NULL,
+  totalProjectValue DECIMAL,
+  onChainBalance DECIMAL, -- NGNTS in project wallet
+  physicalAssets DECIMAL, -- Disbursed funds converted to assets
+  expectedRevenue DECIMAL, -- Projected harvest value
+  totalTokens INT,
+  calculatedBy UUID REFERENCES users(id), -- Admin or system
+  calculationMethod TEXT, -- 'automatic', 'manual_adjustment'
+  notes TEXT,
+  calculatedAt TIMESTAMP DEFAULT NOW()
+);
+Admin Dashboard Requirements:
+1. LP Pool Overview
+ADMIN > LP POOL DASHBOARD
+
+Total LP Pool: ₦15,000,000 NGNTS
+├─ Primer Contributions: ₦15M
+├─ Regenerator Investments: +₦50k (regeneration!)
+├─ Allocated to Projects: -₦3M
+└─ Available for Allocation: ₦12.05M
+
+Recent Activity:
+- Regenerator investment (Rice Farm): +₦50k (2 mins ago)
+- Allocated to Rice Farm: -₦3M (yesterday)
+- Primer deposit: +₦5M (2 days ago)
+
+[Allocate to New Project]
+2. Project Allocation Interface
+ADMIN > PROJECTS > [Project] > ALLOCATE LP FUNDS
+
+(UI described in Phase 2 above)
+3. Project Tokenization Interface
+ADMIN > PROJECTS > [Project] > TOKENIZE
+
+(UI described in Phase 3 above)
+4. Milestone Approval Interface
+ADMIN > PROJECTS > [Project] > MILESTONES
+
+(UI described in Phase 5B above)
+5. Project Wallet Monitor
+ADMIN > PROJECTS > [Project] > WALLET
+
+Current Balance: ₦2,500,000 NGNTS
+
+Transaction History:
+| Date    | Type                | Amount    | Balance   | TX Hash   |
+|---------|---------------------|-----------|-----------|-----------|
+| Nov 12  | Milestone Disbursed | -₦500k    | ₦2.5M     | ABC123... |
+| Nov 10  | LP Allocation       | +₦3M      | ₦3M       | DEF456... |
+
+[View on Stellar Explorer]
+Regenerator Visibility Requirements:
+Project Page Enhancements
+/projects/rice-farm
+
+Project Progress:
+✅ Funded: ₦3M from LP Pool (Nov 10)
+✅ Milestone 1: Seeds purchased (₦500k) - Nov 12
+⏳ Milestone 2: Labor & planting (₦800k) - Pending
+⏳ Milestone 3: Equipment (₦1.2M) - Pending
+
+Current NAV: ₦2,917 per token (↑ 133% from initial)
+
+Wallet Balance: ₦2,500,000 NGNTS (unspent capital)
+Physical Assets: ₦500,000 (seeds & fertilizer)
+Expected Harvest: ₦4,000,000
+
+[Invest Now]
+Critical Path Priority:
+Build in this order:
+LP Pool Allocation (Phase 2) - 2 hours
+Admin can allocate LP funds to project wallet
+Updates LP Pool balance
+Creates allocation record
+Project Tokenization (Phase 3) - 2 hours
+Admin mints tokens from Treasury
+Sets initial NAV
+Activates project for investment
+Verify Regenerator Investment Routing (Phase 4) - 30 mins
+Confirm payment goes to LP Pool (not Project Wallet)
+Test end-to-end: Regenerator buys → LP regenerates
+Milestone Request System (Phase 5A) - 2 hours
+Project owner can request disbursement
+Upload documents
+Submit to admin
+Milestone Approval & Disbursement (Phase 5B) - 3 hours
+Admin reviews requests
+Approve → Burn NGNTS + Send NGN to bank
+Update all records
+NAV Recalculation Logic (Phase 6) - 2 hours
+Auto-recalculate after disbursements
+Display NAV history to Regenerators
+Show project value breakdown
+Testing Sequence:
+1. Create 2 Primer accounts
+2. Primers deposit ₦10M and ₦5M (total ₦15M in LP Pool)
+3. Admin allocates ₦3M to Rice Farm project
+4. Admin tokenizes Rice Farm (2,400 tokens at ₦1,250 NAV)
+5. Create Regenerator account
+6. Regenerator deposits ₦50k NGNTS
+7. Regenerator buys 40 RICE tokens
+8. Verify LP Pool balance = ₦12.05M (regenerated!)
+9. Project owner requests ₦500k milestone
+10. Admin approves milestone
+11. Verify Project Wallet = ₦2.5M NGNTS
+12. Verify NAV updated to ₦2,917
+13. Regenerator sees milestone progress
+Key Architectural Decisions:
+✅ Regenerator payments → LP Pool Wallet (NOT Project Wallet)
+✅ Milestone disbursements → BURN NGNTS (NOT send to Treasury)
+✅ NAV increases as project progresses (unspent capital + assets + expected revenue)
+✅ Full transparency (Regenerators see milestone progress)
+✅ Admin controls disbursements (prevents misuse of funds)
+
+Questions for You:
+Off-ramp mechanism: Do you have a banking partner for NGNTS → NGN conversion, or should we build a manual admin process for MVP?
+Milestone approval: Should there be multi-sig approval (multiple admins) or single admin approval for MVP?
+Project bank accounts: Should projects register their bank accounts during onboarding, or submit per milestone?
+NAV calculation: Should expected harvest value be manually set by admin, or calculated from project data?
