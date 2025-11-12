@@ -121,6 +121,245 @@ interface BankDeposit {
   updatedAt: string;
 }
 
+// Type for KYC history response
+type KycHistoryResponse = {
+  userId: string;
+  history: Array<{
+    id: string;
+    previousStatus: string;
+    newStatus: string;
+    adminNotes: string | null;
+    metadata: any;
+    createdAt: string;
+    processedBy: {
+      email: string;
+      firstName: string;
+      lastName: string;
+    } | null;
+  }>;
+};
+
+// Extend User interface with audit fields
+interface UserWithAudit extends User {
+  kycProcessedAt?: string | null;
+  kycProcessedBy?: string | null;
+  kycAdminNotes?: string | null;
+}
+
+// KYC Audit Trail View Component (Read-Only)
+function KycAuditTrailView({ 
+  user, 
+  index, 
+  total, 
+  onPrevious, 
+  onNext 
+}: { 
+  user: UserWithAudit | undefined; 
+  index: number; 
+  total: number; 
+  onPrevious: () => void; 
+  onNext: () => void; 
+}) {
+  // Fetch KYC history for selected user
+  const { data: historyData, isLoading: historyLoading } = useQuery<KycHistoryResponse>({
+    queryKey: [`/api/admin/users/${user?.id}/kyc-history`],
+    enabled: !!user?.id,
+  });
+
+  // Get the latest decision to extract admin name
+  const latestDecision = historyData?.history?.[0];
+
+  if (!user) {
+    return (
+      <Card className="w-full md:w-3/5">
+        <CardContent className="flex flex-col items-center justify-center h-full py-12">
+          <FileText className="w-12 h-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Select a user to view audit trail</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full md:w-3/5">
+      {/* Navigation Header */}
+      <CardHeader className="pb-3 border-b">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">
+              {user.firstName} {user.lastName}
+            </CardTitle>
+            <CardDescription className="text-xs mt-1">
+              Record {index + 1} of {total}
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPrevious}
+              disabled={index === 0}
+              data-testid="button-prev-kyc-audit"
+              aria-label="Previous record"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNext}
+              disabled={index >= total - 1}
+              data-testid="button-next-kyc-audit"
+              aria-label="Next record"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      <ScrollArea className="h-[calc(100vh-520px)]">
+        <CardContent className="p-6 space-y-6">
+          {/* User Information */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground">User Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-sm font-medium" data-testid="text-user-email">{user.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="text-sm font-medium" data-testid="text-user-phone">{user.phone || "Not provided"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Role</p>
+                <Badge variant="outline" className="text-xs" data-testid="badge-user-role">{user.role}</Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Status</p>
+                <Badge 
+                  variant={user.kycStatus === 'approved' ? 'default' : 'destructive'} 
+                  className="text-xs"
+                  data-testid="badge-kyc-status"
+                >
+                  {user.kycStatus}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Audit Trail Information */}
+          <div className="space-y-4 pt-4 border-t">
+            <h3 className="text-sm font-semibold text-muted-foreground">Audit Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Processed Date</p>
+                <p className="text-sm font-medium" data-testid="text-processed-date">
+                  {user.kycProcessedAt 
+                    ? new Date(user.kycProcessedAt).toLocaleString() 
+                    : "Not available"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Processed By</p>
+                <p className="text-sm font-medium" data-testid="text-processed-by">
+                  {historyLoading ? (
+                    "Loading..."
+                  ) : latestDecision?.processedBy ? (
+                    `${latestDecision.processedBy.firstName} ${latestDecision.processedBy.lastName}`
+                  ) : (
+                    "System"
+                  )}
+                </p>
+              </div>
+            </div>
+            {user.kycAdminNotes && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Admin Notes</p>
+                <div 
+                  className="text-sm p-3 rounded-md bg-muted/50 border"
+                  data-testid="text-admin-notes"
+                >
+                  {user.kycAdminNotes}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* KYC Documents */}
+          {user.kycDocuments && (
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold text-muted-foreground">KYC Documents</h3>
+              <DocumentGallery documents={user.kycDocuments} />
+            </div>
+          )}
+
+          {/* Decision History Timeline */}
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : historyData && historyData.history.length > 0 ? (
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold text-muted-foreground">Decision History</h3>
+              <div className="space-y-4">
+                {historyData.history.map((record, idx) => (
+                  <div 
+                    key={record.id} 
+                    className="flex gap-4 relative"
+                    data-testid={`history-item-${idx}`}
+                  >
+                    {/* Timeline connector */}
+                    {idx < historyData.history.length - 1 && (
+                      <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-border" />
+                    )}
+                    
+                    {/* Icon */}
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center relative z-10">
+                      <FileCheck className="w-4 h-4 text-primary" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {record.previousStatus} → {record.newStatus}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(record.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <Badge 
+                          variant={record.newStatus === 'approved' ? 'default' : 'destructive'}
+                          className="text-xs"
+                        >
+                          {record.newStatus}
+                        </Badge>
+                      </div>
+                      {record.processedBy && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          By: {record.processedBy.firstName} {record.processedBy.lastName}
+                        </p>
+                      )}
+                      {record.adminNotes && (
+                        <div className="mt-2 text-xs p-2 rounded bg-muted/30 border">
+                          {record.adminNotes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </ScrollArea>
+    </Card>
+  );
+}
+
 // Admin Wallet Card Component
 function AdminWalletCard() {
   const { toast } = useToast();
@@ -1325,22 +1564,148 @@ export default function Admin() {
 
               {/* Approved KYC Sub-Tab */}
               <TabsContent value="approved">
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Approved KYC records will be shown here with audit trail</p>
-                  </CardContent>
-                </Card>
+                {approvedKycData && approvedKycData.users.length > 0 ? (
+                  <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-350px)]">
+                    {/* Left Panel - Approved Users List */}
+                    <Card className="w-full md:w-2/5">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Approved Users</CardTitle>
+                        <CardDescription>
+                          {approvedKycData.users.length} approved record{approvedKycData.users.length !== 1 ? 's' : ''}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <ScrollArea className="h-[calc(100vh-420px)]">
+                          <div className="space-y-2 p-4">
+                            {approvedKycData.users.map((kycUser, index) => (
+                              <Card
+                                key={kycUser.id}
+                                className={`cursor-pointer transition-colors ${
+                                  kycIndexMap.approved === index ? 'bg-accent border-primary' : 'hover-elevate'
+                                }`}
+                                onClick={() => setKycIndexMap(prev => ({ ...prev, approved: index }))}
+                                data-testid={`approved-kyc-list-item-${index}`}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-sm">
+                                        {kycUser.firstName} {kycUser.lastName}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground mt-0.5">{kycUser.email}</p>
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        <Badge variant="default" className="text-xs">
+                                          {kycUser.kycStatus}
+                                        </Badge>
+                                        {kycUser.kycProcessedAt && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {new Date(kycUser.kycProcessedAt).toLocaleDateString()}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {kycIndexMap.approved === index && (
+                                      <div className="w-1 h-8 bg-primary rounded-full ml-2" />
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+
+                    {/* Right Panel - Audit Trail View */}
+                    <KycAuditTrailView 
+                      user={approvedKycData.users[kycIndexMap.approved]}
+                      index={kycIndexMap.approved}
+                      total={approvedKycData.users.length}
+                      onPrevious={() => setKycIndexMap(prev => ({ ...prev, approved: Math.max(0, prev.approved - 1) }))}
+                      onNext={() => setKycIndexMap(prev => ({ ...prev, approved: Math.min(prev.approved + 1, approvedKycData.users.length - 1) }))}
+                    />
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No approved KYC records</p>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Rejected KYC Sub-Tab */}
               <TabsContent value="rejected">
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Rejected KYC records will be shown here with audit trail</p>
-                  </CardContent>
-                </Card>
+                {rejectedKycData && rejectedKycData.users.length > 0 ? (
+                  <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-350px)]">
+                    {/* Left Panel - Rejected Users List */}
+                    <Card className="w-full md:w-2/5">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Rejected Users</CardTitle>
+                        <CardDescription>
+                          {rejectedKycData.users.length} rejected record{rejectedKycData.users.length !== 1 ? 's' : ''}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <ScrollArea className="h-[calc(100vh-420px)]">
+                          <div className="space-y-2 p-4">
+                            {rejectedKycData.users.map((kycUser, index) => (
+                              <Card
+                                key={kycUser.id}
+                                className={`cursor-pointer transition-colors ${
+                                  kycIndexMap.rejected === index ? 'bg-accent border-primary' : 'hover-elevate'
+                                }`}
+                                onClick={() => setKycIndexMap(prev => ({ ...prev, rejected: index }))}
+                                data-testid={`rejected-kyc-list-item-${index}`}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-sm">
+                                        {kycUser.firstName} {kycUser.lastName}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground mt-0.5">{kycUser.email}</p>
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        <Badge variant="destructive" className="text-xs">
+                                          {kycUser.kycStatus}
+                                        </Badge>
+                                        {kycUser.kycProcessedAt && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {new Date(kycUser.kycProcessedAt).toLocaleDateString()}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {kycIndexMap.rejected === index && (
+                                      <div className="w-1 h-8 bg-primary rounded-full ml-2" />
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+
+                    {/* Right Panel - Audit Trail View */}
+                    <KycAuditTrailView 
+                      user={rejectedKycData.users[kycIndexMap.rejected]}
+                      index={kycIndexMap.rejected}
+                      total={rejectedKycData.users.length}
+                      onPrevious={() => setKycIndexMap(prev => ({ ...prev, rejected: Math.max(0, prev.rejected - 1) }))}
+                      onNext={() => setKycIndexMap(prev => ({ ...prev, rejected: Math.min(prev.rejected + 1, rejectedKycData.users.length - 1) }))}
+                    />
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <FileCheck className="w-12 h-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No rejected KYC records</p>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
           </TabsContent>
