@@ -1,0 +1,214 @@
+System Workflow Diagram - MVP Scope
+Create a comprehensive visual diagram showing:
+Three User Journeys (MVP):
+┌─────────────────────────────────────────────────────────┐
+│ PRIMER JOURNEY                                          │
+│ Register → KYC → Deposit → LP Pool → Monitor Returns   │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ ADMIN JOURNEY (includes Project Owner functions)        │
+│ • Approve KYC                                           │
+│ • Approve Deposits (Primer & Regenerator)               │
+│ • Create Projects                                       │
+│ • Allocate LP Capital to Projects                       │
+│ • Tokenize Projects                                     │
+│ • Request & Approve Milestones (self-approval for MVP)  │
+│ • Monitor all wallets and transactions                  │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ REGENERATOR JOURNEY                                     │
+│ Register → KYC → Deposit → Buy Tokens → View Portfolio │
+│ → Receive Cashflow → Redeem/Trade                      │
+└─────────────────────────────────────────────────────────┘
+Capital Flow (The Money):
+FIAT (NGN in Bank Account)
+        │
+        ▼
+[ADMIN APPROVES DEPOSIT]
+        │
+        ├─► Primer Deposit → Mint NGNTS → LP Pool Wallet
+        │
+        └─► Regenerator Deposit → Mint NGNTS → Distribution Wallet → User Wallet
+        
+        
+LP POOL WALLET (₦15M)
+        │
+        ▼
+[ADMIN ALLOCATES ₦3M TO PROJECT]
+        │
+        ▼
+PROJECT WALLET (₦3M NGNTS)
+        │
+        ├─► [ADMIN TOKENIZES] → Treasury mints 2,400 tokens → Distribution Wallet
+        │
+        └─► [ADMIN REQUESTS MILESTONE ₦500K]
+                │
+                ▼
+        [ADMIN APPROVES MILESTONE]
+                │
+                ├─► Burn ₦500k NGNTS from Project Wallet
+                └─► Send ₦500k NGN to Project Bank Account
+
+
+REGENERATOR INVESTS ₦50K
+        │
+        ├─► Payment: ₦50k NGNTS → LP Pool Wallet ✅ REGENERATION
+        └─► Tokens: 40 RICE tokens → Regenerator Wallet
+
+
+PROJECT REVENUE ₦5M
+        │
+        ▼
+PROJECT WALLET (₦5M NGNTS)
+        │
+        ▼
+[ADMIN DISTRIBUTES REVENUE]
+        │
+        ├─► 40% (₦2M) → Regenerators (via Distribution Wallet)
+        ├─► 30% (₦1.5M) → LP Pool ✅ REGENERATION COMPLETE
+        ├─► 20% (₦1M) → Treasury (Platform fees)
+        └─► 10% (₦500k) → Project Wallet (Reinvestment)
+4 Admin Wallets (Show interactions):
+[OPERATIONS WALLET]
+├─ Holds: XLM only
+├─ Purpose: Activate new user wallets (2.0 XLM + trustlines)
+└─ Admin manages: Manual XLM refills (for MVP)
+
+[TREASURY WALLET] (Issuer - Cold Storage)
+├─ Holds: Nothing (issues tokens only)
+├─ Purpose: Mint NGNTS + Project Tokens
+├─ Security: Single admin control (MVP), multisig post-MVP
+└─ Rarely used: Only for minting new tokens
+
+[DISTRIBUTION WALLET] (Hot Wallet)
+├─ Holds: NGNTS, Project Tokens
+├─ Purpose: Daily operations
+├─ Receives: Newly minted tokens from Treasury
+└─ Sends: User deposits, cashflow distributions
+
+[LP POOL WALLET]
+├─ Holds: NGNTS, USDC, XLM (multi-currency)
+├─ Purpose: De-risk projects, regenerative capital
+├─ Receives: Primer deposits, Regenerator investments, Project revenue
+└─ Sends: Project allocations, token redemptions
+Decision Gates (Where Admin Approves):
+USER REGISTRATION
+    │
+    └─► KYC Required? 
+            ├─► YES → User submits → ADMIN APPROVES → ✅
+            └─► NO (under threshold) → ✅
+
+
+DEPOSIT (Primer or Regenerator)
+    │
+    └─► User uploads proof → ADMIN REVIEWS
+            ├─► APPROVED → Mint NGNTS → Send to wallet → ✅
+            └─► REJECTED → Notify user → ❌
+
+
+INVESTMENT (Regenerator buys tokens)
+    │
+    ├─► Sufficient balance? → NO → ❌
+    ├─► KYC approved? → NO → ❌
+    ├─► Trustline exists? → NO → Operations Wallet establishes → ✅
+    └─► All checks pass → Payment to LP Pool → Tokens to User → ✅
+
+
+MILESTONE DISBURSEMENT (Admin self-approves for MVP)
+    │
+    └─► ADMIN CREATES & APPROVES MILESTONE
+            ├─► Burn NGNTS from Project Wallet
+            ├─► Send NGN to Project Bank Account
+            └─► Update records → ✅
+Complete RCX Regeneration Cycle (Step-by-Step):
+STEP 1: PRIMER DEPOSITS
+├─► Primer transfers ₦10M to platform bank
+├─► Admin approves deposit
+├─► Platform mints ₦10M NGNTS
+└─► LP Pool Wallet: ₦10M ✅
+
+STEP 2: ADMIN ALLOCATES TO PROJECT
+├─► Admin creates "Rice Farm" project
+├─► Admin allocates ₦3M from LP Pool → Project Wallet
+├─► LP Pool: ₦10M - ₦3M = ₦7M
+└─► Project Wallet: ₦3M NGNTS ✅
+
+STEP 3: ADMIN TOKENIZES PROJECT
+├─► Admin sets NAV: ₦1,250 per token
+├─► Total tokens: 2,400 (₦3M / ₦1,250)
+├─► Treasury mints 2,400 RICE tokens → Distribution Wallet
+└─► Project status: ACTIVE (available for investment) ✅
+
+STEP 4: REGENERATOR INVESTS
+├─► Regenerator deposits ₦50k (admin approves)
+├─► Regenerator buys 40 RICE tokens (₦50k / ₦1,250)
+├─► Payment: ₦50k NGNTS → LP Pool Wallet
+├─► Tokens: 40 RICE → Regenerator Wallet
+└─► LP Pool: ₦7M + ₦50k = ₦7.05M ✅ REGENERATION!
+
+STEP 5: ADMIN DISBURSES MILESTONE
+├─► Admin creates milestone: "Seeds - ₦500k"
+├─► Admin approves milestone (self-approval for MVP)
+├─► Platform burns ₦500k NGNTS from Project Wallet
+├─► Platform sends ₦500k NGN to project bank account
+├─► Project Wallet: ₦3M - ₦500k = ₦2.5M NGNTS
+└─► NAV recalculates: ₦2.5M unspent + ₦500k assets + ₦4M expected = ₦7M total
+    └─► NAV per token: ₦7M / 2,400 = ₦2,917 ✅
+
+STEP 6: PROJECT GENERATES REVENUE
+├─► Admin records ₦5M harvest revenue
+├─► Admin deposits ₦5M to platform bank
+├─► Platform mints ₦5M NGNTS → Project Wallet
+└─► Project Wallet: ₦2.5M + ₦5M = ₦7.5M NGNTS ✅
+
+STEP 7: ADMIN DISTRIBUTES REVENUE
+├─► Admin triggers revenue distribution
+├─► 40% (₦2M) → Regenerators via Distribution Wallet
+├─► 30% (₦1.5M) → LP Pool Wallet ✅ REGENERATION COMPLETE!
+├─► 20% (₦1M) → Treasury (Platform fees)
+└─► 10% (₦500k) → Project Wallet (Reinvestment)
+
+STEP 8: LP POOL FULLY REGENERATED
+├─► LP Pool: ₦7.05M + ₦1.5M = ₦8.55M
+├─► Original allocation: ₦3M
+├─► Regenerated: ₦50k (Regenerator) + ₦1.5M (Revenue) = ₦1.55M
+└─► Admin can now fund next project! ✅
+Key Simplifications for MVP:
+✅ Admin = Project Owner (no separate project owner role)
+✅ Single admin approval (no multisig)
+✅ Admin self-approves milestones (no separate approval workflow)
+✅ Manual wallet management (admin monitors balances manually)
+✅ Simple revenue recording (admin manually records harvest revenue)
+
+Post-MVP Enhancements (Show as "Future"):
+🔮 Multisig Treasury (multiple admins required for minting)
+🔮 Separate Project Owner Role (project owners request milestones, admin approves)
+🔮 Automated Revenue Recording (integrate with project sales systems)
+🔮 DAO Governance (token holders vote on allocations)
+🔮 Automated NAV Calculation (real-time updates based on oracle data)
+
+Diagram Format Preferences:
+Use color coding:
+
+🟦 Blue: Primer flows
+🟩 Green: Regenerator flows
+🟧 Orange: Admin actions
+🟥 Red: Decision gates/approvals
+🟪 Purple: Wallet interactions
+⚫ Black: Stellar blockchain transactions
+Show clearly:
+
+✅ Where NGNTS is minted (deposits)
+✅ Where NGNTS is burned (milestone disbursements)
+✅ Where regeneration happens (LP Pool receives funds)
+✅ Admin approval points (KYC, deposits, milestones)
+Deliverable:
+Create a visual diagram (Mermaid, Lucidchart, or Figma) that shows:
+
+Three user journeys (Primer, Admin, Regenerator)
+Complete capital flow (fiat → NGNTS → wallets → burn)
+Four admin wallet interactions
+Decision gates with admin approvals
+Complete RCX regeneration cycle (8 steps)
