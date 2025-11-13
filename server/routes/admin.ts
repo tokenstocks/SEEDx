@@ -3001,7 +3001,7 @@ router.get("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
         projectId: lpProjectAllocations.projectId,
         projectName: projects.name,
         totalAmountNgnts: lpProjectAllocations.totalAmountNgnts,
-        purpose: lpProjectAllocations.purpose,
+        notes: lpProjectAllocations.notes,
         allocationDate: lpProjectAllocations.allocationDate,
         primerCount: sql<number>`(
           SELECT COUNT(DISTINCT primer_id) 
@@ -3026,7 +3026,7 @@ router.get("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
  */
 router.post("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
   try {
-    const { projectId, amount, purpose } = req.body;
+    const { projectId, amount, notes } = req.body;
 
     if (!projectId || !amount) {
       res.status(400).json({ error: "Missing required fields: projectId, amount" });
@@ -3094,13 +3094,19 @@ router.post("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
       0
     );
 
+    if (totalLpCapital === 0) {
+      res.status(400).json({ error: "Total LP pool capital is zero" });
+      return;
+    }
+
     // Create allocation header
     const [allocation] = await db
       .insert(lpProjectAllocations)
       .values({
         projectId,
         totalAmountNgnts: allocationAmount.toString(),
-        purpose: purpose || null,
+        notes: notes || null,
+        allocatedBy: req.user!.id,
         allocationDate: new Date(),
       })
       .returning();
@@ -3108,14 +3114,16 @@ router.post("/lp-allocations", authenticate, requireAdmin, async (req, res) => {
     // Create individual Primer allocations based on their LP share
     const primerAllocations = primers.map((primer) => {
       const primerContribution = parseFloat(primer.totalContributed);
-      const sharePercent = (primerContribution / totalLpCapital) * 100;
-      const shareAmount = (allocationAmount * sharePercent) / 100;
+      const poolOwnershipPercent = (primerContribution / totalLpCapital) * 100; // Overall LP pool ownership
+      const shareAmount = (allocationAmount * poolOwnershipPercent) / 100; // Amount from THIS allocation
+      const sharePercent = (shareAmount / allocationAmount) * 100; // Share of THIS specific allocation
 
       return {
         allocationId: allocation.id,
         primerId: primer.primerId,
         sharePercent: sharePercent.toFixed(4),
         shareAmountNgnts: shareAmount.toFixed(2),
+        poolOwnershipPercent: poolOwnershipPercent.toFixed(4),
       };
     });
 
