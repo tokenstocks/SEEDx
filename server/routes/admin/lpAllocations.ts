@@ -11,9 +11,13 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { transferAsset, getAssetBalance } from "../../lib/stellarOps";
 import { createProjectWallet, getProjectWalletBalance, getProjectWalletDetails } from "../../lib/projectWallet";
-import { requireAdmin } from "../../middleware/auth";
+import { authenticate } from "../../middleware/auth";
+import { requireAdmin } from "../../middleware/adminAuth";
 
 const router = Router();
+
+// Apply authentication middleware to ALL routes in this router
+router.use(authenticate);
 
 /**
  * POST /api/admin/lp-allocations/allocate
