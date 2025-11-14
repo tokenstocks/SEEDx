@@ -1,0 +1,1182 @@
+🚀 PHASE 4.1: DISTRIBUTION EVENTS & ALLOCATION CALCULATION
+Perfect! Let's build the foundation for the distribution system that completes the regenerative capital loop. This implementation will enable LPs to receive returns from project revenue and exits.
+
+📦 PHASE 4.1 IMPLEMENTATION PACKAGE
+1. DATABASE SCHEMA
+Add to shared/schema.ts:
+
+typescript
+Copy
+// Distribution Events Table
+export const distributionEvents = pgTable('distribution_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  eventType: varchar('event_type', { length: 50 }).notNull(), // revenue, exit, dividend, other
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  totalAmount: decimal('total_amount', { precision: 20, scale: 7 }).notNull(), // Total NGN to distribute
+  distributionDate: timestamp('distribution_date').notNull(), // When distribution occurred
+  status: varchar('status', { length: 50 }).notNull().default('draft'), // draft, calculated, active, completed, cancelled
+  
+  // Snapshot data (captured at distribution time)
+  snapshotDate: timestamp('snapshot_date'), // When LP holdings were captured
+  snapshotTotalLpTokens: decimal('snapshot_total_lp_tokens', { precision: 20, scale: 7 }), // Total LP tokens at snapshot
+  snapshotNav: decimal('snapshot_nav', { precision: 20, scale: 7 }), // NAV at snapshot
+  
+  // Tracking
+  totalAllocated: decimal('total_allocated', { precision: 20, scale: 7 }).default('0'), // Sum of all allocations
+  totalWithdrawn: decimal('total_withdrawn', { precision: 20, scale: 7 }).default('0'), // Sum of paid withdrawals
+  totalPending: decimal('total_pending', { precision: 20, scale: 7 }).default('0'), // Sum of pending withdrawals
+  
+  // Metadata
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  approvedBy: uuid('approved_by').references(() => users.id),
+  approvedAt: timestamp('approved_at'),
+  completedAt: timestamp('completed_at'),
+  cancelledBy: uuid('cancelled_by').references(() => users.id),
+  cancelledAt: timestamp('cancelled_at'),
+  cancellationReason: text('cancellation_reason'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  projectIdx: index('distribution_events_project_idx').on(table.projectId),
+  statusIdx: index('distribution_events_status_idx').on(table.status),
+  distributionDateIdx: index('distribution_events_date_idx').on(table.distributionDate),
+}));
+
+// Distribution Allocations Table
+export const distributionAllocations = pgTable('distribution_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  distributionEventId: uuid('distribution_event_id').notNull().references(() => distributionEvents.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  lpTokenHolderId: uuid('lp_token_holder_id').notNull().references(() => users.id),
+  
+  // Allocation calculation
+  lpTokensHeld: decimal('lp_tokens_held', { precision: 20, scale: 7 }).notNull(), // LP tokens held at snapshot
+  ownershipPercentage: decimal('ownership_percentage', { precision: 10, scale: 7 }).notNull(), // % of total LP tokens
+  allocatedAmount: decimal('allocated_amount', { precision: 20, scale: 7 }).notNull(), // NGN allocated
+  
+  // Withdrawal tracking
+  withdrawnAmount: decimal('withdrawn_amount', { precision: 20, scale: 7 }).default('0'), // Amount withdrawn so far
+  pendingAmount: decimal('pending_amount', { precision: 20, scale: 7 }).default('0'), // Amount in pending withdrawals
+  availableAmount: decimal('available_amount', { precision: 20, scale: 7 }).notNull(), // Available to withdraw
+  
+  status: varchar('status', { length: 50 }).notNull().default('allocated'), // allocated, partially_withdrawn, fully_withdrawn
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  distributionEventIdx: index('distribution_allocations_event_idx').on(table.distributionEventId),
+  lpHolderIdx: index('distribution_allocations_holder_idx').on(table.lpTokenHolderId),
+  projectIdx: index('distribution_allocations_project_idx').on(table.projectId),
+  statusIdx: index('distribution_allocations_status_idx').on(table.status),
+  uniqueAllocation: unique('unique_distribution_allocation').on(table.distributionEventId, table.lpTokenHolderId),
+}));
+
+// Distribution Activity Log Table
+export const distributionActivityLog = pgTable('distribution_activity_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  distributionEventId: uuid('distribution_event_id').references(() => distributionEvents.id, { onDelete: 'cascade' }),
+  withdrawalRequestId: uuid('withdrawal_request_id').references(() => withdrawalRequests.id, { onDelete: 'set null' }),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  
+  activityType: varchar('activity_type', { length: 50 }).notNull(), 
+  // event_created, allocations_calculated, withdrawal_requested, withdrawal_approved, 
+  // withdrawal_rejected, payment_recorded, event_completed, event_cancelled
+  
+  performedBy: uuid('performed_by').notNull().references(() => users.id),
+  previousStatus: varchar('previous_status', { length: 50 }),
+  newStatus: varchar('new_status', { length: 50 }),
+  changesSummary: jsonb('changes_summary'),
+  metadata: jsonb('metadata'),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  userAgent: text('user_agent'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  distributionEventIdx: index('distribution_activity_event_idx').on(table.distributionEventId),
+  withdrawalRequestIdx: index('distribution_activity_withdrawal_idx').on(table.withdrawalRequestId),
+  projectIdx: index('distribution_activity_project_idx').on(table.projectId),
+  activityTypeIdx: index('distribution_activity_type_idx').on(table.activityType),
+  performedByIdx: index('distribution_activity_performed_by_idx').on(table.performedBy),
+  createdAtIdx: index('distribution_activity_created_at_idx').on(table.createdAt),
+}));
+Migration SQL
+sql
+Copy
+-- Distribution Events Table
+CREATE TABLE IF NOT EXISTS distribution_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  event_type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  total_amount DECIMAL(20, 7) NOT NULL,
+  distribution_date TIMESTAMP NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'draft',
+  
+  snapshot_date TIMESTAMP,
+  snapshot_total_lp_tokens DECIMAL(20, 7),
+  snapshot_nav DECIMAL(20, 7),
+  
+  total_allocated DECIMAL(20, 7) DEFAULT '0',
+  total_withdrawn DECIMAL(20, 7) DEFAULT '0',
+  total_pending DECIMAL(20, 7) DEFAULT '0',
+  
+  created_by UUID NOT NULL REFERENCES users(id),
+  approved_by UUID REFERENCES users(id),
+  approved_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  cancelled_by UUID REFERENCES users(id),
+  cancelled_at TIMESTAMP,
+  cancellation_reason TEXT,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX distribution_events_project_idx ON distribution_events(project_id);
+CREATE INDEX distribution_events_status_idx ON distribution_events(status);
+CREATE INDEX distribution_events_date_idx ON distribution_events(distribution_date);
+
+-- Distribution Allocations Table
+CREATE TABLE IF NOT EXISTS distribution_allocations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  distribution_event_id UUID NOT NULL REFERENCES distribution_events(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  lp_token_holder_id UUID NOT NULL REFERENCES users(id),
+  
+  lp_tokens_held DECIMAL(20, 7) NOT NULL,
+  ownership_percentage DECIMAL(10, 7) NOT NULL,
+  allocated_amount DECIMAL(20, 7) NOT NULL,
+  
+  withdrawn_amount DECIMAL(20, 7) DEFAULT '0',
+  pending_amount DECIMAL(20, 7) DEFAULT '0',
+  available_amount DECIMAL(20, 7) NOT NULL,
+  
+  status VARCHAR(50) NOT NULL DEFAULT 'allocated',
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  
+  CONSTRAINT unique_distribution_allocation UNIQUE (distribution_event_id, lp_token_holder_id)
+);
+
+CREATE INDEX distribution_allocations_event_idx ON distribution_allocations(distribution_event_id);
+CREATE INDEX distribution_allocations_holder_idx ON distribution_allocations(lp_token_holder_id);
+CREATE INDEX distribution_allocations_project_idx ON distribution_allocations(project_id);
+CREATE INDEX distribution_allocations_status_idx ON distribution_allocations(status);
+
+-- Distribution Activity Log Table
+CREATE TABLE IF NOT EXISTS distribution_activity_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  distribution_event_id UUID REFERENCES distribution_events(id) ON DELETE CASCADE,
+  withdrawal_request_id UUID REFERENCES withdrawal_requests(id) ON DELETE SET NULL,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  
+  activity_type VARCHAR(50) NOT NULL,
+  performed_by UUID NOT NULL REFERENCES users(id),
+  previous_status VARCHAR(50),
+  new_status VARCHAR(50),
+  changes_summary JSONB,
+  metadata JSONB,
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX distribution_activity_event_idx ON distribution_activity_log(distribution_event_id);
+CREATE INDEX distribution_activity_withdrawal_idx ON distribution_activity_log(withdrawal_request_id);
+CREATE INDEX distribution_activity_project_idx ON distribution_activity_log(project_id);
+CREATE INDEX distribution_activity_type_idx ON distribution_activity_log(activity_type);
+CREATE INDEX distribution_activity_performed_by_idx ON distribution_activity_log(performed_by);
+CREATE INDEX distribution_activity_created_at_idx ON distribution_activity_log(created_at);
+2. DISTRIBUTION AUDIT LIBRARY
+Create server/lib/distributionAuditLib.ts:
+
+typescript
+Copy
+import { db } from '../db';
+import { distributionActivityLog, users, projects, distributionEvents } from '../../shared/schema';
+import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
+
+export interface LogDistributionActivityData {
+  distributionEventId?: string;
+  withdrawalRequestId?: string;
+  projectId: string;
+  activityType: string;
+  performedBy: string;
+  previousStatus?: string;
+  newStatus?: string;
+  changesSummary?: Record<string, any>;
+  metadata?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export const distributionAuditLib = {
+  /**
+   * Log distribution activity (standard - async, non-blocking)
+   * Used for NON-CRITICAL operations
+   */
+  async logActivity(data: LogDistributionActivityData) {
+    try {
+      const [activity] = await db.insert(distributionActivityLog).values({
+        distributionEventId: data.distributionEventId || null,
+        withdrawalRequestId: data.withdrawalRequestId || null,
+        projectId: data.projectId,
+        activityType: data.activityType,
+        performedBy: data.performedBy,
+        previousStatus: data.previousStatus,
+        newStatus: data.newStatus,
+        changesSummary: data.changesSummary || null,
+        metadata: data.metadata || null,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      }).returning();
+
+      return { success: true, activity };
+    } catch (error: any) {
+      console.error('❌ Error logging distribution activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Log distribution activity within a Drizzle transaction
+   * Used for CRITICAL operations (calculate allocations, approve withdrawals, record payments)
+   */
+  async logActivityInTransaction(data: LogDistributionActivityData, tx: typeof db) {
+    try {
+      const [activity] = await tx.insert(distributionActivityLog).values({
+        distributionEventId: data.distributionEventId || null,
+        withdrawalRequestId: data.withdrawalRequestId || null,
+        projectId: data.projectId,
+        activityType: data.activityType,
+        performedBy: data.performedBy,
+        previousStatus: data.previousStatus,
+        newStatus: data.newStatus,
+        changesSummary: data.changesSummary || null,
+        metadata: data.metadata || null,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      }).returning();
+
+      return { success: true, activity };
+    } catch (error: any) {
+      console.error('❌ Error logging distribution activity in transaction:', error);
+      throw error; // Throw to trigger transaction rollback
+    }
+  },
+
+  /**
+   * Async logging with error monitoring (fire-and-forget)
+   * Used for NON-CRITICAL operations where logging failure shouldn't block the operation
+   */
+  logActivityAsync(data: LogDistributionActivityData) {
+    this.logActivity(data).catch((error) => {
+      console.error('❌ DISTRIBUTION AUDIT LOG FAILED (Non-Critical):', {
+        distributionEventId: data.distributionEventId,
+        activityType: data.activityType,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // TODO: Send to error monitoring service (Sentry, DataDog, etc.)
+    });
+  },
+
+  /**
+   * Get activity log for a specific distribution event
+   */
+  async getDistributionActivity(distributionEventId: string, limit: number = 50) {
+    try {
+      const activities = await db
+        .select({
+          id: distributionActivityLog.id,
+          activityType: distributionActivityLog.activityType,
+          performedBy: distributionActivityLog.performedBy,
+          performedByName: users.name,
+          performedByEmail: users.email,
+          previousStatus: distributionActivityLog.previousStatus,
+          newStatus: distributionActivityLog.newStatus,
+          changesSummary: distributionActivityLog.changesSummary,
+          metadata: distributionActivityLog.metadata,
+          ipAddress: distributionActivityLog.ipAddress,
+          userAgent: distributionActivityLog.userAgent,
+          createdAt: distributionActivityLog.createdAt,
+        })
+        .from(distributionActivityLog)
+        .leftJoin(users, eq(distributionActivityLog.performedBy, users.id))
+        .where(eq(distributionActivityLog.distributionEventId, distributionEventId))
+        .orderBy(desc(distributionActivityLog.createdAt))
+        .limit(limit);
+
+      return { success: true, activities };
+    } catch (error: any) {
+      console.error('Error fetching distribution activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get activity log for a specific project (all distributions)
+   */
+  async getProjectDistributionActivity(projectId: string, limit: number = 100) {
+    try {
+      const activities = await db
+        .select({
+          id: distributionActivityLog.id,
+          distributionEventId: distributionActivityLog.distributionEventId,
+          distributionTitle: distributionEvents.title,
+          activityType: distributionActivityLog.activityType,
+          performedBy: distributionActivityLog.performedBy,
+          performedByName: users.name,
+          performedByEmail: users.email,
+          previousStatus: distributionActivityLog.previousStatus,
+          newStatus: distributionActivityLog.newStatus,
+          changesSummary: distributionActivityLog.changesSummary,
+          metadata: distributionActivityLog.metadata,
+          createdAt: distributionActivityLog.createdAt,
+        })
+        .from(distributionActivityLog)
+        .leftJoin(users, eq(distributionActivityLog.performedBy, users.id))
+        .leftJoin(distributionEvents, eq(distributionActivityLog.distributionEventId, distributionEvents.id))
+        .where(eq(distributionActivityLog.projectId, projectId))
+        .orderBy(desc(distributionActivityLog.createdAt))
+        .limit(limit);
+
+      return { success: true, activities };
+    } catch (error: any) {
+      console.error('Error fetching project distribution activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get recent distribution activity across all projects (Admin dashboard)
+   */
+  async getRecentActivity(limit: number = 50) {
+    try {
+      const activities = await db
+        .select({
+          id: distributionActivityLog.id,
+          projectId: distributionActivityLog.projectId,
+          projectName: projects.name,
+          distributionEventId: distributionActivityLog.distributionEventId,
+          distributionTitle: distributionEvents.title,
+          activityType: distributionActivityLog.activityType,
+          performedBy: distributionActivityLog.performedBy,
+          performedByName: users.name,
+          performedByEmail: users.email,
+          previousStatus: distributionActivityLog.previousStatus,
+          newStatus: distributionActivityLog.newStatus,
+          createdAt: distributionActivityLog.createdAt,
+        })
+        .from(distributionActivityLog)
+        .leftJoin(users, eq(distributionActivityLog.performedBy, users.id))
+        .leftJoin(projects, eq(distributionActivityLog.projectId, projects.id))
+        .leftJoin(distributionEvents, eq(distributionActivityLog.distributionEventId, distributionEvents.id))
+        .orderBy(desc(distributionActivityLog.createdAt))
+        .limit(limit);
+
+      return { success: true, activities };
+    } catch (error: any) {
+      console.error('Error fetching recent distribution activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+};
+3. DISTRIBUTION LIBRARY
+Create server/lib/distributions.ts:
+
+typescript
+Copy
+import { db } from '../db';
+import { 
+  distributionEvents, 
+  distributionAllocations, 
+  projects, 
+  lpAllocations,
+  users 
+} from '../../shared/schema';
+import { eq, and, desc, sql, sum } from 'drizzle-orm';
+import { distributionAuditLib } from './distributionAuditLib';
+import type { Request } from 'express';
+
+// Helper function to extract request metadata
+function extractRequestMetadata(req?: Request) {
+  if (!req) return {};
+  
+  return {
+    ipAddress: req.ip || req.socket.remoteAddress,
+    userAgent: req.get('user-agent'),
+  };
+}
+
+// Helper for NON-CRITICAL async logging
+function logDistributionActivityAsync(
+  distributionEventId: string | undefined,
+  projectId: string,
+  activityType: string,
+  performedBy: string,
+  previousStatus?: string,
+  newStatus?: string,
+  changes?: Record<string, any>,
+  metadata?: Record<string, any>,
+  req?: Request
+) {
+  const requestMetadata = extractRequestMetadata(req);
+  
+  distributionAuditLib.logActivityAsync({
+    distributionEventId,
+    projectId,
+    activityType,
+    performedBy,
+    previousStatus,
+    newStatus,
+    changesSummary: changes,
+    metadata,
+    ...requestMetadata,
+  });
+}
+
+export interface CreateDistributionEventData {
+  event_type: 'revenue' | 'exit' | 'dividend' | 'other';
+  title: string;
+  description?: string;
+  total_amount: string;
+  distribution_date: Date;
+}
+
+export const distributionLib = {
+  /**
+   * Create a new distribution event
+   * NON-CRITICAL: Async logging
+   */
+  async createDistributionEvent(
+    projectId: string,
+    eventData: CreateDistributionEventData,
+    createdBy: string,
+    req?: Request
+  ) {
+    try {
+      // Validate project exists
+      const [project] = await db.select()
+        .from(projects)
+        .where(eq(projects.id, projectId));
+
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+
+      // Validate total amount
+      const totalAmount = parseFloat(eventData.total_amount);
+      if (isNaN(totalAmount) || totalAmount <= 0) {
+        return { success: false, error: 'Invalid total amount' };
+      }
+
+      // Create distribution event
+      const [event] = await db.insert(distributionEvents).values({
+        projectId,
+        eventType: eventData.event_type,
+        title: eventData.title,
+        description: eventData.description,
+        totalAmount: eventData.total_amount,
+        distributionDate: eventData.distribution_date,
+        status: 'draft',
+        createdBy,
+      }).returning();
+
+      // 📝 ASYNC LOGGING (Non-Critical)
+      logDistributionActivityAsync(
+        event.id,
+        projectId,
+        'event_created',
+        createdBy,
+        undefined,
+        'draft',
+        {
+          event_type: event.eventType,
+          title: event.title,
+          total_amount: event.totalAmount,
+          distribution_date: event.distributionDate,
+        },
+        undefined,
+        req
+      );
+
+      return { success: true, event };
+    } catch (error: any) {
+      console.error('Error creating distribution event:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Calculate allocations for a distribution event
+   * ✅ CRITICAL: Transactional logging
+   * 
+   * This snapshots LP token holdings and calculates pro-rata allocations
+   */
+  async calculateAllocations(
+    distributionEventId: string,
+    calculatedBy: string,
+    req?: Request
+  ) {
+    try {
+      const result = await db.transaction(async (tx) => {
+        // Get distribution event with lock
+        const [event] = await tx.select()
+          .from(distributionEvents)
+          .where(eq(distributionEvents.id, distributionEventId))
+          .for('update');
+
+        if (!event) {
+          throw new Error('Distribution event not found');
+        }
+
+        if (event.status !== 'draft') {
+          throw new Error('Only draft distributions can have allocations calculated');
+        }
+
+        // Get project details
+        const [project] = await tx.select()
+          .from(projects)
+          .where(eq(projects.id, event.projectId));
+
+        if (!project) {
+          throw new Error('Project not found');
+        }
+
+        // Snapshot: Get all LP token holders for this project
+        const lpHolders = await tx
+          .select({
+            lpTokenHolderId: lpAllocations.lpTokenHolderId,
+            lpTokensAllocated: lpAllocations.lpTokensAllocated,
+            holderName: users.name,
+            holderEmail: users.email,
+          })
+          .from(lpAllocations)
+          .innerJoin(users, eq(lpAllocations.lpTokenHolderId, users.id))
+          .where(
+            and(
+              eq(lpAllocations.projectId, event.projectId),
+              sql`${lpAllocations.lpTokensAllocated} > 0`
+            )
+          );
+
+        if (lpHolders.length === 0) {
+          throw new Error('No LP token holders found for this project');
+        }
+
+        // Calculate total LP tokens outstanding
+        const totalLpTokens = lpHolders.reduce(
+          (sum, holder) => sum + parseFloat(holder.lpTokensAllocated),
+          0
+        );
+
+        if (totalLpTokens <= 0) {
+          throw new Error('Total LP tokens must be greater than zero');
+        }
+
+        const totalAmount = parseFloat(event.totalAmount);
+        const snapshotDate = new Date();
+
+        // Calculate allocations for each LP holder
+        const allocations = lpHolders.map(holder => {
+          const lpTokensHeld = parseFloat(holder.lpTokensAllocated);
+          const ownershipPercentage = (lpTokensHeld / totalLpTokens) * 100;
+          const allocatedAmount = (lpTokensHeld / totalLpTokens) * totalAmount;
+
+          return {
+            distributionEventId: event.id,
+            projectId: event.projectId,
+            lpTokenHolderId: holder.lpTokenHolderId,
+            lpTokensHeld: lpTokensHeld.toFixed(7),
+            ownershipPercentage: ownershipPercentage.toFixed(7),
+            allocatedAmount: allocatedAmount.toFixed(7),
+            availableAmount: allocatedAmount.toFixed(7),
+            status: 'allocated' as const,
+          };
+        });
+
+        // Insert all allocations
+        await tx.insert(distributionAllocations).values(allocations);
+
+        // Update distribution event with snapshot data
+        const [updatedEvent] = await tx.update(distributionEvents)
+          .set({
+            status: 'calculated',
+            snapshotDate,
+            snapshotTotalLpTokens: totalLpTokens.toFixed(7),
+            snapshotNav: project.nav,
+            totalAllocated: totalAmount.toFixed(7),
+            updatedAt: new Date(),
+          })
+          .where(eq(distributionEvents.id, distributionEventId))
+          .returning();
+
+        // ✅ TRANSACTIONAL LOGGING (Critical)
+        const requestMetadata = extractRequestMetadata(req);
+        await distributionAuditLib.logActivityInTransaction({
+          distributionEventId: event.id,
+          projectId: event.projectId,
+          activityType: 'allocations_calculated',
+          performedBy: calculatedBy,
+          previousStatus: 'draft',
+          newStatus: 'calculated',
+          changesSummary: {
+            total_lp_holders: lpHolders.length,
+            total_lp_tokens: totalLpTokens.toFixed(7),
+            total_allocated: totalAmount.toFixed(7),
+            snapshot_date: snapshotDate,
+          },
+          ...requestMetadata,
+        }, tx);
+
+        return {
+          event: updatedEvent,
+          allocations,
+          totalLpHolders: lpHolders.length,
+          totalLpTokens: totalLpTokens.toFixed(7),
+        };
+      });
+
+      return { success: true, ...result };
+    } catch (error: any) {
+      console.error('Error calculating allocations:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get distribution event details
+   */
+  async getDistributionEvent(distributionEventId: string) {
+    try {
+      const [event] = await db
+        .select({
+          id: distributionEvents.id,
+          projectId: distributionEvents.projectId,
+          projectName: projects.name,
+          eventType: distributionEvents.eventType,
+          title: distributionEvents.title,
+          description: distributionEvents.description,
+          totalAmount: distributionEvents.totalAmount,
+          distributionDate: distributionEvents.distributionDate,
+          status: distributionEvents.status,
+          snapshotDate: distributionEvents.snapshotDate,
+          snapshotTotalLpTokens: distributionEvents.snapshotTotalLpTokens,
+          snapshotNav: distributionEvents.snapshotNav,
+          totalAllocated: distributionEvents.totalAllocated,
+          totalWithdrawn: distributionEvents.totalWithdrawn,
+          totalPending: distributionEvents.totalPending,
+          createdBy: distributionEvents.createdBy,
+          createdByName: users.name,
+          approvedBy: distributionEvents.approvedBy,
+          approvedAt: distributionEvents.approvedAt,
+          completedAt: distributionEvents.completedAt,
+          cancelledBy: distributionEvents.cancelledBy,
+          cancelledAt: distributionEvents.cancelledAt,
+          cancellationReason: distributionEvents.cancellationReason,
+          createdAt: distributionEvents.createdAt,
+          updatedAt: distributionEvents.updatedAt,
+        })
+        .from(distributionEvents)
+        .innerJoin(projects, eq(distributionEvents.projectId, projects.id))
+        .leftJoin(users, eq(distributionEvents.createdBy, users.id))
+        .where(eq(distributionEvents.id, distributionEventId));
+
+      if (!event) {
+        return { success: false, error: 'Distribution event not found' };
+      }
+
+      return { success: true, event };
+    } catch (error: any) {
+      console.error('Error fetching distribution event:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get all distribution events for a project
+   */
+  async getProjectDistributions(projectId: string) {
+    try {
+      const events = await db
+        .select({
+          id: distributionEvents.id,
+          eventType: distributionEvents.eventType,
+          title: distributionEvents.title,
+          description: distributionEvents.description,
+          totalAmount: distributionEvents.totalAmount,
+          distributionDate: distributionEvents.distributionDate,
+          status: distributionEvents.status,
+          snapshotDate: distributionEvents.snapshotDate,
+          snapshotTotalLpTokens: distributionEvents.snapshotTotalLpTokens,
+          totalAllocated: distributionEvents.totalAllocated,
+          totalWithdrawn: distributionEvents.totalWithdrawn,
+          totalPending: distributionEvents.totalPending,
+          createdBy: distributionEvents.createdBy,
+          createdByName: users.name,
+          createdAt: distributionEvents.createdAt,
+        })
+        .from(distributionEvents)
+        .leftJoin(users, eq(distributionEvents.createdBy, users.id))
+        .where(eq(distributionEvents.projectId, projectId))
+        .orderBy(desc(distributionEvents.distributionDate));
+
+      return { success: true, events };
+    } catch (error: any) {
+      console.error('Error fetching project distributions:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get allocations for a distribution event
+   */
+  async getDistributionAllocations(distributionEventId: string) {
+    try {
+      const allocations = await db
+        .select({
+          id: distributionAllocations.id,
+          lpTokenHolderId: distributionAllocations.lpTokenHolderId,
+          holderName: users.name,
+          holderEmail: users.email,
+          lpTokensHeld: distributionAllocations.lpTokensHeld,
+          ownershipPercentage: distributionAllocations.ownershipPercentage,
+          allocatedAmount: distributionAllocations.allocatedAmount,
+          withdrawnAmount: distributionAllocations.withdrawnAmount,
+          pendingAmount: distributionAllocations.pendingAmount,
+          availableAmount: distributionAllocations.availableAmount,
+          status: distributionAllocations.status,
+          createdAt: distributionAllocations.createdAt,
+        })
+        .from(distributionAllocations)
+        .innerJoin(users, eq(distributionAllocations.lpTokenHolderId, users.id))
+        .where(eq(distributionAllocations.distributionEventId, distributionEventId))
+        .orderBy(desc(distributionAllocations.allocatedAmount));
+
+      return { success: true, allocations };
+    } catch (error: any) {
+      console.error('Error fetching distribution allocations:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get all allocations for an LP token holder across all distributions
+   */
+  async getLPAllocations(lpTokenHolderId: string, projectId?: string) {
+    try {
+      const query = db
+        .select({
+          id: distributionAllocations.id,
+          distributionEventId: distributionAllocations.distributionEventId,
+          distributionTitle: distributionEvents.title,
+          distributionDate: distributionEvents.distributionDate,
+          distributionStatus: distributionEvents.status,
+          projectId: distributionAllocations.projectId,
+          projectName: projects.name,
+          lpTokensHeld: distributionAllocations.lpTokensHeld,
+          ownershipPercentage: distributionAllocations.ownershipPercentage,
+          allocatedAmount: distributionAllocations.allocatedAmount,
+          withdrawnAmount: distributionAllocations.withdrawnAmount,
+          pendingAmount: distributionAllocations.pendingAmount,
+          availableAmount: distributionAllocations.availableAmount,
+          status: distributionAllocations.status,
+          createdAt: distributionAllocations.createdAt,
+        })
+        .from(distributionAllocations)
+        .innerJoin(distributionEvents, eq(distributionAllocations.distributionEventId, distributionEvents.id))
+        .innerJoin(projects, eq(distributionAllocations.projectId, projects.id))
+        .where(eq(distributionAllocations.lpTokenHolderId, lpTokenHolderId));
+
+      const allocations = projectId
+        ? await query.where(eq(distributionAllocations.projectId, projectId)).orderBy(desc(distributionEvents.distributionDate))
+        : await query.orderBy(desc(distributionEvents.distributionDate));
+
+      return { success: true, allocations };
+    } catch (error: any) {
+      console.error('Error fetching LP allocations:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Cancel a distribution event (only if in draft or calculated status)
+   * NON-CRITICAL: Async logging
+   */
+  async cancelDistributionEvent(
+    distributionEventId: string,
+    cancelledBy: string,
+    cancellationReason: string,
+    req?: Request
+  ) {
+    try {
+      const [event] = await db.select()
+        .from(distributionEvents)
+        .where(eq(distributionEvents.id, distributionEventId));
+
+      if (!event) {
+        return { success: false, error: 'Distribution event not found' };
+      }
+
+      if (!['draft', 'calculated'].includes(event.status)) {
+        return { success: false, error: 'Only draft or calculated distributions can be cancelled' };
+      }
+
+      const [cancelledEvent] = await db.update(distributionEvents)
+        .set({
+          status: 'cancelled',
+          cancelledBy,
+          cancelledAt: new Date(),
+          cancellationReason,
+          updatedAt: new Date(),
+        })
+        .where(eq(distributionEvents.id, distributionEventId))
+        .returning();
+
+      // 📝 ASYNC LOGGING (Non-Critical)
+      logDistributionActivityAsync(
+        distributionEventId,
+        event.projectId,
+        'event_cancelled',
+        cancelledBy,
+        event.status,
+        'cancelled',
+        { cancellation_reason: cancellationReason },
+        undefined,
+        req
+      );
+
+      return { success: true, event: cancelledEvent };
+    } catch (error: any) {
+      console.error('Error cancelling distribution event:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get distribution statistics for a project
+   */
+  async getProjectDistributionStats(projectId: string) {
+    try {
+      const stats = await db
+        .select({
+          totalEvents: sql<number>`count(*)::int`,
+          totalDistributed: sql<string>`COALESCE(SUM(${distributionEvents.totalAmount}), 0)`,
+          totalWithdrawn: sql<string>`COALESCE(SUM(${distributionEvents.totalWithdrawn}), 0)`,
+          totalPending: sql<string>`COALESCE(SUM(${distributionEvents.totalPending}), 0)`,
+        })
+        .from(distributionEvents)
+        .where(
+          and(
+            eq(distributionEvents.projectId, projectId),
+            sql`${distributionEvents.status} != 'cancelled'`
+          )
+        );
+
+      return { success: true, stats: stats[0] };
+    } catch (error: any) {
+      console.error('Error fetching distribution stats:', error);
+      return { success: false, error: error.message };
+    }
+  },
+};
+4. API ROUTES
+Create server/routes/distributions.ts:
+
+typescript
+Copy
+import express from 'express';
+import { distributionLib } from '../lib/distributions';
+import { distributionAuditLib } from '../lib/distributionAuditLib';
+import { requireAuth, requireAdmin } from '../middleware/auth';
+
+const router = express.Router();
+
+// Create a new distribution event (Admin only)
+router.post('/', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { project_id, event_type, title, description, total_amount, distribution_date } = req.body;
+
+    if (!project_id || !event_type || !title || !total_amount || !distribution_date) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: project_id, event_type, title, total_amount, distribution_date' 
+      });
+    }
+
+    const result = await distributionLib.createDistributionEvent(
+      project_id,
+      { event_type, title, description, total_amount, distribution_date: new Date(distribution_date) },
+      req.user!.id,
+      req
+    );
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.status(201).json(result.event);
+  } catch (error: any) {
+    console.error('Error creating distribution event:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Calculate allocations for a distribution event (Admin only)
+router.post('/:id/calculate', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await distributionLib.calculateAllocations(id, req.user!.id, req);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({
+      event: result.event,
+      allocations: result.allocations,
+      summary: {
+        total_lp_holders: result.totalLpHolders,
+        total_lp_tokens: result.totalLpTokens,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error calculating allocations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get distribution event details
+router.get('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await distributionLib.getDistributionEvent(id);
+
+    if (!result.success) {
+      return res.status(404).json({ error: result.error });
+    }
+
+    res.json(result.event);
+  } catch (error: any) {
+    console.error('Error fetching distribution event:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all distributions for a project
+router.get('/project/:projectId', requireAuth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await distributionLib.getProjectDistributions(projectId);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json(result.events);
+  } catch (error: any) {
+    console.error('Error fetching project distributions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get allocations for a distribution event
+router.get('/:id/allocations', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await distributionLib.getDistributionAllocations(id);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json(result.allocations);
+  } catch (error: any) {
+    console.error('Error fetching distribution allocations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get LP's allocations across all distributions
+router.get('/lp/:lpId/allocations', requireAuth, async (req, res) => {
+  try {
+    const { lpId } = req.params;
+    const { project_id } = req.query;
+
+    // Authorization: Users can only view their own allocations unless they're admin
+    if (req.user!.id !== lpId && req.user!.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const result = await distributionLib.getLPAllocations(lpId, project_id as string);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json(result.allocations);
+  } catch (error: any) {
+    console.error('Error fetching LP allocations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cancel a distribution event (Admin only)
+router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cancellation_reason } = req.body;
+
+    if (!cancellation_reason) {
+      return res.status(400).json({ error: 'Cancellation reason is required' });
+    }
+
+    const result = await distributionLib.cancelDistributionEvent(
+      id,
+      req.user!.id,
+      cancellation_reason,
+      req
+    );
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json(result.event);
+  } catch (error: any) {
+    console.error('Error cancelling distribution event:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get distribution statistics for a project
+router.get('/project/:projectId/stats', requireAuth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await distributionLib.getProjectDistributionStats(projectId);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json(result.stats);
+  } catch (error: any) {
+    console.error('Error fetching distribution stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get activity log for a distribution event
+router.get('/:id/activity', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const result = await distributionAuditLib.getDistributionActivity(id, limit);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json(result.activities);
+  } catch (error: any) {
+    console.error('Error fetching distribution activity:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get distribution activity for a project
+router.get('/project/:projectId/activity', requireAuth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 100;
+
+    const result = await distributionAuditLib.getProjectDistributionActivity(projectId, limit);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+
+    res.json(result.activities);
+  } catch (error: any) {
+    console.error('Error fetching project distribution activity:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;
+5. REGISTER ROUTES
+Add to server/index.ts:
+
+typescript
+Copy
+import distributionRoutes from './routes/distributions';
+
+// ... existing routes ...
+app.use('/api/distributions', distributionRoutes);
+6. TESTING CHECKLIST
+Database:
+ All three tables created successfully
+ All indexes created
+ Foreign key constraints work correctly
+ Unique constraint on distribution_allocations works
+ Cascade delete works correctly
+Distribution Event Creation:
+ Can create distribution event with valid data
+ Cannot create with invalid project ID
+ Cannot create with negative/zero amount
+ Event created in 'draft' status
+ Audit log created for event creation
+Allocation Calculation:
+ Can calculate allocations for draft event
+ Cannot calculate for non-draft event
+ Allocations sum to total amount (within rounding tolerance)
+ Ownership percentages sum to 100% (within rounding tolerance)
+ Snapshot data captured correctly
+ Event status changes to 'calculated'
+ Audit log created for calculation
+ Transaction rolls back on error
+Edge Cases:
+ Handles project with no LP holders
+ Handles project with single LP holder (100% allocation)
+ Handles very small LP token amounts
+ Handles very large distribution amounts
+ Prevents double calculation (idempotency)
+API Endpoints:
+ POST /api/distributions (Admin only)
+ POST /api/distributions/:id/calculate (Admin only)
+ GET /api/distributions/:id
+ GET /api/distributions/project/:projectId
+ GET /api/distributions/:id/allocations
+ GET /api/distributions/lp/:lpId/allocations (Authorization check)
+ DELETE /api/distributions/:id (Admin only)
+ GET /api/distributions/project/:projectId/stats
+ GET /api/distributions/:id/activity
+Authorization:
+ Only admins can create distributions
+ Only admins can calculate allocations
+ Only admins can cancel distributions
+ LPs can only view their own allocations
+ Admins can view all allocations
+🚀 READY TO IMPLEMENT PHASE 4.1?
+This implementation provides:
+✅ Complete database schema for distribution events and allocations
+✅ Pro-rata allocation calculation based on LP token holdings
+✅ Snapshot mechanism to capture holdings at distribution time
+✅ Hybrid audit logging (transactional for critical ops)
+✅ Comprehensive API with proper authorization
+✅ Production-grade error handling and validation
+
+Shall I proceed with implementation, or would you like to review/modify anything first? 🎯
