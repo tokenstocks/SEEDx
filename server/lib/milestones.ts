@@ -425,8 +425,9 @@ export async function disburseMilestone(
 ): Promise<{ success: true; milestone: SelectProjectMilestone; burnTxHash: string; newNAV: string } | { success: false; error: string }> {
   try {
     // Import dependencies dynamically to avoid circular dependencies
-    const { burnNGNTS } = await import("./stellarLib");
+    const { burnNGNTS } = await import("./ngntsOps");
     const { recalculateLPTokenPrice } = await import("./lpAllocationLib");
+    const { platformWallets } = await import("@shared/schema");
 
     // First, prepare and validate in a DB transaction
     const prepResult = await db.transaction(async (tx) => {
@@ -454,7 +455,7 @@ export async function disburseMilestone(
         throw new Error("Bank transfer must be recorded before disbursement");
       }
 
-      if (!milestone.project.stellarWalletSecret) {
+      if (!milestone.project.stellarProjectWalletSecretEncrypted) {
         throw new Error("Project wallet secret not found");
       }
 
@@ -474,9 +475,26 @@ export async function disburseMilestone(
 
       const newNAV = currentNAV - burnedAmount;
 
+      // Get Treasury wallet for NGNTS issuer public key
+      const [treasury] = await tx
+        .select()
+        .from(platformWallets)
+        .where(eq(platformWallets.walletType, "treasury"))
+        .limit(1);
+
+      if (!treasury) {
+        throw new Error("Treasury wallet not found");
+      }
+
+      // Decrypt project wallet secret
+      const { decrypt } = await import("./encryption");
+      const walletSecret = decrypt(milestone.project.stellarProjectWalletSecretEncrypted);
+
       return {
-        walletSecret: milestone.project.stellarWalletSecret,
+        walletSecret,
+        treasuryPublicKey: treasury.publicKey,
         projectId: milestone.milestone.projectId,
+        milestoneId: milestone.milestone.id,
         currentNAV,
         newNAV: newNAV.toFixed(7),
       };
@@ -484,11 +502,14 @@ export async function disburseMilestone(
 
     // Execute Stellar burn AFTER DB validation (outside transaction)
     // This ensures we don't burn if validation fails
-    const burnResult = await burnNGNTS(prepResult.walletSecret, ngntsBurned);
-
-    if (!burnResult.success) {
-      throw new Error(`Failed to burn NGNTS: ${burnResult.error}`);
-    }
+    // Generate memo for audit trail (MSD = Milestone Disbursement)
+    const memoId = prepResult.milestoneId.substring(0, 8);
+    const burnTxHash = await burnNGNTS(
+      prepResult.walletSecret,
+      prepResult.treasuryPublicKey,
+      ngntsBurned,
+      `MSD-${memoId}`
+    );
 
     // Now update database with burn confirmation
     const finalResult = await db.transaction(async (tx) => {
@@ -534,16 +555,16 @@ export async function disburseMilestone(
         })
         .where(eq(projects.id, prepResult.projectId));
 
+      // Recalculate LP token price after NAV change (inside transaction for atomicity)
+      await recalculateLPTokenPrice(tx, prepResult.projectId);
+
       return updatedMilestone;
     });
-
-    // Recalculate LP token price after NAV change (outside transaction)
-    await recalculateLPTokenPrice(prepResult.projectId);
 
     return {
       success: true,
       milestone: finalResult,
-      burnTxHash: burnResult.txHash!,
+      burnTxHash,
       newNAV: prepResult.newNAV,
     };
   } catch (error: any) {

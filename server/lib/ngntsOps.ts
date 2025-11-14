@@ -317,6 +317,98 @@ export async function creditNgntsDeposit(
 }
 
 /**
+ * Generic NGNTS burn function for any wallet (Phase 3.2)
+ * Burns NGNTS by sending tokens back to issuer (Treasury)
+ * 
+ * @param sourceSecret - Stellar secret key of the wallet to burn from
+ * @param treasuryPublicKey - NGNTS issuer public key (Treasury wallet)
+ * @param amount - Amount of NGNTS to burn (must be positive)
+ * @param memo - Optional memo for transaction (max 28 chars, e.g., "MSD-<id>")
+ * @returns Stellar transaction hash
+ * @throws Error if validation fails or burn transaction fails
+ * 
+ * Note: Database balance updates are the caller's responsibility
+ */
+export async function burnNGNTS(
+  sourceSecret: string,
+  treasuryPublicKey: string,
+  amount: string,
+  memo?: string
+): Promise<string> {
+  // Validate amount is positive
+  const burnAmount = parseFloat(amount);
+  if (isNaN(burnAmount) || burnAmount <= 0) {
+    throw new Error(`Burn amount must be positive, got: ${amount}`);
+  }
+
+  // Validate memo length (Stellar limit is 28 bytes)
+  if (memo && memo.length > 28) {
+    throw new Error(`Memo too long (max 28 chars): ${memo}`);
+  }
+
+  // Validate and parse source secret key
+  let sourceKeypair: Keypair;
+  try {
+    sourceKeypair = Keypair.fromSecret(sourceSecret);
+  } catch (error) {
+    throw new Error("Invalid source secret key format");
+  }
+
+  // Validate treasury public key format
+  if (!treasuryPublicKey || !treasuryPublicKey.startsWith("G") || treasuryPublicKey.length !== 56) {
+    throw new Error("Invalid treasury public key format");
+  }
+
+  // Create NGNTS asset
+  const ngntsAsset = new Asset("NGNTS", treasuryPublicKey);
+
+  // Load source account
+  console.log(`[NGNTS] Burning ${amount} NGNTS from ${sourceKeypair.publicKey().substring(0, 8)}...`);
+  const sourceAccount = await horizonServer.loadAccount(sourceKeypair.publicKey());
+
+  // Build burn transaction (send to issuer = burn)
+  const transactionBuilder = new TransactionBuilder(sourceAccount, {
+    fee: BASE_FEE,
+    networkPassphrase: isTestnet ? Networks.TESTNET : Networks.PUBLIC,
+  }).addOperation(
+    Operation.payment({
+      destination: treasuryPublicKey, // Send to issuer = burn
+      asset: ngntsAsset,
+      amount: amount,
+    })
+  );
+
+  // Add memo if provided
+  if (memo) {
+    transactionBuilder.addMemo(Memo.text(memo));
+  }
+
+  const transaction = transactionBuilder.setTimeout(30).build();
+  transaction.sign(sourceKeypair);
+
+  try {
+    // Submit to Stellar
+    const result = await horizonServer.submitTransaction(transaction);
+
+    console.log(`[NGNTS] ✅ Burn successful: ${result.hash}`);
+    console.log(`[NGNTS]    Amount: ${amount} NGNTS`);
+    if (memo) {
+      console.log(`[NGNTS]    Memo: ${memo}`);
+    }
+
+    return result.hash;
+  } catch (error: any) {
+    console.error("[NGNTS] ❌ Burn failed:", error);
+
+    if (error.response && error.response.data) {
+      console.error("[NGNTS] Error details:", JSON.stringify(error.response.data, null, 2));
+    }
+
+    throw new Error(`Failed to burn NGNTS: ${error.message || "Unknown error"}`);
+  }
+}
+
+/**
  * Burn NGNTS from user wallet (for NGN withdrawals)
  * This function:
  * 1. Sends NGNTS from user's wallet back to Treasury (issuer)

@@ -208,6 +208,10 @@ export const projects = pgTable("projects", {
   // Phase 2: Capital tracking
   lpCapitalAllocated: decimal("lp_capital_allocated", { precision: 20, scale: 7 }).default("0").notNull(),
   lpCapitalDeployed: decimal("lp_capital_deployed", { precision: 20, scale: 7 }).default("0").notNull(),
+  // Phase 3: NAV and LP token pricing
+  nav: decimal("nav", { precision: 20, scale: 7 }).default("0").notNull(),
+  lpTokensOutstanding: decimal("lp_tokens_outstanding", { precision: 20, scale: 7 }).default("0").notNull(),
+  lpTokenPrice: decimal("lp_token_price", { precision: 20, scale: 7 }).default("1").notNull(),
   // Phase 3: Milestone tracking
   totalMilestones: integer("total_milestones").default(0).notNull(),
   completedMilestones: integer("completed_milestones").default(0).notNull(),
