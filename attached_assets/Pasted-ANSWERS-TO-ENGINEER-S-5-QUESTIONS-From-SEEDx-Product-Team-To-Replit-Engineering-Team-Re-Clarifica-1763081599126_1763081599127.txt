@@ -1,0 +1,247 @@
+ANSWERS TO ENGINEER'S 5 QUESTIONS
+From: SEEDx Product Team
+To: Replit Engineering Team
+Re: Clarifications for Gap Implementation
+
+1. Milestone Bank Payouts
+Question: Manual recording or integrate with banking system?
+
+Answer: Manual recording for MVP.
+
+Admin approves milestone → Burns NGNTS from project wallet → Admin manually transfers NGN via bank → Admin records payout reference in system
+Post-MVP: Integrate with Paystack or banking API for automated payouts
+For now: Just need a text field to record bank transfer reference/receipt
+2. Expected Revenue
+Question: Admin sets manually or integrate forecasting tools?
+
+Answer: Admin sets manually for MVP.
+
+Add a simple expectedRevenueNgnts field to projects table
+Admin inputs forecast when creating project or updating milestones
+Used in NAV formula: (Unspent + Deployed + Expected) / Tokens
+Post-MVP: Could integrate forecasting models based on historical data
+3. Distribution Trigger
+Question: Auto on cashflow recording or manual admin trigger?
+
+Answer: Manual admin trigger for MVP.
+
+Admin records cashflow → Reviews distribution preview → Clicks "Distribute Now"
+This gives admin control to verify amounts before executing on-chain transfers
+Reason: Distributing to all token holders is expensive (gas fees), want admin oversight
+Post-MVP: Could add auto-distribution option with threshold settings
+4. Multisig Timeline
+Question: When to implement for Treasury wallet?
+
+Answer: Post-MVP.
+
+For MVP, keep single-sig Treasury with strong access controls
+Priority: Get core RCX flows working first (project wallets, milestones, revenue distribution)
+Post-MVP Phase 1: Implement 2-of-3 multisig for Treasury
+Rationale: Multisig adds 3-4 days of complexity; let's validate core economics first
+5. NAV Override
+Question: Should admins override formula calculations?
+
+Answer: Yes, with audit trail.
+
+Implementation:
+
+typescript
+Copy
+projectNavHistory: {
+  id: uuid("id"),
+  projectId: uuid("project_id"),
+  navPerToken: decimal("nav_per_token"),
+  calculationMethod: enum("formula", "manual_override"),  // ← Track source
+  overrideReason: text("override_reason"),  // ← Required if manual
+  createdBy: uuid("created_by"),  // ← Admin who set it
+  createdAt: timestamp("created_at")
+}
+Use Cases for Override:
+
+Market conditions change dramatically
+Project hits unexpected milestone
+Formula inputs are temporarily unavailable
+Emergency adjustments
+UI Flow:
+
+System shows formula-calculated NAV
+Admin can click "Override NAV"
+Must provide reason
+Both formula and override values stored in history
+ADDITIONAL CLARIFICATIONS
+Investment Payment Routing (Quick Win #1)
+Current Code (investments.ts:195-250):
+
+typescript
+Copy
+paymentTxHash = await transferAsset(
+  userWallet.cryptoWalletPublicKey,
+  lpPoolWallet.publicKey,  // ← Currently goes here
+  paymentAssetCode,
+  paymentIssuerPublicKey,
+  investmentAmount.toFixed(7)
+);
+Should Change To:
+
+typescript
+Copy
+// Get project's operational wallet
+const projectWallet = await getProjectWallet(projectId);
+
+paymentTxHash = await transferAsset(
+  userWallet.cryptoWalletPublicKey,
+  projectWallet.publicKey,  // ← Should go to project wallet
+  paymentAssetCode,
+  paymentIssuerPublicKey,
+  investmentAmount.toFixed(7)
+);
+Rationale: Investments fund specific projects, not the general LP Pool. LP Pool is for Primer contributions only.
+
+Revenue Distribution Percentages (Quick Win #2)
+Current Code (regenerativeLoop.ts:86-92):
+
+typescript
+Copy
+const treasuryAmount = amount * 0.60;   // 60% to treasury
+const lpShareAmount = amount * 0.20;    // 20% to LP Pool  
+const reinvestAmount = amount * 0.10;   // 10% reinvestment
+const feeAmount = amount * 0.10;        // 10% fees
+Should Change To:
+
+typescript
+Copy
+const regeneratorAmount = amount * 0.40;  // 40% to token holders
+const lpShareAmount = amount * 0.30;      // 30% to LP Pool (REGENERATION!)
+const treasuryAmount = amount * 0.20;     // 20% to treasury
+const projectAmount = amount * 0.10;      // 10% to project reinvestment
+New Logic Needed:
+
+typescript
+Copy
+// Distribute 40% proportionally to ALL token holders
+const tokenHolders = await getProjectTokenHolders(projectId);
+const totalTokens = project.tokensIssued;
+
+for (const holder of tokenHolders) {
+  const holderShare = regeneratorAmount * (holder.tokensHeld / totalTokens);
+  await transferNgnts(holder.walletPublicKey, holderShare);
+  // Record in new table: regeneratorCashflowDistributions
+}
+LP Pool Display (Quick Win #3)
+Current Issue: LP Pool shows ₦4.2M (includes XLM gas reserves)
+
+Fix Location: Wherever LP Pool balance is calculated
+
+Should Be:
+
+typescript
+Copy
+// Get LP Pool wallet balances
+const lpPoolBalances = await getWalletBalances(lpPoolWallet.publicKey);
+
+// ONLY count NGNTS (allocatable capital)
+const allocatableCapital = lpPoolBalances.ngnts;  // e.g., ₦985,000
+
+// Show XLM separately as "Operational Reserves"
+const operationalReserves = lpPoolBalances.xlm;  // e.g., 15,000 XLM
+
+// Display:
+// "Allocatable Capital: ₦985,000"
+// "Operational Reserves: 15,000 XLM (for gas fees)"
+PRIORITY ORDER CONFIRMATION
+We agree with your phased approach:
+
+Week 1 (Days 1-5):
+
+✅ Day 1: Quick Wins (3 fixes above)
+✅ Days 2-3: Project Wallets
+✅ Days 4-5: Milestone System (creation + approval)
+Week 2 (Days 6-10):
+
+✅ Days 6-7: Milestone Disbursement (burning + NAV recalc)
+✅ Days 8-10: Revenue Distribution (40/30/20/10 + auto-distribute)
+Week 3 (Days 11-15):
+
+✅ Days 11-13: NAV Formula
+✅ Days 14-15: Tokenization Sequence
+Total: 15 days ✅ Confirmed
+
+BLOCKERS / DEPENDENCIES
+None identified. You have everything you need:
+
+✅ Stellar testnet access
+✅ Database schema control
+✅ Admin UI framework
+✅ Token operations library
+✅ Existing wallet infrastructure
+
+SUCCESS METRICS
+When complete, we should be able to:
+
+✅ Create project → Allocate LP capital → Project wallet receives NGNTS
+✅ Admin creates milestone → Approves → Burns NGNTS → Records bank payout
+✅ Admin records revenue → Clicks distribute → 40/30/20/10 split executes on-chain
+✅ NAV auto-calculates after milestone/revenue events
+✅ Regenerators see cashflow earnings in portfolio
+✅ LP Pool regenerates from 30% of project revenues
+NEXT STEPS
+✅ Review these answers
+✅ Confirm you have what you need
+✅ Start with Day 1 Quick Wins
+✅ Daily standups to track progress?
+Let's build! 🚀
+
+Does this answer everything clearly? Ready to send to Replit?
+
+Credits Used: 131
+
+For now: Just need a text field to record bank transfer reference/receipt burn transaction hash can be recorded for audit rather than text feild, what do you think
+
+Claude Sonnet 4.5
+Absolutely correct - much better approach!
+
+Let me revise that section:
+
+1. Milestone Bank Payouts
+Question: Manual recording or integrate with banking system?
+
+Answer: Manual recording for MVP.
+
+Flow:
+
+Admin approves milestone → System burns NGNTS from project wallet → Burn transaction hash automatically recorded
+Admin manually transfers NGN via bank to project's bank account
+Admin uploads bank transfer receipt/proof (like we do for deposits)
+System records: bank reference, receipt URL, timestamp
+Database Fields Needed:
+
+typescript
+Copy
+projectMilestones: {
+  id: uuid("id"),
+  projectId: uuid("project_id"),
+  title: text("title"),  // e.g., "Seeds Purchase"
+  amountNgnts: decimal("amount_ngnts"),
+  status: enum("pending", "approved", "disbursed"),
+  
+  // Burn tracking (automatic)
+  burnTxHash: text("burn_tx_hash"),  // ← Stellar transaction hash
+  burnedAt: timestamp("burned_at"),
+  
+  // Bank payout tracking (manual)
+  bankTransferReference: text("bank_transfer_reference"),  // e.g., "GTB/2025/001234"
+  bankTransferProof: text("bank_transfer_proof"),  // ← Supabase URL to receipt
+  disbursedAt: timestamp("disbursed_at"),
+  disbursedBy: uuid("disbursed_by"),  // ← Admin who did bank transfer
+  
+  // Asset tracking (for NAV)
+  assetValue: decimal("asset_value"),  // ← What was purchased (seeds, equipment)
+  assetDescription: text("asset_description")
+}
+Why This Is Better:
+
+✅ Burn hash = immutable proof on blockchain (can't be faked)
+✅ Bank receipt = audit trail for fiat movement
+✅ Both recorded = complete transparency (crypto + fiat sides)
+✅ Matches existing pattern (how you handle deposit proofs)
+Post-MVP: Integrate Paystack API for automated bank transfers

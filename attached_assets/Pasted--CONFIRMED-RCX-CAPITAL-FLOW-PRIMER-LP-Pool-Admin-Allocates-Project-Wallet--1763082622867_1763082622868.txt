@@ -1,0 +1,343 @@
+✅ CONFIRMED RCX CAPITAL FLOW
+PRIMER → LP Pool → Admin Allocates → Project Wallet
+                                          ↓
+                                    Tokenization
+                                          ↓
+REGENERATOR → Buys Tokens → Payment → LP Pool (REGENERATION!)
+                                          ↓
+                                    Token Delivery
+Key Point: Regenerator investments MUST go to LP Pool (current code is CORRECT!)
+
+This creates the regenerative loop:
+
+LP Pool funds projects
+Regenerators buy tokens
+Their payments replenish LP Pool
+LP Pool can fund more projects ✅
+REVISED UNDERSTANDING
+The code audit was wrong to flag investment routing as an issue. Current implementation is correct:
+
+typescript
+Copy
+// server/routes/investments.ts:195-250
+paymentTxHash = await transferAsset(
+  userWallet.cryptoWalletPublicKey,
+  lpPoolWallet.publicKey,  // ✅ CORRECT - Regenerates LP Pool
+  ...
+);
+So the actual gaps are:
+
+❌ Project Wallets - For holding LP allocations
+❌ Milestones - For disbursing from project wallets
+⚠️ Revenue Split - Wrong percentages
+❌ NAV Formula - No calculation
+❌ Tokenization Sequence - Wrong order
+OPTIMAL BUILD ORDER (My Recommendation)
+🎯 PHASE 1: Quick Wins (Day 1 - 2 hours)
+Why first: Immediate impact, low risk, builds momentum
+
+Task 1.1: Fix Revenue Split (30 min)
+
+File: server/jobs/regenerativeLoop.ts lines 86-92
+Change: 60/20/10/10 → 40/30/20/10
+Test: Record test cashflow, verify split
+Task 1.2: LP Pool Display (30 min)
+
+Exclude XLM from allocatable capital calculation
+Show XLM separately as "Operational Reserves"
+Task 1.3: Add Regenerator Distribution Table (1 hour)
+
+Create regeneratorCashflowDistributions table
+Prepare for Phase 3 implementation
+🎯 PHASE 2: Project Wallets (Days 2-3)
+Why second: Foundation for everything else - milestones, allocations, NAV
+
+Task 2.1: Database Schema (1 hour)
+
+typescript
+Copy
+// shared/schema.ts - Add to projects table:
+stellarProjectWalletPublicKey: text("stellar_project_wallet_public_key")
+stellarProjectWalletSecretEncrypted: text("stellar_project_wallet_secret_encrypted")
+projectWalletActivatedAt: timestamp("project_wallet_activated_at")
+Task 2.2: Wallet Creation (4 hours)
+
+Generate keypair during project creation
+Fund with XLM (3.0 for reserves)
+Establish NGNTS trustline
+Store encrypted secret key
+Task 2.3: LP Allocation Transfer (3 hours)
+
+When admin allocates LP capital to project
+Transfer NGNTS from LP Pool → Project Wallet (on-chain)
+Record allocation transaction hash
+Update project wallet balance
+Task 2.4: Balance Display (1 hour)
+
+Admin can view project wallet balance
+Show: NGNTS available, XLM reserves
+Link to Stellar explorer
+🎯 PHASE 3: Milestone System (Days 4-7)
+Why third: Core RCX feature - enables real-world capital deployment
+
+Task 3.1: Database Schema (2 hours)
+
+typescript
+Copy
+// shared/schema.ts - New table:
+export const projectMilestones = pgTable("project_milestones", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  milestoneNumber: integer("milestone_number").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  amountNgnts: decimal("amount_ngnts", { precision: 20, scale: 7 }).notNull(),
+  
+  // Status workflow
+  status: milestoneStatusEnum("status").default("pending").notNull(),
+  // pending → approved → disbursed
+  
+  // Approval tracking
+  approvedBy: uuid("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  
+  // Burn tracking (automatic)
+  burnTxHash: text("burn_tx_hash"),
+  burnedAt: timestamp("burned_at"),
+  
+  // Bank payout tracking (manual)
+  projectBankAccount: text("project_bank_account"),
+  bankTransferReference: text("bank_transfer_reference"),
+  bankTransferProof: text("bank_transfer_proof"), // Supabase URL
+  disbursedBy: uuid("disbursed_by").references(() => users.id),
+  disbursedAt: timestamp("disbursed_at"),
+  
+  // Asset tracking (for NAV calculation)
+  assetValue: decimal("asset_value", { precision: 20, scale: 7 }),
+  assetDescription: text("asset_description"),
+  
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+// Enum
+export const milestoneStatusEnum = pgEnum("milestone_status", [
+  "pending", "approved", "disbursed"
+]);
+Task 3.2: Admin UI - Create Milestone (4 hours)
+
+Form: Title, description, amount, asset details
+Validate: Amount ≤ project wallet balance
+Save as "pending"
+Task 3.3: Admin UI - Approve Milestone (3 hours)
+
+List pending milestones
+Approval modal with details
+Click "Approve" → Status = "approved"
+Task 3.4: Burn & Disburse Logic (6 hours)
+
+Admin clicks "Disburse" on approved milestone
+Step 1: Burn NGNTS from project wallet (on-chain)
+Step 2: Record burn transaction hash
+Step 3: Admin uploads bank transfer proof
+Step 4: Record bank reference
+Step 5: Status = "disbursed"
+Step 6: Trigger NAV recalculation
+Task 3.5: Milestone History View (2 hours)
+
+Show all milestones for project
+Display status, amounts, dates
+Link to burn transaction on Stellar
+🎯 PHASE 4: Revenue Distribution (Days 8-11)
+Why fourth: Completes the regenerative loop
+
+Task 4.1: Regenerator Distribution Logic (6 hours)
+
+typescript
+Copy
+// New function in server/jobs/regenerativeLoop.ts
+async function distributeToRegenerators(
+  projectId: string, 
+  regeneratorAmount: number
+) {
+  // Get all token holders for this project
+  const holders = await db
+    .select({
+      userId: investments.userId,
+      tokensHeld: sql<number>`SUM(${investments.tokensReceived})`,
+      walletPublicKey: wallets.cryptoWalletPublicKey
+    })
+    .from(investments)
+    .innerJoin(wallets, eq(investments.userId, wallets.userId))
+    .where(eq(investments.projectId, projectId))
+    .groupBy(investments.userId, wallets.cryptoWalletPublicKey);
+  
+  const totalTokens = project.tokensIssued;
+  
+  // Distribute proportionally
+  for (const holder of holders) {
+    const holderShare = regeneratorAmount * (holder.tokensHeld / totalTokens);
+    
+    // Transfer NGNTS on-chain
+    const txHash = await transferNgnts(
+      holder.walletPublicKey,
+      holderShare.toFixed(7),
+      `CASHFLOW-${cashflowId.substring(0,8)}`
+    );
+    
+    // Record distribution
+    await db.insert(regeneratorCashflowDistributions).values({
+      cashflowId,
+      userId: holder.userId,
+      projectId,
+      shareAmount: holderShare.toString(),
+      sharePercentage: ((holder.tokensHeld / totalTokens) * 100).toFixed(2),
+      txHash,
+      distributedAt: new Date()
+    });
+  }
+}
+Task 4.2: Update Revenue Split (2 hours)
+
+Modify server/jobs/regenerativeLoop.ts
+Change percentages: 40/30/20/10
+Call distributeToRegenerators() for 40% portion
+Task 4.3: Admin Distribution Trigger (4 hours)
+
+Admin records cashflow (already exists)
+New button: "Distribute Revenue"
+Preview modal showing:
+40% → X Regenerators (list with amounts)
+30% → LP Pool
+20% → Treasury
+10% → Project Wallet
+Click "Confirm" → Execute all transfers
+Show success with transaction hashes
+Task 4.4: Regenerator Dashboard Update (2 hours)
+
+Show "Cashflow Earnings" section
+List all distributions received
+Total earnings, ROI calculation
+🎯 PHASE 5: NAV Formula (Days 12-13)
+Why fifth: Depends on milestones being implemented
+
+Task 5.1: Database Schema (1 hour)
+
+typescript
+Copy
+// shared/schema.ts - Add to projects table:
+deployedAssetsNgnts: decimal("deployed_assets_ngnts", { precision: 20, scale: 7 })
+  .default("0").notNull(),
+expectedRevenueNgnts: decimal("expected_revenue_ngnts", { precision: 20, scale: 7 })
+  .default("0").notNull(),
+autoCalculateNav: boolean("auto_calculate_nav").default(true).notNull()
+
+// Add to projectNavHistory table:
+calculationMethod: navCalculationMethodEnum("calculation_method").notNull(),
+overrideReason: text("override_reason"),
+unspentCapital: decimal("unspent_capital", { precision: 20, scale: 7 }),
+deployedAssets: decimal("deployed_assets", { precision: 20, scale: 7 }),
+expectedRevenue: decimal("expected_revenue", { precision: 20, scale: 7 })
+
+// Enum
+export const navCalculationMethodEnum = pgEnum("nav_calculation_method", [
+  "formula", "manual_override"
+]);
+Task 5.2: NAV Calculation Function (4 hours)
+
+typescript
+Copy
+// server/lib/navCalculation.ts
+async function calculateProjectNav(projectId: string) {
+  const project = await getProject(projectId);
+  
+  if (!project.autoCalculateNav) {
+    return null; // Admin prefers manual control
+  }
+  
+  // Get unspent capital (project wallet balance)
+  const unspent = await getProjectWalletBalance(projectId);
+  
+  // Get deployed assets (sum of disbursed milestone asset values)
+  const deployed = await db
+    .select({ total: sql<number>`SUM(${projectMilestones.assetValue})` })
+    .from(projectMilestones)
+    .where(
+      and(
+        eq(projectMilestones.projectId, projectId),
+        eq(projectMilestones.status, "disbursed")
+      )
+    );
+  
+  const deployedAssets = deployed[0]?.total || 0;
+  const expectedRevenue = parseFloat(project.expectedRevenueNgnts);
+  const totalTokens = parseFloat(project.tokensIssued);
+  
+  // NAV Formula
+  const navPerToken = (unspent + deployedAssets + expectedRevenue) / totalTokens;
+  
+  // Save to history
+  await db.insert(projectNavHistory).values({
+    projectId,
+    navPerToken: navPerToken.toFixed(7),
+    calculationMethod: "formula",
+    unspentCapital: unspent.toFixed(7),
+    deployedAssets: deployedAssets.toFixed(7),
+    expectedRevenue: expectedRevenue.toFixed(7),
+    createdBy: "system",
+    createdAt: new Date()
+  });
+  
+  return navPerToken;
+}
+Task 5.3: Auto-Trigger NAV Recalculation (2 hours)
+
+After milestone disbursement
+After cashflow distribution
+When admin updates expected revenue
+Task 5.4: Admin Override UI (3 hours)
+
+Show formula-calculated NAV
+Button: "Override NAV"
+Modal: Enter new NAV + reason (required)
+Save with calculationMethod: "manual_override"
+🎯 PHASE 6: Tokenization Sequence (Days 14-15)
+Why last: Nice-to-have, doesn't block core functionality
+
+Task 6.1: Database Schema (1 hour)
+
+typescript
+Copy
+// shared/schema.ts - Add to projects table:
+tokenizationStatus: tokenizationStatusEnum("tokenization_status")
+  .default("not_tokenized").notNull(),
+tokenizedBy: uuid("tokenized_by").references(() => users.id),
+tokenizedAt: timestamp("tokenized_at")
+
+// Enum
+export const tokenizationStatusEnum = pgEnum("tokenization_status", [
+  "not_tokenized", "tokenizing", "tokenized"
+]);
+Task 6.2: Separate Creation from Tokenization (4 hours)
+
+Project creation: Save details, create project wallet, status = "not_tokenized"
+Admin allocates LP capital to project
+Admin sets NAV
+New button: "Tokenize Project"
+Calculate tokens: allocation / NAV
+Mint tokens, status = "tokenized"
+Task 6.3: Update UI Flow (3 hours)
+
+Project list shows tokenization status
+Only tokenized projects appear in /browse
+Admin dashboard shows "Ready to Tokenize" projects
+📊 FINAL TIMELINE
+Phase	Days	Tasks	Deliverable
+Phase 1	0.25	Quick wins	Revenue split fixed, LP display corrected
+Phase 2	2	Project wallets	Projects can receive LP allocations
+Phase 3	4	Milestones	Admin can disburse capital, burn NGNTS
+Phase 4	4	Revenue distribution	40/30/20/10 split, regenerators get paid
+Phase 5	2	NAV formula	Auto-calculation with override
+Phase 6	2	Tokenization sequence	Proper allocation → tokenization flow
+TOTAL	14.25 days		MVP Complete
