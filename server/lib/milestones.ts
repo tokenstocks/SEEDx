@@ -574,13 +574,13 @@ export async function disburseMilestone(
 }
 
 /**
- * Get milestone statistics for a project
+ * Get milestone statistics across all projects or for a specific project
  */
 export async function getMilestoneStats(
-  projectId: string
+  projectId?: string
 ): Promise<{ success: true; stats: any } | { success: false; error: string }> {
   try {
-    const [stats] = await db
+    const query = db
       .select({
         totalMilestones: sql<number>`COUNT(*)`,
         draftCount: sql<number>`COUNT(*) FILTER (WHERE ${projectMilestones.status} = 'draft')`,
@@ -591,8 +591,12 @@ export async function getMilestoneStats(
         totalDisbursed: sql<string>`COALESCE(SUM(${projectMilestones.targetAmount}) FILTER (WHERE ${projectMilestones.status} = 'disbursed'), 0)`,
         totalNgntsBurned: sql<string>`COALESCE(SUM(${projectMilestones.ngntsBurned}), 0)`,
       })
-      .from(projectMilestones)
-      .where(eq(projectMilestones.projectId, projectId));
+      .from(projectMilestones);
+
+    // Add WHERE clause only if projectId is provided
+    const [stats] = projectId
+      ? await query.where(eq(projectMilestones.projectId, projectId))
+      : await query;
 
     return { success: true, stats };
   } catch (error: any) {
