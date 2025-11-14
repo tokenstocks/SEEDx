@@ -3,6 +3,7 @@ import {
   distributionEvents,
   distributionAllocations,
   distributionWithdrawals,
+  primerProjectAllocations,
   lpProjectAllocations,
   projects,
   users,
@@ -123,14 +124,47 @@ export async function calculateAllocations(
         throw new Error(`Cannot calculate allocations for event in status: ${event.status}`);
       }
 
-      // Snapshot current LP token holdings for this project
-      const lpHoldings = await tx
-        .select({
-          userId: lpProjectAllocations.userId,
-          lpTokensHeld: lpProjectAllocations.lpTokensAllocated,
+      // Get project details to access LP token price and NAV
+      const [project] = await tx
+        .select({ 
+          lpTokenPrice: projects.lpTokenPrice,
+          nav: projects.nav,
         })
-        .from(lpProjectAllocations)
-        .where(eq(lpProjectAllocations.projectId, event.projectId));
+        .from(projects)
+        .where(eq(projects.id, event.projectId))
+        .limit(1);
+
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      const lpTokenPrice = new Decimal(project.lpTokenPrice || '1');
+
+      // Validate LP token price > 0 to prevent division by zero
+      if (lpTokenPrice.lte(0)) {
+        throw new Error('LP token price must be greater than zero');
+      }
+
+      // Snapshot LP token holdings for this specific project
+      // Query primerProjectAllocations joined with lpProjectAllocations to get project-specific Primer shares
+      // LP Tokens = Sum of project-specific NGNTS allocations / LP Token Price
+      const projectAllocations = await tx
+        .select({
+          primerId: primerProjectAllocations.primerId,
+          totalShareNgnts: sql<string>`SUM(${primerProjectAllocations.shareAmountNgnts})`,
+        })
+        .from(primerProjectAllocations)
+        .innerJoin(lpProjectAllocations, eq(primerProjectAllocations.allocationId, lpProjectAllocations.id))
+        .where(eq(lpProjectAllocations.projectId, event.projectId))
+        .groupBy(primerProjectAllocations.primerId);
+
+      // Calculate LP tokens for each primer based on their project-specific allocations
+      const lpHoldings = projectAllocations.map((allocation) => ({
+        userId: allocation.primerId,
+        lpTokensHeld: new Decimal(allocation.totalShareNgnts || '0')
+          .div(lpTokenPrice)
+          .toFixed(7),
+      }));
 
       if (lpHoldings.length === 0) {
         throw new Error('No LP token holders found for this project');
@@ -146,14 +180,8 @@ export async function calculateAllocations(
         throw new Error('Total LP tokens must be greater than zero');
       }
 
-      // Get current NAV from project
-      const [project] = await tx
-        .select({ nav: projects.nav })
-        .from(projects)
-        .where(eq(projects.id, event.projectId))
-        .limit(1);
-
-      const snapshotNav = project?.nav || '0';
+      // Use NAV from earlier project query
+      const snapshotNav = project.nav || '0';
       const totalDistributionAmount = new Decimal(event.totalAmount);
 
       // Calculate pro-rata allocations
@@ -194,7 +222,7 @@ export async function calculateAllocations(
           snapshotTotalLpTokens: totalLpTokens.toFixed(7),
           snapshotNav: snapshotNav,
           snapshotMetadata: {
-            sourceTable: 'lp_project_allocations',
+            sourceTable: 'primer_project_allocations',
             roundingPolicy: 'banker',
             holdersCount: lpHoldings.length,
           },
