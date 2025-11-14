@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -29,58 +28,134 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, Plus, Loader2, Building2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { TrendingUp, Plus, Loader2, Building2, AlertCircle, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
+
+interface LPOverview {
+  lpPool: {
+    totalNgnts: number;
+    totalAllocated: number;
+    unallocated: number;
+    criticalAlert: boolean;
+  };
+  projects: Array<{
+    id: string;
+    name: string;
+    lpCapitalAllocated: string;
+    lpCapitalDeployed: string;
+    walletPublicKey: string | null;
+    walletCreatedAt: Date | null;
+    currentBalance: number;
+  }>;
+}
+
+interface ReconciliationResult {
+  projectId: string;
+  projectName: string;
+  onChainBalance: number;
+  dbExpectedBalance: number;
+  discrepancy: number;
+  needsReconciliation: boolean;
+  error?: string;
+}
 
 export default function AdminLPAllocations() {
   const { toast } = useToast();
   const [showAllocationDialog, setShowAllocationDialog] = useState(false);
+  const [showReconciliationDialog, setShowReconciliationDialog] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [allocationAmount, setAllocationAmount] = useState("");
-  const [allocationPurpose, setAllocationPurpose] = useState("");
+  const [allocationWarning, setAllocationWarning] = useState("");
 
-  const { data: stats } = useQuery<{
-    availableCapital: number;
-    totalAllocated: number;
-    activeAllocations: number;
-  }>({
-    queryKey: ["/api/admin/lp-allocation-stats"],
+  const { data: overview, isLoading: overviewLoading } = useQuery<LPOverview>({
+    queryKey: ["/api/admin/lp-allocations/overview"],
   });
 
   const { data: projects } = useQuery<any[]>({
     queryKey: ["/api/projects"],
   });
 
-  const { data: allocations } = useQuery<any[]>({
-    queryKey: ["/api/admin/lp-allocations"],
-  });
-
   const allocateMutation = useMutation({
-    mutationFn: async (data: { projectId: string; amount: string; purpose: string }) => {
-      const response = await apiRequest("POST", "/api/admin/lp-allocations", data);
+    mutationFn: async (data: { projectId: string; amountNgnts: number }) => {
+      const response = await apiRequest("POST", "/api/admin/lp-allocations/allocate", data);
       return await response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "LP Pool allocation successful",
-        description: "Funds have been allocated to the project",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/lp-allocation-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/lp-allocations"] });
+    onSuccess: (data) => {
+      if (data.status === "partial_success") {
+        toast({
+          title: "⚠️ Partial Success",
+          description: data.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "✅ LP Pool allocation successful",
+          description: "Funds have been allocated to the project",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/lp-allocations/overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setShowAllocationDialog(false);
       setSelectedProjectId("");
       setAllocationAmount("");
-      setAllocationPurpose("");
+      setAllocationWarning("");
     },
     onError: (error: any) => {
       toast({
-        title: "Allocation failed",
+        title: "❌ Allocation failed",
         description: error.message || "Please try again",
         variant: "destructive",
       });
     },
   });
+
+  const reconcileMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/lp-allocations/reconcile-all");
+      return await response.json();
+    },
+    onSuccess: (data: { totalProjects: number; issuesFound: number; results: ReconciliationResult[]; status: string }) => {
+      toast({
+        title: data.status,
+        description: `Reconciled ${data.totalProjects} projects. ${data.issuesFound} discrepancies found.`,
+      });
+      setShowReconciliationDialog(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Reconciliation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAmountChange = (value: string) => {
+    setAllocationAmount(value);
+    
+    if (!overview || !value) {
+      setAllocationWarning("");
+      return;
+    }
+
+    const amount = parseFloat(value);
+    const available = overview.lpPool.totalNgnts;
+    
+    if (isNaN(amount)) {
+      setAllocationWarning("");
+      return;
+    }
+
+    if (amount > available) {
+      setAllocationWarning(`❌ Insufficient funds. Available: ₦${available.toLocaleString()}`);
+    } else if (amount > available * 0.5) {
+      setAllocationWarning(`⚠️ WARNING: This allocation is ${((amount/available)*100).toFixed(1)}% of total LP Pool capital`);
+    } else {
+      setAllocationWarning("");
+    }
+  };
 
   const handleAllocate = () => {
     if (!selectedProjectId || !allocationAmount) {
@@ -92,10 +167,19 @@ export default function AdminLPAllocations() {
       return;
     }
 
+    const amount = parseFloat(allocationAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid positive number",
+        variant: "destructive",
+      });
+      return;
+    }
+
     allocateMutation.mutate({
       projectId: selectedProjectId,
-      amount: allocationAmount,
-      purpose: allocationPurpose,
+      amountNgnts: amount,
     });
   };
 
@@ -108,26 +192,59 @@ export default function AdminLPAllocations() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-4"
+          className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between"
         >
           <div>
             <h1 className="text-3xl font-bold text-white" data-testid="text-page-title">
-              LP Pool Allocations
+              LP Pool Capital Allocation
             </h1>
             <p className="text-slate-400 mt-1">
-              Allocate Primer capital from the LP Pool to agricultural projects
+              Deploy Primer capital from LP Pool to agricultural projects
             </p>
           </div>
 
-          <Button
-            onClick={() => setShowAllocationDialog(true)}
-            className="self-start bg-emerald-600 hover:bg-emerald-700"
-            data-testid="button-new-allocation"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New LP Allocation
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => reconcileMutation.mutate()}
+              disabled={reconcileMutation.isPending}
+              variant="outline"
+              className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+              data-testid="button-reconcile"
+            >
+              {reconcileMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Reconciling...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reconcile All
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={() => setShowAllocationDialog(true)}
+              className="bg-emerald-600 hover:bg-emerald-700"
+              data-testid="button-new-allocation"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Allocate Capital
+            </Button>
+          </div>
         </motion.div>
+
+        {/* Critical Alert */}
+        {overview?.lpPool.criticalAlert && (
+          <Alert className="border-red-500/30 bg-red-500/10">
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTitle className="text-red-400">Critical: LP Pool Low Capital</AlertTitle>
+            <AlertDescription className="text-red-300">
+              LP Pool capital has fallen below ₦250,000. Please coordinate with Primers to replenish.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -140,10 +257,10 @@ export default function AdminLPAllocations() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white" data-testid="text-available-capital">
-                ₦{stats?.availableCapital?.toLocaleString() || "0"}
+                ₦{overview?.lpPool.totalNgnts?.toLocaleString() || "0"}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Unallocated LP Pool funds
+                Unallocated NGNTS in LP Pool
               </p>
             </CardContent>
           </Card>
@@ -157,7 +274,7 @@ export default function AdminLPAllocations() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white" data-testid="text-total-allocated">
-                ₦{stats?.totalAllocated?.toLocaleString() || "0"}
+                ₦{overview?.lpPool.totalAllocated?.toLocaleString() || "0"}
               </div>
               <p className="text-xs text-slate-500 mt-1">
                 Deployed to projects
@@ -168,69 +285,88 @@ export default function AdminLPAllocations() {
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-300">
-                Active Allocations
+                Active Projects
               </CardTitle>
               <AlertCircle className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white" data-testid="text-active-allocations">
-                {stats?.activeAllocations || 0}
+              <div className="text-2xl font-bold text-white" data-testid="text-active-projects">
+                {overview?.projects?.length || 0}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Projects funded from LP Pool
+                Funded from LP Pool
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Allocations Table */}
+        {/* Projects Table */}
         <Card className="bg-white/5 border-white/10">
           <CardHeader>
-            <CardTitle className="text-white">Allocation History</CardTitle>
+            <CardTitle className="text-white">Project Allocations</CardTitle>
             <CardDescription className="text-slate-400">
-              LP Pool funds deployed to agricultural projects
+              LP Pool capital allocated to agricultural projects with wallet details
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {allocations && allocations.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10">
-                    <TableHead className="text-slate-300">Project</TableHead>
-                    <TableHead className="text-slate-300">Amount</TableHead>
-                    <TableHead className="text-slate-300">Purpose</TableHead>
-                    <TableHead className="text-slate-300">Date</TableHead>
-                    <TableHead className="text-slate-300">Primers Involved</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allocations.map((allocation: any) => (
-                    <TableRow key={allocation.id} className="border-white/10">
-                      <TableCell className="text-white font-medium">
-                        {allocation.projectName}
-                      </TableCell>
-                      <TableCell className="text-emerald-400">
-                        ₦{parseFloat(allocation.totalAmountNgnts).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-slate-400 max-w-xs truncate">
-                        {allocation.purpose || "General project funding"}
-                      </TableCell>
-                      <TableCell className="text-slate-400">
-                        {new Date(allocation.allocationDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-blue-400">
-                        {allocation.primerCount} Primer{allocation.primerCount !== 1 ? 's' : ''}
-                      </TableCell>
+            {overview && overview.projects.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-white/10">
+                      <TableHead className="text-slate-300">Project</TableHead>
+                      <TableHead className="text-slate-300">Allocated</TableHead>
+                      <TableHead className="text-slate-300">On-Chain Balance</TableHead>
+                      <TableHead className="text-slate-300">Wallet Status</TableHead>
+                      <TableHead className="text-slate-300">Wallet Address</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {overview.projects.map((project: any) => (
+                      <TableRow key={project.id} className="border-white/10">
+                        <TableCell className="text-white font-medium">
+                          {project.name}
+                        </TableCell>
+                        <TableCell className="text-emerald-400">
+                          ₦{parseFloat(project.lpCapitalAllocated).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-blue-400">
+                          ₦{project.currentBalance.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          {project.walletPublicKey ? (
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span className="text-emerald-400 text-sm">Active</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-slate-500" />
+                              <span className="text-slate-500 text-sm">No wallet</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-slate-400 font-mono text-xs">
+                          {project.walletPublicKey ? (
+                            <span title={project.walletPublicKey}>
+                              {project.walletPublicKey.substring(0, 8)}...
+                              {project.walletPublicKey.substring(project.walletPublicKey.length - 4)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <div className="text-center py-12 text-slate-400">
                 <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No LP Pool allocations yet</p>
                 <p className="text-sm mt-2">
-                  Click "New LP Allocation" to deploy Primer capital to projects
+                  Click "Allocate Capital" to deploy Primer capital to projects
                 </p>
               </div>
             )}
@@ -242,9 +378,9 @@ export default function AdminLPAllocations() {
       <Dialog open={showAllocationDialog} onOpenChange={setShowAllocationDialog}>
         <DialogContent className="bg-slate-900 border-white/10 text-white max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Allocate LP Pool Funds</DialogTitle>
+            <DialogTitle className="text-2xl">Allocate LP Pool Capital</DialogTitle>
             <DialogDescription className="text-slate-400">
-              Deploy Primer capital from the LP Pool to a project
+              Transfer NGNTS from LP Pool to project operational wallet
             </DialogDescription>
           </DialogHeader>
 
@@ -284,29 +420,20 @@ export default function AdminLPAllocations() {
                 type="text"
                 placeholder="100000.00"
                 value={allocationAmount}
-                onChange={(e) => setAllocationAmount(e.target.value)}
+                onChange={(e) => handleAmountChange(e.target.value)}
                 className="bg-white/5 border-white/10 text-white"
                 data-testid="input-amount"
               />
-              <p className="text-xs text-slate-500">
-                Available: ₦{stats?.availableCapital?.toLocaleString() || "0"}
-              </p>
-            </div>
-
-            {/* Purpose */}
-            <div className="space-y-2">
-              <Label htmlFor="purpose" className="text-slate-300">
-                Allocation Purpose (Optional)
-              </Label>
-              <Textarea
-                id="purpose"
-                placeholder="Seed purchase, equipment, irrigation system..."
-                value={allocationPurpose}
-                onChange={(e) => setAllocationPurpose(e.target.value)}
-                className="bg-white/5 border-white/10 text-white resize-none"
-                rows={3}
-                data-testid="input-purpose"
-              />
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs text-slate-500">
+                  Available: ₦{overview?.lpPool.totalNgnts?.toLocaleString() || "0"}
+                </p>
+                {allocationWarning && (
+                  <p className={`text-xs ${allocationWarning.startsWith('❌') ? 'text-red-400' : 'text-yellow-400'}`}>
+                    {allocationWarning}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Info Box */}
@@ -316,18 +443,32 @@ export default function AdminLPAllocations() {
                 Allocation Process
               </h4>
               <ul className="text-sm text-slate-300 space-y-1 list-disc list-inside">
-                <li>Funds will be deducted from the LP Pool wallet</li>
-                <li>All Primers will participate based on their LP share %</li>
-                <li>Individual Primer allocations will be calculated automatically</li>
-                <li>Project will receive the full allocated amount</li>
+                <li>If first allocation: Project wallet will be auto-created (3.0 XLM + NGNTS trustline)</li>
+                <li>NGNTS transferred from LP Pool to project wallet on Stellar network</li>
+                <li>All Primers participate proportionally based on their LP Pool share</li>
+                <li>Transaction is atomic - either succeeds completely or rolls back</li>
               </ul>
             </div>
+
+            {/* Safety Warning for Large Allocations */}
+            {parseFloat(allocationAmount) > (overview?.lpPool.totalNgnts || 0) * 0.5 && (
+              <Alert className="border-yellow-500/30 bg-yellow-500/10">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <AlertTitle className="text-yellow-400">Large Allocation Warning</AlertTitle>
+                <AlertDescription className="text-yellow-300 text-sm">
+                  This allocation exceeds 50% of available LP Pool capital. Please verify the amount.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowAllocationDialog(false)}
+              onClick={() => {
+                setShowAllocationDialog(false);
+                setAllocationWarning("");
+              }}
               disabled={allocateMutation.isPending}
               className="border-white/10 text-white hover:bg-white/5"
               data-testid="button-cancel"
@@ -336,7 +477,12 @@ export default function AdminLPAllocations() {
             </Button>
             <Button
               onClick={handleAllocate}
-              disabled={allocateMutation.isPending || !selectedProjectId || !allocationAmount}
+              disabled={
+                allocateMutation.isPending ||
+                !selectedProjectId ||
+                !allocationAmount ||
+                parseFloat(allocationAmount) > (overview?.lpPool.totalNgnts || 0)
+              }
               className="bg-emerald-600 hover:bg-emerald-700"
               data-testid="button-allocate"
             >
@@ -348,6 +494,69 @@ export default function AdminLPAllocations() {
               ) : (
                 "Allocate Funds"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reconciliation Dialog */}
+      <Dialog open={showReconciliationDialog} onOpenChange={setShowReconciliationDialog}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Reconciliation Results</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              On-chain balances vs database records
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-96 overflow-y-auto">
+            {reconcileMutation.data && (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/10">
+                    <TableHead className="text-slate-300">Project</TableHead>
+                    <TableHead className="text-slate-300">On-Chain</TableHead>
+                    <TableHead className="text-slate-300">Expected</TableHead>
+                    <TableHead className="text-slate-300">Discrepancy</TableHead>
+                    <TableHead className="text-slate-300">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reconcileMutation.data.results.map((result: ReconciliationResult) => (
+                    <TableRow key={result.projectId} className="border-white/10">
+                      <TableCell className="text-white font-medium">
+                        {result.projectName}
+                      </TableCell>
+                      <TableCell className="text-blue-400">
+                        ₦{result.onChainBalance.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-slate-400">
+                        ₦{result.dbExpectedBalance.toLocaleString()}
+                      </TableCell>
+                      <TableCell className={result.needsReconciliation ? "text-red-400" : "text-emerald-400"}>
+                        {result.discrepancy >= 0 ? "+" : ""}₦{result.discrepancy.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {result.needsReconciliation ? (
+                          <span className="text-red-400">⚠️ Mismatch</span>
+                        ) : (
+                          <span className="text-emerald-400">✅ OK</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => setShowReconciliationDialog(false)}
+              className="bg-white/5 hover:bg-white/10"
+              data-testid="button-close-reconciliation"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
