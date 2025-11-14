@@ -309,7 +309,6 @@ export async function deleteMilestone(
   req?: Request
 ): Promise<{ success: true; message: string } | { success: false; error: string }> {
   try {
-    let existingMilestone: SelectProjectMilestone;
     const result = await db.transaction(async (tx) => {
       // Check if milestone exists and is in draft status
       const [existing] = await tx
@@ -326,9 +325,25 @@ export async function deleteMilestone(
         throw new Error("Only draft milestones can be deleted");
       }
 
-      existingMilestone = existing;
+      // ✅ TRANSACTIONAL LOGGING (Critical) - Log BEFORE deletion to preserve FK
+      await logMilestoneActivityInTransaction(
+        milestoneId,
+        existing.projectId,
+        'deleted',
+        deletedBy,
+        tx,
+        'draft',
+        undefined,
+        {
+          title: existing.title,
+          milestoneNumber: existing.milestoneNumber,
+          targetAmount: existing.targetAmount,
+        },
+        undefined,
+        req
+      );
 
-      // Delete milestone
+      // Delete milestone (audit log already created above)
       await tx.delete(projectMilestones).where(eq(projectMilestones.id, milestoneId));
 
       // Update project's totalMilestones count
@@ -342,23 +357,6 @@ export async function deleteMilestone(
 
       return "Milestone deleted successfully";
     });
-
-    // 📝 ASYNC LOGGING (Non-Critical)
-    logMilestoneActivityAsync(
-      milestoneId,
-      existingMilestone.projectId,
-      'deleted',
-      deletedBy,
-      'draft',
-      undefined,
-      {
-        title: existingMilestone.title,
-        milestoneNumber: existingMilestone.milestoneNumber,
-        targetAmount: existingMilestone.targetAmount,
-      },
-      undefined,
-      req
-    );
 
     return { success: true, message: result };
   } catch (error: any) {
@@ -661,14 +659,14 @@ export async function disburseMilestone(
 
     // First, prepare and validate in a DB transaction
     const prepResult = await db.transaction(async (tx) => {
-      // Get milestone with project details
+      // Get milestone with project details (INNER JOIN since projectId is NOT NULL)
       const [milestone] = await tx
         .select({
           milestone: projectMilestones,
           project: projects,
         })
         .from(projectMilestones)
-        .leftJoin(projects, eq(projectMilestones.projectId, projects.id))
+        .innerJoin(projects, eq(projectMilestones.projectId, projects.id))
         .where(eq(projectMilestones.id, milestoneId))
         .for("update")
         .limit(1);
@@ -757,6 +755,7 @@ export async function disburseMilestone(
     );
 
     // Now update database with burn confirmation
+    // CRITICAL: Audit logging happens FIRST in transaction - if it fails, entire operation rolls back
     const finalResult = await db.transaction(async (tx) => {
       // Re-check milestone status (ensure no concurrent changes)
       const [currentMilestone] = await tx
@@ -775,6 +774,25 @@ export async function disburseMilestone(
           `Milestone status changed during disbursement (now ${currentMilestone.status}). Burn succeeded but database not updated.`
         );
       }
+
+      // ✅ TRANSACTIONAL LOGGING (Critical) - Log FIRST before status update
+      // If audit logging fails, transaction rolls back and admin is alerted
+      await logMilestoneActivityInTransaction(
+        milestoneId,
+        prepResult.projectId,
+        'disbursed',
+        disbursedBy,
+        tx,
+        'approved',
+        'disbursed',
+        {
+          ngntsBurned,
+          burnTxHash,
+          newNAV: prepResult.newNAV,
+        },
+        undefined,
+        req
+      );
 
       // Update milestone status with burn transaction hash
       const [updatedMilestone] = await tx
@@ -803,24 +821,6 @@ export async function disburseMilestone(
 
       // Recalculate LP token price after NAV change (inside transaction for atomicity)
       await recalculateLPTokenPrice(tx, prepResult.projectId);
-
-      // ✅ TRANSACTIONAL LOGGING (Critical)
-      await logMilestoneActivityInTransaction(
-        milestoneId,
-        prepResult.projectId,
-        'disbursed',
-        disbursedBy,
-        tx,
-        'approved',
-        'disbursed',
-        {
-          ngntsBurned,
-          burnTxHash,
-          newNAV: prepResult.newNAV,
-        },
-        undefined,
-        req
-      );
 
       return updatedMilestone;
     });

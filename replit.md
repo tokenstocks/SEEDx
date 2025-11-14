@@ -42,6 +42,27 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 
 ## Recent Changes
 
+### November 14, 2025 - Phase 3.3: Milestone Audit Trail (COMPLETE)
+- **Audit Schema:** Added `milestoneActivityLog` table with UUID primary key, indexed foreign keys (milestoneId, projectId), and JSONB metadata fields for extensibility
+- **Hybrid Logging Strategy:**
+  - **Async (fire-and-forget):** Non-critical operations (create, update, submit, approve, reject) - optimizes performance while maintaining audit trail
+  - **Transactional:** Critical operations (delete, bank_transfer_recorded, disbursed) - ensures atomic commit with main operation
+- **Audit Library** (`server/lib/auditLib.ts`):
+  - `logMilestoneActivityInTransaction`: Drizzle-native transactional logging with proper `Tx` typing
+  - `logMilestoneActivityAsync`: Fire-and-forget logging with error suppression
+  - Captures: userId, performedByName (CONCAT firstName + lastName), statusBefore/After, metadata (changes/amounts/txHashes), auditMetadata (IP, user-agent)
+- **Milestone Integration:** All 8 operations in `server/lib/milestones.ts` now log activity:
+  - create, update, submit, approve, reject: Async logging
+  - delete: Transactional logging (logs BEFORE deletion to preserve FK)
+  - recordBankTransfer, disburseMilestone: Transactional logging for financial operations
+- **Critical Fixes:**
+  - **FK Violation Prevention:** Delete logging moved inside transaction BEFORE deletion
+  - **Audit Completeness:** Disbursement logging moved to FIRST operation in Phase 3 transaction - if audit fails, entire disbursement rolls back
+  - **PostgreSQL Compatibility:** Changed leftJoin to innerJoin in disburseMilestone for FOR UPDATE compatibility
+- **API Routes:** Updated all handlers in `server/routes/admin/milestones.ts` to pass userId and req object for audit trail
+- **Testing:** E2E test validates all workflow transitions (create→update→submit→approve/reject→bank_transfer), deletion guards, and stats endpoint
+- **Architect Review:** PASSED with recommendations for operational improvements (compensating logic for partial burns, async logging monitoring)
+
 ### November 14, 2025 - Phase 3.2: Milestone Approval Workflow & Security Hardening (COMPLETE)
 - **Approval Workflow:** Implemented complete approved→disbursed transition with bank transfer recording
   - `approveMilestone`: Transitions submitted→approved with admin audit trail
