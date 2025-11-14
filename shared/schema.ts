@@ -33,6 +33,19 @@ export const walletFundingRequestStatusEnum = pgEnum("wallet_funding_request_sta
 export const bankDepositStatusEnum = pgEnum("bank_deposit_status", ["pending", "approved", "rejected", "completed"]);
 export const depositPaymentMethodEnum = pgEnum("deposit_payment_method", ["bank_transfer", "usdc"]);
 export const milestoneStatusEnum = pgEnum("milestone_status", ["draft", "submitted", "approved", "disbursed", "rejected"]);
+export const distributionEventStatusEnum = pgEnum("distribution_event_status", ["draft", "pending_approval", "calculated", "active", "completed", "cancelled"]);
+export const distributionAllocationStatusEnum = pgEnum("distribution_allocation_status", ["allocated", "partially_withdrawn", "fully_withdrawn", "cancelled"]);
+export const distributionWithdrawalStatusEnum = pgEnum("distribution_withdrawal_status", ["pending", "approved", "rejected", "processing", "paid", "cancelled"]);
+export const distributionActivityTypeEnum = pgEnum("distribution_activity_type", [
+  "event_created",
+  "allocations_calculated",
+  "withdrawal_requested",
+  "withdrawal_approved",
+  "withdrawal_rejected",
+  "payment_recorded",
+  "event_completed",
+  "event_cancelled"
+]);
 
 // Users table
 export const users = pgTable("users", {
@@ -304,6 +317,148 @@ export const milestoneActivityLog = pgTable("milestone_activity_log", {
   activityTypeIdx: index("milestone_activity_type_idx").on(table.activityType),
   performedByIdx: index("milestone_activity_performed_by_idx").on(table.performedBy),
   createdAtIdx: index("milestone_activity_created_at_idx").on(table.createdAt),
+}));
+
+// Distribution Events table - Revenue/exit events that trigger LP token holder distributions
+export const distributionEvents = pgTable('distribution_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'restrict' }),
+  eventType: varchar('event_type', { length: 50 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  totalAmount: decimal('total_amount', { precision: 20, scale: 2 }).notNull(),
+  distributionDate: timestamp('distribution_date').notNull(),
+  status: distributionEventStatusEnum('status').notNull().default('draft'),
+  
+  snapshotDate: timestamp('snapshot_date'),
+  snapshotTotalLpTokens: decimal('snapshot_total_lp_tokens', { precision: 20, scale: 7 }),
+  snapshotNav: decimal('snapshot_nav', { precision: 20, scale: 2 }),
+  snapshotMetadata: jsonb('snapshot_metadata').$type<{
+    sourceTable?: string;
+    roundingPolicy?: string;
+    navReference?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  
+  totalAllocated: decimal('total_allocated', { precision: 20, scale: 2 }).notNull().default('0'),
+  totalWithdrawn: decimal('total_withdrawn', { precision: 20, scale: 2 }).notNull().default('0'),
+  totalPending: decimal('total_pending', { precision: 20, scale: 2 }).notNull().default('0'),
+  
+  createdBy: uuid('created_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  approvedBy: uuid('approved_by').references(() => users.id, { onDelete: 'restrict' }),
+  approvedAt: timestamp('approved_at'),
+  completedAt: timestamp('completed_at'),
+  cancelledBy: uuid('cancelled_by').references(() => users.id, { onDelete: 'restrict' }),
+  cancelledAt: timestamp('cancelled_at'),
+  cancellationReason: text('cancellation_reason'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  projectIdx: index('distribution_events_project_idx').on(table.projectId),
+  statusIdx: index('distribution_events_status_idx').on(table.status),
+  distributionDateIdx: index('distribution_events_date_idx').on(table.distributionDate),
+}));
+
+// Distribution Allocations table - Pro-rata allocations for each LP token holder
+export const distributionAllocations = pgTable('distribution_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  distributionEventId: uuid('distribution_event_id').notNull().references(() => distributionEvents.id, { onDelete: 'restrict' }),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'restrict' }),
+  lpTokenHolderId: uuid('lp_token_holder_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  
+  lpTokensHeld: decimal('lp_tokens_held', { precision: 20, scale: 7 }).notNull(),
+  ownershipPercentage: decimal('ownership_percentage', { precision: 10, scale: 7 }).notNull(),
+  allocatedAmount: decimal('allocated_amount', { precision: 20, scale: 2 }).notNull(),
+  
+  withdrawnAmount: decimal('withdrawn_amount', { precision: 20, scale: 2 }).notNull().default('0'),
+  pendingAmount: decimal('pending_amount', { precision: 20, scale: 2 }).notNull().default('0'),
+  availableAmount: decimal('available_amount', { precision: 20, scale: 2 }).notNull(),
+  
+  status: distributionAllocationStatusEnum('status').notNull().default('allocated'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  distributionEventIdx: index('distribution_allocations_event_idx').on(table.distributionEventId),
+  lpHolderIdx: index('distribution_allocations_holder_idx').on(table.lpTokenHolderId),
+  projectIdx: index('distribution_allocations_project_idx').on(table.projectId),
+  statusIdx: index('distribution_allocations_status_idx').on(table.status),
+  activeAllocationsIdx: index('distribution_allocations_active_idx').on(table.status, table.lpTokenHolderId).where(sql`${table.status} != 'fully_withdrawn' AND ${table.status} != 'cancelled'`),
+  uniqueAllocation: unique('unique_distribution_allocation').on(table.distributionEventId, table.lpTokenHolderId),
+  checkWithdrawnPending: check('check_withdrawn_pending_lte_allocated', sql`${table.withdrawnAmount} + ${table.pendingAmount} <= ${table.allocatedAmount}`),
+}));
+
+// Distribution Withdrawals table - LP withdrawal requests for their allocations
+export const distributionWithdrawals = pgTable('distribution_withdrawals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  distributionAllocationId: uuid('distribution_allocation_id').notNull().references(() => distributionAllocations.id, { onDelete: 'restrict' }),
+  distributionEventId: uuid('distribution_event_id').notNull().references(() => distributionEvents.id, { onDelete: 'restrict' }),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'restrict' }),
+  lpTokenHolderId: uuid('lp_token_holder_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  
+  requestedAmount: decimal('requested_amount', { precision: 20, scale: 2 }).notNull(),
+  status: distributionWithdrawalStatusEnum('status').notNull().default('pending'),
+  
+  bankName: varchar('bank_name', { length: 255 }),
+  accountNumber: varchar('account_number', { length: 50 }),
+  accountName: varchar('account_name', { length: 255 }),
+  
+  reviewedBy: uuid('reviewed_by').references(() => users.id, { onDelete: 'restrict' }),
+  reviewedAt: timestamp('reviewed_at'),
+  approvedBy: uuid('approved_by').references(() => users.id, { onDelete: 'restrict' }),
+  approvedAt: timestamp('approved_at'),
+  rejectedBy: uuid('rejected_by').references(() => users.id, { onDelete: 'restrict' }),
+  rejectedAt: timestamp('rejected_at'),
+  rejectionReason: text('rejection_reason'),
+  
+  paymentChannel: varchar('payment_channel', { length: 50 }),
+  paymentReference: varchar('payment_reference', { length: 255 }),
+  paymentDate: timestamp('payment_date'),
+  paymentAmount: decimal('payment_amount', { precision: 20, scale: 2 }),
+  paidBy: uuid('paid_by').references(() => users.id, { onDelete: 'restrict' }),
+  paidAt: timestamp('paid_at'),
+  paymentNotes: text('payment_notes'),
+  
+  requestNotes: text('request_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  allocationIdx: index('distribution_withdrawals_allocation_idx').on(table.distributionAllocationId),
+  lpHolderIdx: index('distribution_withdrawals_holder_idx').on(table.lpTokenHolderId),
+  statusIdx: index('distribution_withdrawals_status_idx').on(table.status),
+  createdAtIdx: index('distribution_withdrawals_created_at_idx').on(table.createdAt),
+}));
+
+// Distribution Activity Log table - Audit trail for all distribution operations
+export const distributionActivityLog = pgTable('distribution_activity_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  distributionEventId: uuid('distribution_event_id').references(() => distributionEvents.id, { onDelete: 'cascade' }),
+  distributionWithdrawalId: uuid('distribution_withdrawal_id').references(() => distributionWithdrawals.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  
+  activityType: distributionActivityTypeEnum('activity_type').notNull(),
+  
+  performedBy: uuid('performed_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  performedByName: varchar('performed_by_name', { length: 255 }),
+  previousStatus: varchar('previous_status', { length: 50 }),
+  newStatus: varchar('new_status', { length: 50 }),
+  changesSummary: jsonb('changes_summary'),
+  metadata: jsonb('metadata'),
+  auditMetadata: jsonb('audit_metadata').$type<{
+    ipAddress?: string;
+    userAgent?: string;
+    [key: string]: any;
+  }>().default(sql`'{}'::jsonb`),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  distributionEventIdx: index('distribution_activity_event_idx').on(table.distributionEventId),
+  distributionWithdrawalIdx: index('distribution_activity_withdrawal_idx').on(table.distributionWithdrawalId),
+  projectIdx: index('distribution_activity_project_idx').on(table.projectId),
+  activityTypeIdx: index('distribution_activity_type_idx').on(table.activityType),
+  performedByIdx: index('distribution_activity_performed_by_idx').on(table.performedBy),
+  createdAtIdx: index('distribution_activity_created_at_idx').on(table.createdAt),
 }));
 
 // Project token balances table - tracks user holdings of project-specific tokens
@@ -1426,6 +1581,92 @@ export const approveBankDepositSchema = z.object({
   rejectedReason: z.string().optional(),
 });
 
+export const insertDistributionEventSchema = createInsertSchema(distributionEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  snapshotDate: true,
+  snapshotTotalLpTokens: true,
+  snapshotNav: true,
+  snapshotMetadata: true,
+  totalAllocated: true,
+  totalWithdrawn: true,
+  totalPending: true,
+  approvedBy: true,
+  approvedAt: true,
+  completedAt: true,
+  cancelledBy: true,
+  cancelledAt: true,
+  cancellationReason: true,
+});
+
+export const createDistributionEventSchema = z.object({
+  projectId: z.string().uuid(),
+  eventType: z.string().max(50),
+  title: z.string().max(255),
+  description: z.string().optional(),
+  totalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Total amount must be a valid decimal"),
+  distributionDate: z.coerce.date(),
+});
+
+export const insertDistributionAllocationSchema = createInsertSchema(distributionAllocations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  withdrawnAmount: true,
+  pendingAmount: true,
+});
+
+export const insertDistributionWithdrawalSchema = createInsertSchema(distributionWithdrawals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  approvedBy: true,
+  approvedAt: true,
+  rejectedBy: true,
+  rejectedAt: true,
+  rejectionReason: true,
+  paymentChannel: true,
+  paymentReference: true,
+  paymentDate: true,
+  paymentAmount: true,
+  paidBy: true,
+  paidAt: true,
+  paymentNotes: true,
+});
+
+export const createDistributionWithdrawalSchema = z.object({
+  distributionAllocationId: z.string().uuid(),
+  requestedAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Requested amount must be a valid decimal"),
+  bankName: z.string().max(255).optional(),
+  accountNumber: z.string().max(50).optional(),
+  accountName: z.string().max(255).optional(),
+  requestNotes: z.string().optional(),
+});
+
+export const approveDistributionWithdrawalSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectionReason: z.string().optional(),
+});
+
+export const recordDistributionPaymentSchema = z.object({
+  paymentChannel: z.string().max(50).optional(),
+  paymentReference: z.string().max(255),
+  paymentDate: z.coerce.date(),
+  paymentAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Payment amount must be a valid decimal"),
+  paymentNotes: z.string().optional(),
+});
+
+export const insertDistributionActivityLogSchema = createInsertSchema(distributionActivityLog).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Bank deposit fee preview response type
 export type BankDepositFeePreview = {
   amountNGN: number;
@@ -1531,3 +1772,15 @@ export type InsertRegeneratorBankDeposit = z.infer<typeof insertRegeneratorBankD
 export type CreateBankDepositRequest = z.infer<typeof createBankDepositRequestSchema>;
 export type ApproveBankDeposit = z.infer<typeof approveBankDepositSchema>;
 export type BankDepositDecision = typeof bankDepositDecisions.$inferSelect;
+export type DistributionEvent = typeof distributionEvents.$inferSelect;
+export type InsertDistributionEvent = z.infer<typeof insertDistributionEventSchema>;
+export type CreateDistributionEvent = z.infer<typeof createDistributionEventSchema>;
+export type DistributionAllocation = typeof distributionAllocations.$inferSelect;
+export type InsertDistributionAllocation = z.infer<typeof insertDistributionAllocationSchema>;
+export type DistributionWithdrawal = typeof distributionWithdrawals.$inferSelect;
+export type InsertDistributionWithdrawal = z.infer<typeof insertDistributionWithdrawalSchema>;
+export type CreateDistributionWithdrawal = z.infer<typeof createDistributionWithdrawalSchema>;
+export type ApproveDistributionWithdrawal = z.infer<typeof approveDistributionWithdrawalSchema>;
+export type RecordDistributionPayment = z.infer<typeof recordDistributionPaymentSchema>;
+export type DistributionActivityLog = typeof distributionActivityLog.$inferSelect;
+export type InsertDistributionActivityLog = z.infer<typeof insertDistributionActivityLogSchema>;
