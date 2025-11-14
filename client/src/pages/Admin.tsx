@@ -532,7 +532,16 @@ export default function Admin() {
     tokenSymbol: "",
     tokensIssued: "",
     pricePerToken: "",
+    // RCX Profit Split Configuration (must sum to 100%)
+    lpReplenishmentPercent: "40",
+    regeneratorDistributionPercent: "30",
+    treasuryPercent: "20",
+    projectRetainedPercent: "10",
+    // Dual Wallet Architecture
+    operationsWalletPublicKey: "",
+    revenueWalletPublicKey: "",
   });
+  const [profitSplitPreset, setProfitSplitPreset] = useState<string>("balanced");
   const [projectPhoto, setProjectPhoto] = useState<File | null>(null);
   const [teaserDocument, setTeaserDocument] = useState<File | null>(null);
   const [projectDocuments, setProjectDocuments] = useState<FileList | null>(null);
@@ -847,7 +856,16 @@ export default function Admin() {
         tokenSymbol: "",
         tokensIssued: "",
         pricePerToken: "",
+        // RCX Profit Split Configuration (reset to default 40/30/20/10)
+        lpReplenishmentPercent: "40",
+        regeneratorDistributionPercent: "30",
+        treasuryPercent: "20",
+        projectRetainedPercent: "10",
+        // Dual Wallet Architecture
+        operationsWalletPublicKey: "",
+        revenueWalletPublicKey: "",
       });
+      setProfitSplitPreset("balanced"); // Reset to balanced preset
       setProjectPhoto(null);
       setTeaserDocument(null);
       setProjectDocuments(null);
@@ -2244,6 +2262,158 @@ export default function Admin() {
                   />
                 </div>
               </div>
+
+              {/* RCX Profit Split Configuration */}
+              <div className="space-y-4 p-4 border border-white/10 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">RCX Profit Distribution</h3>
+                    <p className="text-xs text-slate-400">Configure how project revenue is split (must sum to 100%)</p>
+                  </div>
+                  <Select
+                    value={profitSplitPreset}
+                    onValueChange={(preset) => {
+                      setProfitSplitPreset(preset);
+                      if (preset === "balanced") {
+                        setProjectForm({ ...projectForm, lpReplenishmentPercent: "40", regeneratorDistributionPercent: "30", treasuryPercent: "20", projectRetainedPercent: "10" });
+                      } else if (preset === "lp-focused") {
+                        setProjectForm({ ...projectForm, lpReplenishmentPercent: "50", regeneratorDistributionPercent: "25", treasuryPercent: "15", projectRetainedPercent: "10" });
+                      } else if (preset === "regenerator-focused") {
+                        setProjectForm({ ...projectForm, lpReplenishmentPercent: "30", regeneratorDistributionPercent: "45", treasuryPercent: "15", projectRetainedPercent: "10" });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-48" data-testid="select-profit-preset">
+                      <SelectValue placeholder="Presets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">Custom</SelectItem>
+                      <SelectItem value="balanced">Balanced (40/30/20/10)</SelectItem>
+                      <SelectItem value="lp-focused">LP Focused (50/25/15/10)</SelectItem>
+                      <SelectItem value="regenerator-focused">Regenerator Focused (30/45/15/10)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lpReplenishmentPercent">LP Replenishment %</Label>
+                    <Input
+                      id="lpReplenishmentPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={projectForm.lpReplenishmentPercent}
+                      onChange={(e) => {
+                        setProjectForm({ ...projectForm, lpReplenishmentPercent: e.target.value });
+                        setProfitSplitPreset("custom");
+                      }}
+                      placeholder="40"
+                      data-testid="input-lp-replenishment"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regeneratorDistributionPercent">Regenerator Distribution %</Label>
+                    <Input
+                      id="regeneratorDistributionPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={projectForm.regeneratorDistributionPercent}
+                      onChange={(e) => {
+                        setProjectForm({ ...projectForm, regeneratorDistributionPercent: e.target.value });
+                        setProfitSplitPreset("custom");
+                      }}
+                      placeholder="30"
+                      data-testid="input-regenerator-distribution"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="treasuryPercent">Treasury %</Label>
+                    <Input
+                      id="treasuryPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={projectForm.treasuryPercent}
+                      onChange={(e) => {
+                        setProjectForm({ ...projectForm, treasuryPercent: e.target.value });
+                        setProfitSplitPreset("custom");
+                      }}
+                      placeholder="20"
+                      data-testid="input-treasury"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="projectRetainedPercent">Project Retained %</Label>
+                    <Input
+                      id="projectRetainedPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={projectForm.projectRetainedPercent}
+                      onChange={(e) => {
+                        setProjectForm({ ...projectForm, projectRetainedPercent: e.target.value });
+                        setProfitSplitPreset("custom");
+                      }}
+                      placeholder="10"
+                      data-testid="input-project-retained"
+                    />
+                  </div>
+                </div>
+
+                {/* Validation Indicator */}
+                {(() => {
+                  const sum = (parseFloat(projectForm.lpReplenishmentPercent) || 0) + 
+                    (parseFloat(projectForm.regeneratorDistributionPercent) || 0) + 
+                    (parseFloat(projectForm.treasuryPercent) || 0) + 
+                    (parseFloat(projectForm.projectRetainedPercent) || 0);
+                  const isValid = sum === 100;
+                  return (
+                    <div className={`flex items-center justify-between p-3 rounded-md ${isValid ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                      <span className="text-sm font-medium">Total: {sum.toFixed(1)}%</span>
+                      {isValid ? (
+                        <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50" data-testid="badge-split-valid">Valid</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/50" data-testid="badge-split-invalid">Must equal 100%</Badge>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Dual Wallet Configuration */}
+              <div className="space-y-4 p-4 border border-white/10 rounded-lg">
+                <div>
+                  <h3 className="text-sm font-semibold">Stellar Wallet Configuration</h3>
+                  <p className="text-xs text-slate-400">Dual wallet architecture for fund management</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="operationsWalletPublicKey">Operations Wallet (Receives LP Disbursements)</Label>
+                  <Input
+                    id="operationsWalletPublicKey"
+                    value={projectForm.operationsWalletPublicKey}
+                    onChange={(e) => setProjectForm({ ...projectForm, operationsWalletPublicKey: e.target.value })}
+                    placeholder="G..."
+                    data-testid="input-operations-wallet"
+                  />
+                  <p className="text-xs text-slate-400">Stellar public key starting with 'G'</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="revenueWalletPublicKey">Revenue Wallet (Receives NGNTS from Bank Deposits)</Label>
+                  <Input
+                    id="revenueWalletPublicKey"
+                    value={projectForm.revenueWalletPublicKey}
+                    onChange={(e) => setProjectForm({ ...projectForm, revenueWalletPublicKey: e.target.value })}
+                    placeholder="G..."
+                    data-testid="input-revenue-wallet"
+                  />
+                  <p className="text-xs text-slate-400">Stellar public key starting with 'G'</p>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="photo">Project Photo (Optional)</Label>
                 <Input
@@ -2298,7 +2468,16 @@ export default function Admin() {
                   teaserDoc: teaserDocument,
                   docs: projectDocuments
                 })}
-                disabled={createProjectMutation.isPending || !projectForm.name || !projectForm.tokenSymbol}
+                disabled={(() => {
+                  const sum = (parseFloat(projectForm.lpReplenishmentPercent) || 0) + 
+                    (parseFloat(projectForm.regeneratorDistributionPercent) || 0) + 
+                    (parseFloat(projectForm.treasuryPercent) || 0) + 
+                    (parseFloat(projectForm.projectRetainedPercent) || 0);
+                  const isValidSplit = sum === 100;
+                  const hasWallets = projectForm.operationsWalletPublicKey.startsWith('G') && 
+                    projectForm.revenueWalletPublicKey.startsWith('G');
+                  return createProjectMutation.isPending || !projectForm.name || !projectForm.tokenSymbol || !isValidSplit || !hasWallets;
+                })()}
                 data-testid="button-submit-project"
               >
                 {createProjectMutation.isPending ? "Creating..." : "Create Project"}
