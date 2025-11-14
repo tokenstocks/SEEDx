@@ -19,10 +19,16 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 - **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool).
 - **User Roles:** Primers contribute capital, Regenerators purchase farm project tokens. Both have dedicated dashboards.
 - **Investment & Portfolio Management:** Supports on-chain settlement for multi-currency investments (NGN/NGNTS, USDC, XLM) with atomic database updates and automatic refunds for failed token deliveries.
-- **Regenerative Capital Architecture:** Multi-pool system with NAV-based token pricing and automated cashflow distribution.
+- **Regenerative Capital Architecture:** Multi-pool system with NAV-based token pricing and automated cashflow distribution with 40/30/20/10 split:
+  - 40% to Regenerators (token holders) - stored in `pendingRegeneratorAllocations` for Phase 4 distribution
+  - 30% to LP Pool investors - tracked at pool level in `lpPoolTransactions` with per-investor allocations in `lpCashflowAllocations`
+  - 20% to Treasury - recorded in `treasuryPoolTransactions` as inflow
+  - 10% to Project Reinvestment - recorded in `treasuryPoolTransactions` as allocation
 - **Token Marketplace:** Internal peer-to-peer marketplace with order book and NAV-based price discovery.
 - **NGNTS Burning:** NGNTS tokens are burned upon NGN withdrawal to maintain peg.
 - **Admin Dashboards:** APIs and UI for platform operations, user management, and transaction monitoring, including dedicated interfaces for Primers, Regenerators, Investments, and LP Pool health.
+  - LP Pool display separates NGNTS (allocatable capital) from XLM (operational reserves) and USDC (stablecoin holdings)
+  - Critical alerts trigger when NGNTS capital falls below ₦250,000 threshold
 - **Redemption System:** Allows users to sell project tokens for NGNTS, prioritizing funding from project cashflow, treasury, and liquidity pool.
 - **Bank Deposit System (FundingWizard):** 3-step NGN→NGNTS deposit wizard with real-time fee preview, invoice generation, and proof upload.
 - **Wallet Activation Admin Interface:** Simplified admin approval for activating regenerator wallets, managing XLM reserves and trustlines.
