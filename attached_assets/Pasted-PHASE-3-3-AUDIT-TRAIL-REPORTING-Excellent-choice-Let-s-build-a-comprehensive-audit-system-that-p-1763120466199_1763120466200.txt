@@ -1,0 +1,737 @@
+PHASE 3.3: AUDIT TRAIL & REPORTING
+Excellent choice! Let's build a comprehensive audit system that provides full transparency and traceability for all milestone activities.
+
+Objective:
+Create a complete audit trail system with activity logging, milestone history tracking, and advanced reporting endpoints for admin analytics and compliance.
+
+PHASE 3.3 IMPLEMENTATION TASKS
+Task 1: Database Schema - Milestone Activity Log
+Add to shared/schema.ts:
+
+typescript
+Copy
+export const milestoneActivityLog = pgTable('milestone_activity_log', {
+  id: serial('id').primaryKey(),
+  milestoneId: integer('milestone_id').notNull().references(() => projectMilestones.id, { onDelete: 'cascade' }),
+  projectId: integer('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  activityType: varchar('activity_type', { length: 50 }).notNull(),
+  // Activity types: 'created', 'updated', 'submitted', 'approved', 'rejected', 'bank_transfer_recorded', 'disbursed'
+  performedBy: integer('performed_by').notNull().references(() => users.id),
+  previousStatus: varchar('previous_status', { length: 50 }),
+  newStatus: varchar('new_status', { length: 50 }),
+  changesSummary: text('changes_summary'), // JSON string of what changed
+  metadata: text('metadata'), // JSON string for additional context
+  ipAddress: varchar('ip_address', { length: 45 }),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  milestoneIdIdx: index('idx_activity_milestone').on(table.milestoneId),
+  projectIdIdx: index('idx_activity_project').on(table.projectId),
+  activityTypeIdx: index('idx_activity_type').on(table.activityType),
+  performedByIdx: index('idx_activity_user').on(table.performedBy),
+  createdAtIdx: index('idx_activity_created').on(table.createdAt),
+}));
+Task 2: Audit Library
+Create server/lib/auditLib.ts:
+
+typescript
+Copy
+import { db } from '../db';
+import { milestoneActivityLog } from '../../shared/schema';
+import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
+
+export interface LogActivityData {
+  milestoneId: number;
+  projectId: number;
+  activityType: string;
+  performedBy: number;
+  previousStatus?: string;
+  newStatus?: string;
+  changesSummary?: Record<string, any>;
+  metadata?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export const auditLib = {
+  /**
+   * Log milestone activity
+   */
+  async logActivity(data: LogActivityData) {
+    try {
+      const [activity] = await db.insert(milestoneActivityLog).values({
+        milestoneId: data.milestoneId,
+        projectId: data.projectId,
+        activityType: data.activityType,
+        performedBy: data.performedBy,
+        previousStatus: data.previousStatus,
+        newStatus: data.newStatus,
+        changesSummary: data.changesSummary ? JSON.stringify(data.changesSummary) : null,
+        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      }).returning();
+
+      return { success: true, activity };
+    } catch (error: any) {
+      console.error('Error logging activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get activity log for a specific milestone
+   */
+  async getMilestoneActivity(milestoneId: number) {
+    try {
+      const activities = await db.select({
+        id: milestoneActivityLog.id,
+        activityType: milestoneActivityLog.activityType,
+        performedBy: milestoneActivityLog.performedBy,
+        previousStatus: milestoneActivityLog.previousStatus,
+        newStatus: milestoneActivityLog.newStatus,
+        changesSummary: milestoneActivityLog.changesSummary,
+        metadata: milestoneActivityLog.metadata,
+        createdAt: milestoneActivityLog.createdAt,
+        // Join with users to get performer details
+        performerName: sql`users.name`,
+        performerEmail: sql`users.email`,
+      })
+        .from(milestoneActivityLog)
+        .leftJoin(sql`users`, eq(milestoneActivityLog.performedBy, sql`users.id`))
+        .where(eq(milestoneActivityLog.milestoneId, milestoneId))
+        .orderBy(desc(milestoneActivityLog.createdAt));
+
+      // Parse JSON fields
+      const parsedActivities = activities.map(activity => ({
+        ...activity,
+        changesSummary: activity.changesSummary ? JSON.parse(activity.changesSummary) : null,
+        metadata: activity.metadata ? JSON.parse(activity.metadata) : null,
+      }));
+
+      return { success: true, activities: parsedActivities };
+    } catch (error: any) {
+      console.error('Error fetching milestone activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get activity log for a project
+   */
+  async getProjectActivity(projectId: number, limit: number = 50) {
+    try {
+      const activities = await db.select({
+        id: milestoneActivityLog.id,
+        milestoneId: milestoneActivityLog.milestoneId,
+        activityType: milestoneActivityLog.activityType,
+        performedBy: milestoneActivityLog.performedBy,
+        previousStatus: milestoneActivityLog.previousStatus,
+        newStatus: milestoneActivityLog.newStatus,
+        changesSummary: milestoneActivityLog.changesSummary,
+        metadata: milestoneActivityLog.metadata,
+        createdAt: milestoneActivityLog.createdAt,
+        performerName: sql`users.name`,
+        performerEmail: sql`users.email`,
+        milestoneTitle: sql`project_milestones.title`,
+        milestoneNumber: sql`project_milestones.milestone_number`,
+      })
+        .from(milestoneActivityLog)
+        .leftJoin(sql`users`, eq(milestoneActivityLog.performedBy, sql`users.id`))
+        .leftJoin(sql`project_milestones`, eq(milestoneActivityLog.milestoneId, sql`project_milestones.id`))
+        .where(eq(milestoneActivityLog.projectId, projectId))
+        .orderBy(desc(milestoneActivityLog.createdAt))
+        .limit(limit);
+
+      const parsedActivities = activities.map(activity => ({
+        ...activity,
+        changesSummary: activity.changesSummary ? JSON.parse(activity.changesSummary) : null,
+        metadata: activity.metadata ? JSON.parse(activity.metadata) : null,
+      }));
+
+      return { success: true, activities: parsedActivities };
+    } catch (error: any) {
+      console.error('Error fetching project activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get activity log for all projects (admin dashboard)
+   */
+  async getAllActivity(filters?: {
+    activityType?: string;
+    performedBy?: number;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }) {
+    try {
+      const limit = filters?.limit || 100;
+      let query = db.select({
+        id: milestoneActivityLog.id,
+        milestoneId: milestoneActivityLog.milestoneId,
+        projectId: milestoneActivityLog.projectId,
+        activityType: milestoneActivityLog.activityType,
+        performedBy: milestoneActivityLog.performedBy,
+        previousStatus: milestoneActivityLog.previousStatus,
+        newStatus: milestoneActivityLog.newStatus,
+        changesSummary: milestoneActivityLog.changesSummary,
+        metadata: milestoneActivityLog.metadata,
+        createdAt: milestoneActivityLog.createdAt,
+        performerName: sql`users.name`,
+        performerEmail: sql`users.email`,
+        projectName: sql`projects.name`,
+        milestoneTitle: sql`project_milestones.title`,
+        milestoneNumber: sql`project_milestones.milestone_number`,
+      })
+        .from(milestoneActivityLog)
+        .leftJoin(sql`users`, eq(milestoneActivityLog.performedBy, sql`users.id`))
+        .leftJoin(sql`projects`, eq(milestoneActivityLog.projectId, sql`projects.id`))
+        .leftJoin(sql`project_milestones`, eq(milestoneActivityLog.milestoneId, sql`project_milestones.id`));
+
+      // Apply filters
+      const conditions = [];
+      if (filters?.activityType) {
+        conditions.push(eq(milestoneActivityLog.activityType, filters.activityType));
+      }
+      if (filters?.performedBy) {
+        conditions.push(eq(milestoneActivityLog.performedBy, filters.performedBy));
+      }
+      if (filters?.startDate) {
+        conditions.push(gte(milestoneActivityLog.createdAt, filters.startDate));
+      }
+      if (filters?.endDate) {
+        conditions.push(lte(milestoneActivityLog.createdAt, filters.endDate));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const activities = await query
+        .orderBy(desc(milestoneActivityLog.createdAt))
+        .limit(limit);
+
+      const parsedActivities = activities.map(activity => ({
+        ...activity,
+        changesSummary: activity.changesSummary ? JSON.parse(activity.changesSummary) : null,
+        metadata: activity.metadata ? JSON.parse(activity.metadata) : null,
+      }));
+
+      return { success: true, activities: parsedActivities };
+    } catch (error: any) {
+      console.error('Error fetching all activity:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get activity statistics
+   */
+  async getActivityStats(projectId?: number) {
+    try {
+      let query = sql`
+        SELECT 
+          activity_type,
+          COUNT(*) as count,
+          COUNT(DISTINCT performed_by) as unique_users,
+          MIN(created_at) as first_occurrence,
+          MAX(created_at) as last_occurrence
+        FROM milestone_activity_log
+      `;
+
+      if (projectId) {
+        query = sql`${query} WHERE project_id = ${projectId}`;
+      }
+
+      query = sql`${query} GROUP BY activity_type ORDER BY count DESC`;
+
+      const result = await db.execute(query);
+
+      return { success: true, stats: result.rows };
+    } catch (error: any) {
+      console.error('Error fetching activity stats:', error);
+      return { success: false, error: error.message };
+    }
+  },
+};
+Task 3: Update Milestone Library with Audit Logging
+Update server/lib/milestones.ts to add audit logging to all operations:
+
+typescript
+Copy
+import { auditLib } from './auditLib';
+
+// Add this helper function at the top of the file
+async function logMilestoneActivity(
+  milestoneId: number,
+  projectId: number,
+  activityType: string,
+  performedBy: number,
+  previousStatus?: string,
+  newStatus?: string,
+  changes?: Record<string, any>,
+  metadata?: Record<string, any>
+) {
+  await auditLib.logActivity({
+    milestoneId,
+    projectId,
+    activityType,
+    performedBy,
+    previousStatus,
+    newStatus,
+    changesSummary: changes,
+    metadata,
+  });
+}
+
+// Update createMilestone to include audit logging:
+async createMilestone(projectId: number, milestoneData: CreateMilestoneData, createdBy: number) {
+  try {
+    const [milestone] = await db.insert(projectMilestones).values({
+      projectId,
+      milestoneNumber: milestoneData.milestone_number,
+      title: milestoneData.title,
+      description: milestoneData.description,
+      targetAmount: milestoneData.target_amount,
+      status: 'draft',
+    }).returning();
+
+    await db.update(projects)
+      .set({ 
+        totalMilestones: sql`total_milestones + 1` 
+      })
+      .where(eq(projects.id, projectId));
+
+    // Log activity
+    await logMilestoneActivity(
+      milestone.id,
+      projectId,
+      'created',
+      createdBy,
+      undefined,
+      'draft',
+      {
+        title: milestone.title,
+        target_amount: milestone.targetAmount,
+        milestone_number: milestone.milestoneNumber,
+      }
+    );
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error creating milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+// Update updateMilestone to include audit logging:
+async updateMilestone(milestoneId: number, updates: UpdateMilestoneData, updatedBy: number) {
+  try {
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'draft') {
+      return { success: false, error: 'Only draft milestones can be edited' };
+    }
+
+    const updateData: any = { updatedAt: new Date() };
+    const changes: Record<string, any> = {};
+
+    if (updates.title && updates.title !== existing.title) {
+      updateData.title = updates.title;
+      changes.title = { from: existing.title, to: updates.title };
+    }
+    if (updates.description !== undefined && updates.description !== existing.description) {
+      updateData.description = updates.description;
+      changes.description = { from: existing.description, to: updates.description };
+    }
+    if (updates.target_amount && updates.target_amount !== existing.targetAmount) {
+      updateData.targetAmount = updates.target_amount;
+      changes.target_amount = { from: existing.targetAmount, to: updates.target_amount };
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set(updateData)
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    // Log activity
+    if (Object.keys(changes).length > 0) {
+      await logMilestoneActivity(
+        milestoneId,
+        existing.projectId,
+        'updated',
+        updatedBy,
+        'draft',
+        'draft',
+        changes
+      );
+    }
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error updating milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+// Update submitMilestone to include audit logging:
+async submitMilestone(milestoneId: number, submittedBy: number) {
+  try {
+    const [milestone] = await db.update(projectMilestones)
+      .set({
+        status: 'submitted',
+        submittedAt: new Date(),
+        submittedBy,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(projectMilestones.id, milestoneId),
+        eq(projectMilestones.status, 'draft')
+      ))
+      .returning();
+
+    if (!milestone) {
+      return { success: false, error: 'Milestone not found or not in draft status' };
+    }
+
+    // Log activity
+    await logMilestoneActivity(
+      milestoneId,
+      milestone.projectId,
+      'submitted',
+      submittedBy,
+      'draft',
+      'submitted'
+    );
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error submitting milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+// Update approveMilestone to include audit logging:
+async approveMilestone(milestoneId: number, approvedBy: number) {
+  try {
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'submitted') {
+      return { success: false, error: 'Only submitted milestones can be approved' };
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set({
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    // Log activity
+    await logMilestoneActivity(
+      milestoneId,
+      existing.projectId,
+      'approved',
+      approvedBy,
+      'submitted',
+      'approved'
+    );
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error approving milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+// Update rejectMilestone to include audit logging:
+async rejectMilestone(milestoneId: number, rejectedBy: number, rejectionReason?: string) {
+  try {
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'submitted') {
+      return { success: false, error: 'Only submitted milestones can be rejected' };
+    }
+
+    const updateData: any = {
+      status: 'rejected',
+      rejectedBy,
+      rejectedAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (rejectionReason) {
+      updateData.rejectionReason = rejectionReason;
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set(updateData)
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    // Log activity
+    await logMilestoneActivity(
+      milestoneId,
+      existing.projectId,
+      'rejected',
+      rejectedBy,
+      'submitted',
+      'rejected',
+      { rejection_reason: rejectionReason }
+    );
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error rejecting milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+// Update recordBankTransfer to include audit logging:
+async recordBankTransfer(
+  milestoneId: number,
+  transferData: {
+    bank_transfer_reference: string;
+    bank_transfer_amount: string;
+    bank_transfer_date: Date;
+    notes?: string;
+  },
+  recordedBy: number
+) {
+  try {
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'approved') {
+      return { success: false, error: 'Only approved milestones can have bank transfers recorded' };
+    }
+
+    const updateData: any = {
+      bankTransferReference: transferData.bank_transfer_reference,
+      bankTransferAmount: transferData.bank_transfer_amount,
+      bankTransferDate: transferData.bank_transfer_date,
+      updatedAt: new Date(),
+    };
+
+    if (transferData.notes) {
+      updateData.notes = transferData.notes;
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set(updateData)
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    // Log activity
+    await logMilestoneActivity(
+      milestoneId,
+      existing.projectId,
+      'bank_transfer_recorded',
+      recordedBy,
+      'approved',
+      'approved',
+      {
+        reference: transferData.bank_transfer_reference,
+        amount: transferData.bank_transfer_amount,
+        date: transferData.bank_transfer_date,
+      }
+    );
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error recording bank transfer:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+// Update disburseMilestone to include audit logging:
+// Add this at the end of the successful disbursement (before COMMIT):
+await logMilestoneActivity(
+  milestoneId,
+  milestone.project_id,
+  'disbursed',
+  disbursedBy,
+  'approved',
+  'disbursed',
+  {
+    ngnts_burned: ngntsBurned,
+    stellar_tx_hash: burnResult.txHash,
+    new_nav: newNAV.toFixed(7),
+  }
+);
+Task 4: Add Reporting API Routes
+Create server/routes/admin/reports.ts:
+
+typescript
+Copy
+import { Router } from 'express';
+import { authenticate, requireAdmin } from '../../middleware/auth';
+import { auditLib } from '../../lib/auditLib';
+
+const router = Router();
+
+// All routes require authentication and admin privileges
+router.use(authenticate, requireAdmin);
+
+// Get activity log for a specific milestone
+router.get('/milestones/:milestoneId/activity', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const result = await auditLib.getMilestoneActivity(milestoneId);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Get activity log for a project
+router.get('/projects/:projectId/activity', async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+  
+  const result = await auditLib.getProjectActivity(projectId, limit);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Get all activity (with filters)
+router.get('/activity', async (req, res) => {
+  const filters: any = {};
+
+  if (req.query.activityType) {
+    filters.activityType = req.query.activityType as string;
+  }
+  if (req.query.performedBy) {
+    filters.performedBy = parseInt(req.query.performedBy as string);
+  }
+  if (req.query.startDate) {
+    filters.startDate = new Date(req.query.startDate as string);
+  }
+  if (req.query.endDate) {
+    filters.endDate = new Date(req.query.endDate as string);
+  }
+  if (req.query.limit) {
+    filters.limit = parseInt(req.query.limit as string);
+  }
+
+  const result = await auditLib.getAllActivity(filters);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Get activity statistics
+router.get('/activity/stats', async (req, res) => {
+  const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+  const result = await auditLib.getActivityStats(projectId);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+export default router;
+Task 5: Register Routes
+Add to your main server file (e.g., server/index.ts):
+
+typescript
+Copy
+import reportRoutes from './routes/admin/reports';
+
+// Register report routes
+app.use('/api/admin/reports', reportRoutes);
+Task 6: Update Milestone Routes to Pass User ID
+Update server/routes/admin/milestones.ts to pass the authenticated user ID to library functions:
+
+typescript
+Copy
+// Update these routes to include user ID:
+
+router.post('/projects/:projectId/milestones', async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const createdBy = req.user!.id;
+  const result = await milestoneLib.createMilestone(projectId, req.body, createdBy);
+  // ... rest of code
+});
+
+router.put('/milestones/:milestoneId', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const updatedBy = req.user!.id;
+  const result = await milestoneLib.updateMilestone(milestoneId, req.body, updatedBy);
+  // ... rest of code
+});
+
+router.post('/milestones/:milestoneId/submit', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const submittedBy = req.user!.id;
+  const result = await milestoneLib.submitMilestone(milestoneId, submittedBy);
+  // ... rest of code
+});
+
+router.post('/milestones/:milestoneId/bank-transfer', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const recordedBy = req.user!.id;
+  const result = await milestoneLib.recordBankTransfer(milestoneId, req.body, recordedBy);
+  // ... rest of code
+});
+Task 7: Run Migration
+bash
+Copy
+npm run db:push
+Task 8: Testing Checklist
+ Database schema created successfully
+ Activity logged when milestone is created
+ Activity logged when milestone is updated
+ Activity logged when milestone is submitted
+ Activity logged when milestone is approved
+ Activity logged when milestone is rejected
+ Activity logged when bank transfer is recorded
+ Activity logged when milestone is disbursed
+ GET /api/admin/reports/milestones/:id/activity - Returns milestone activity log
+ GET /api/admin/reports/projects/:id/activity - Returns project activity log
+ GET /api/admin/reports/activity - Returns all activity with filters
+ GET /api/admin/reports/activity/stats - Returns activity statistics
+ Activity log includes user details (name, email)
+ Activity log includes milestone/project context
+ Changes summary properly tracks before/after values
+ Metadata fields capture additional context
+ Activity timestamps are accurate
+Proceed with Phase 3.3 implementation. Once complete, we'll have a fully auditable milestone system ready for UI development and Phase 4 security enhancements! 🚀
