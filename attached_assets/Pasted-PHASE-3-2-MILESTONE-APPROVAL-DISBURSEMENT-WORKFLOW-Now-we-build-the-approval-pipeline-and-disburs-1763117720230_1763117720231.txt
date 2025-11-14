@@ -1,0 +1,437 @@
+PHASE 3.2: MILESTONE APPROVAL & DISBURSEMENT WORKFLOW
+Now we build the approval pipeline and disbursement mechanism with bank transfer integration.
+
+Objective:
+Implement the complete milestone approval workflow, including admin approval/rejection, bank transfer recording, NGNTS burning, and project NAV recalculation.
+
+PHASE 3.2 IMPLEMENTATION TASKS
+Task 1: Extend Milestone Library
+Add to server/lib/milestones.ts:
+
+typescript
+Copy
+import { stellarLib } from './stellarLib';
+import { lpAllocationLib } from './lpAllocationLib';
+
+// Add these new functions to the existing milestoneLib object:
+
+/**
+ * Approve a milestone (Admin only)
+ */
+async approveMilestone(milestoneId: number, approvedBy: number) {
+  try {
+    // Check if milestone is in submitted status
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'submitted') {
+      return { success: false, error: 'Only submitted milestones can be approved' };
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set({
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error approving milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+/**
+ * Reject a milestone (Admin only)
+ */
+async rejectMilestone(milestoneId: number, approvedBy: number, notes?: string) {
+  try {
+    // Check if milestone is in submitted status
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'submitted') {
+      return { success: false, error: 'Only submitted milestones can be rejected' };
+    }
+
+    const updateData: any = {
+      status: 'rejected',
+      approvedBy, // Track who rejected it
+      updatedAt: new Date(),
+    };
+
+    if (notes) {
+      updateData.notes = notes;
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set(updateData)
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error rejecting milestone:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+/**
+ * Record bank transfer for approved milestone
+ */
+async recordBankTransfer(
+  milestoneId: number,
+  transferData: {
+    bank_transfer_reference: string;
+    bank_transfer_amount: string;
+    bank_transfer_date: Date;
+    notes?: string;
+  }
+) {
+  try {
+    // Check if milestone is approved
+    const [existing] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    if (!existing) {
+      return { success: false, error: 'Milestone not found' };
+    }
+
+    if (existing.status !== 'approved') {
+      return { success: false, error: 'Only approved milestones can have bank transfers recorded' };
+    }
+
+    const updateData: any = {
+      bankTransferReference: transferData.bank_transfer_reference,
+      bankTransferAmount: transferData.bank_transfer_amount,
+      bankTransferDate: transferData.bank_transfer_date,
+      updatedAt: new Date(),
+    };
+
+    if (transferData.notes) {
+      updateData.notes = transferData.notes;
+    }
+
+    const [milestone] = await db.update(projectMilestones)
+      .set(updateData)
+      .where(eq(projectMilestones.id, milestoneId))
+      .returning();
+
+    return { success: true, milestone };
+  } catch (error: any) {
+    console.error('Error recording bank transfer:', error);
+    return { success: false, error: error.message };
+  }
+},
+
+/**
+ * Disburse milestone - Burns NGNTS and updates project
+ */
+async disburseMilestone(
+  milestoneId: number,
+  disbursedBy: number,
+  ngntsBurned: string
+) {
+  const client = await db.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Get milestone details
+    const [milestone] = await client.query(
+      `SELECT * FROM project_milestones WHERE id = $1 FOR UPDATE`,
+      [milestoneId]
+    );
+
+    if (!milestone) {
+      throw new Error('Milestone not found');
+    }
+
+    if (milestone.status !== 'approved') {
+      throw new Error('Only approved milestones can be disbursed');
+    }
+
+    if (!milestone.bank_transfer_reference) {
+      throw new Error('Bank transfer must be recorded before disbursement');
+    }
+
+    // Get project details
+    const [project] = await client.query(
+      `SELECT * FROM projects WHERE id = $1 FOR UPDATE`,
+      [milestone.project_id]
+    );
+
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    // Burn NGNTS from project wallet
+    const burnResult = await stellarLib.burnNGNTS(
+      project.stellar_wallet_secret,
+      ngntsBurned
+    );
+
+    if (!burnResult.success) {
+      throw new Error(`Failed to burn NGNTS: ${burnResult.error}`);
+    }
+
+    // Update milestone status
+    await client.query(
+      `UPDATE project_milestones 
+       SET status = 'disbursed',
+           disbursed_at = CURRENT_TIMESTAMP,
+           disbursed_by = $1,
+           ngnts_burned = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [disbursedBy, ngntsBurned, milestoneId]
+    );
+
+    // Update project counters and NAV
+    const newCompletedMilestones = (project.completed_milestones || 0) + 1;
+    const newNAV = parseFloat(project.nav || '0') - parseFloat(ngntsBurned);
+
+    await client.query(
+      `UPDATE projects 
+       SET completed_milestones = $1,
+           last_milestone_date = CURRENT_TIMESTAMP,
+           nav = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [newCompletedMilestones, newNAV.toFixed(7), project.id]
+    );
+
+    // Recalculate LP token price
+    await lpAllocationLib.recalculateLPTokenPrice(project.id);
+
+    await client.query('COMMIT');
+
+    // Fetch updated milestone
+    const [updatedMilestone] = await db.select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.id, milestoneId));
+
+    return {
+      success: true,
+      milestone: updatedMilestone,
+      burnTxHash: burnResult.txHash,
+      newNAV: newNAV.toFixed(7),
+    };
+  } catch (error: any) {
+    await client.query('ROLLBACK');
+    console.error('Error disbursing milestone:', error);
+    return { success: false, error: error.message };
+  } finally {
+    client.release();
+  }
+},
+
+/**
+ * Get milestone statistics for a project
+ */
+async getMilestoneStats(projectId: number) {
+  try {
+    const [stats] = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total_milestones,
+        COUNT(*) FILTER (WHERE status = 'draft') as draft_count,
+        COUNT(*) FILTER (WHERE status = 'submitted') as submitted_count,
+        COUNT(*) FILTER (WHERE status = 'approved') as approved_count,
+        COUNT(*) FILTER (WHERE status = 'disbursed') as disbursed_count,
+        COUNT(*) FILTER (WHERE status = 'rejected') as rejected_count,
+        COALESCE(SUM(target_amount) FILTER (WHERE status = 'disbursed'), 0) as total_disbursed,
+        COALESCE(SUM(ngnts_burned), 0) as total_ngnts_burned
+      FROM project_milestones
+      WHERE project_id = ${projectId}
+    `);
+
+    return { success: true, stats };
+  } catch (error: any) {
+    console.error('Error fetching milestone stats:', error);
+    return { success: false, error: error.message };
+  }
+},
+Task 2: Add API Routes
+Add to server/routes/admin/milestones.ts:
+
+typescript
+Copy
+// Approve a milestone
+router.post('/milestones/:milestoneId/approve', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const approvedBy = req.user!.id; // From authenticate middleware
+  
+  const result = await milestoneLib.approveMilestone(milestoneId, approvedBy);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Reject a milestone
+router.post('/milestones/:milestoneId/reject', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const approvedBy = req.user!.id;
+  const { notes } = req.body;
+  
+  const result = await milestoneLib.rejectMilestone(milestoneId, approvedBy, notes);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Record bank transfer
+router.post('/milestones/:milestoneId/bank-transfer', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const result = await milestoneLib.recordBankTransfer(milestoneId, req.body);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Disburse milestone (burn NGNTS)
+router.post('/milestones/:milestoneId/disburse', async (req, res) => {
+  const milestoneId = parseInt(req.params.milestoneId);
+  const disbursedBy = req.user!.id;
+  const { ngnts_burned } = req.body;
+
+  if (!ngnts_burned) {
+    return res.status(400).json({ success: false, error: 'ngnts_burned is required' });
+  }
+
+  const result = await milestoneLib.disburseMilestone(milestoneId, disbursedBy, ngnts_burned);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Get milestone statistics
+router.get('/projects/:projectId/milestones/stats', async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const result = await milestoneLib.getMilestoneStats(projectId);
+
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+Task 3: Extend Stellar Library
+Add to server/lib/stellarLib.ts (if not already present):
+
+typescript
+Copy
+/**
+ * Burn NGNTS tokens (send to issuer account)
+ */
+async burnNGNTS(sourceSecret: string, amount: string) {
+  try {
+    const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+    const sourceAccount = await server.loadAccount(sourceKeypair.publicKey());
+
+    const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: StellarSdk.Networks.TESTNET, // Change for production
+    })
+      .addOperation(
+        StellarSdk.Operation.payment({
+          destination: NGNTS_ISSUER_PUBLIC_KEY, // Burning = sending back to issuer
+          asset: NGNTS_ASSET,
+          amount: amount,
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    transaction.sign(sourceKeypair);
+    const result = await server.submitTransaction(transaction);
+
+    return {
+      success: true,
+      txHash: result.hash,
+      amount,
+    };
+  } catch (error: any) {
+    console.error('Error burning NGNTS:', error);
+    return { success: false, error: error.message };
+  }
+},
+Task 4: Extend LP Allocation Library
+Add to server/lib/lpAllocationLib.ts:
+
+typescript
+Copy
+/**
+ * Recalculate LP token price after NAV change
+ */
+async recalculateLPTokenPrice(projectId: number) {
+  try {
+    const [project] = await db.select()
+      .from(projects)
+      .where(eq(projects.id, projectId));
+
+    if (!project) {
+      return { success: false, error: 'Project not found' };
+    }
+
+    const nav = parseFloat(project.nav || '0');
+    const totalLPTokens = parseFloat(project.lp_tokens_issued || '0');
+
+    if (totalLPTokens === 0) {
+      return { success: true, lpTokenPrice: '0' };
+    }
+
+    const lpTokenPrice = (nav / totalLPTokens).toFixed(7);
+
+    await db.update(projects)
+      .set({ 
+        lp_token_price: lpTokenPrice,
+        updatedAt: new Date(),
+      })
+      .where(eq(projects.id, projectId));
+
+    return { success: true, lpTokenPrice };
+  } catch (error: any) {
+    console.error('Error recalculating LP token price:', error);
+    return { success: false, error: error.message };
+  }
+},
+Task 5: Testing Checklist
+ POST /api/admin/milestones/:id/approve - Approve submitted milestone
+ POST /api/admin/milestones/:id/reject - Reject submitted milestone
+ POST /api/admin/milestones/:id/bank-transfer - Record bank transfer
+ POST /api/admin/milestones/:id/disburse - Disburse with NGNTS burn
+ GET /api/admin/projects/:id/milestones/stats - Get milestone statistics
+ Verify status transitions: submitted → approved → disbursed
+ Verify NGNTS burning on Stellar testnet
+ Verify NAV recalculation after disbursement
+ Verify LP token price updates
+ Verify project counters update correctly
+ Test error handling for invalid state transitions
+ Test transaction rollback on Stellar failure
