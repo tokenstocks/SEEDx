@@ -32,8 +32,23 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 - **Redemption System:** Allows users to sell project tokens for NGNTS, prioritizing funding from project cashflow, treasury, and liquidity pool.
 - **Bank Deposit System (FundingWizard):** 3-step NGN→NGNTS deposit wizard with real-time fee preview, invoice generation, and proof upload.
 - **Wallet Activation Admin Interface:** Simplified admin approval for activating regenerator wallets, managing XLM reserves and trustlines.
+- **Milestone Management System:** Production-ready milestone tracking for agricultural projects with draft→submitted→approved→disbursed workflow.
+  - Transactional milestone number assignment using `FOR UPDATE` + `COALESCE(MAX+1, 1)` to prevent race conditions
+  - Full audit trail with `submittedBy`, `approvedBy`, `disbursedBy` tracking
+  - Decimal precision: `DECIMAL(20,2)` for fiat amounts, `DECIMAL(20,7)` for token amounts
+  - Project-level counters: `totalMilestones`, `completedMilestones`, `lastMilestoneDate`
+  - State validation: only draft milestones can be edited or deleted
+  - Admin CRUD API: `server/routes/admin/milestones.ts` with authenticate + requireAdmin middleware
 
 ## Recent Changes
+
+### November 14, 2025 - Phase 3.1: Milestone Foundation & Creation (COMPLETE)
+- **Schema:** Added `projectMilestones` table with milestone status enum (draft/submitted/approved/disbursed/rejected)
+- **Library:** Created `server/lib/milestones.ts` with transactional CRUD operations and race-safe milestone numbering
+- **API Routes:** Implemented admin milestone endpoints with proper authentication and state transition guards
+- **Architect Review:** PASSED with no blocking issues - schema, library, and routing functionally correct
+- **Database:** Synced schema with `UNIQUE` constraint on (projectId, milestoneNumber), indexes on (projectId, milestoneNumber) and (projectId, status)
+- **Next Steps:** Phase 3.2 will add approved→disbursed transitions, bank transfer processing, and project counter updates
 
 ### November 14, 2025 - React Hooks Compliance Fix
 - **Issue:** RegeneratorProfile.tsx had React "Rendered more hooks than during the previous render" error
