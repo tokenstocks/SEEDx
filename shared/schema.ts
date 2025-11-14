@@ -199,6 +199,14 @@ export const projects = pgTable("projects", {
   endDate: timestamp("end_date"),
   images: text("images").array(),
   documents: text("documents").array(),
+  // Phase 2: Project operational wallet (holds LP allocations)
+  stellarProjectWalletPublicKey: text("stellar_project_wallet_public_key"),
+  stellarProjectWalletSecretEncrypted: text("stellar_project_wallet_secret_encrypted"),
+  projectWalletCreatedAt: timestamp("project_wallet_created_at"),
+  projectWalletFundedAt: timestamp("project_wallet_funded_at"),
+  // Phase 2: Capital tracking
+  lpCapitalAllocated: decimal("lp_capital_allocated", { precision: 20, scale: 7 }).default("0").notNull(),
+  lpCapitalDeployed: decimal("lp_capital_deployed", { precision: 20, scale: 7 }).default("0").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -451,6 +459,24 @@ export const auditAdminActions = pgTable("audit_admin_actions", {
   }>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// System errors table - Phase 2: Tracks critical errors for manual reconciliation
+export const systemErrors = pgTable("system_errors", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  errorType: text("error_type").notNull(),
+  severity: text("severity").notNull(), // critical, high, medium, low
+  txHash: text("tx_hash"),
+  projectId: uuid("project_id").references(() => projects.id),
+  amountNgnts: decimal("amount_ngnts", { precision: 20, scale: 7 }),
+  errorMessage: text("error_message"),
+  resolved: boolean("resolved").default(false).notNull(),
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  resolvedIdx: index("system_errors_resolved_idx").on(table.resolved),
+  severityIdx: index("system_errors_severity_idx").on(table.severity),
+}));
 
 // Phase 4-D: Token Marketplace (simulated liquidity exchange)
 export const tokenOrders = pgTable("token_orders", {
@@ -781,6 +807,17 @@ export const redemptionRequestsRelations = relations(redemptionRequests, ({ one 
 export const auditAdminActionsRelations = relations(auditAdminActions, ({ one }) => ({
   admin: one(users, {
     fields: [auditAdminActions.adminId],
+    references: [users.id],
+  }),
+}));
+
+export const systemErrorsRelations = relations(systemErrors, ({ one }) => ({
+  project: one(projects, {
+    fields: [systemErrors.projectId],
+    references: [projects.id],
+  }),
+  resolver: one(users, {
+    fields: [systemErrors.resolvedBy],
     references: [users.id],
   }),
 }));
@@ -1179,6 +1216,11 @@ export const insertAuditAdminActionSchema = createInsertSchema(auditAdminActions
   createdAt: true,
 });
 
+export const insertSystemErrorSchema = createInsertSchema(systemErrors).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertTokenOrderSchema = createInsertSchema(tokenOrders).omit({
   id: true,
   createdAt: true,
@@ -1382,6 +1424,8 @@ export type CreateRedemptionRequest = z.infer<typeof createRedemptionRequestSche
 export type ProcessRedemptionRequest = z.infer<typeof processRedemptionRequestSchema>;
 export type AuditAdminAction = typeof auditAdminActions.$inferSelect;
 export type InsertAuditAdminAction = z.infer<typeof insertAuditAdminActionSchema>;
+export type SystemError = typeof systemErrors.$inferSelect;
+export type InsertSystemError = z.infer<typeof insertSystemErrorSchema>;
 export type TokenOrder = typeof tokenOrders.$inferSelect;
 export type InsertTokenOrder = z.infer<typeof insertTokenOrderSchema>;
 export type CreateTokenOrder = z.infer<typeof createTokenOrderSchema>;
