@@ -106,6 +106,29 @@ router.get("/projects/:projectId", requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/milestones/stats
+ * Get milestone statistics across all projects
+ * NOTE: Must be defined BEFORE /:milestoneId to avoid route collision
+ */
+router.get("/stats", requireAdmin, async (req, res) => {
+  try {
+    const result = await getMilestoneStats();
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    return res.json({
+      success: true,
+      stats: result.stats
+    });
+  } catch (error: any) {
+    console.error("❌ Error fetching milestone stats:", error);
+    return res.status(500).json({ error: "Failed to fetch milestone stats" });
+  }
+});
+
+/**
  * GET /api/admin/milestones/:milestoneId
  * Get a specific milestone by ID
  */
@@ -343,28 +366,6 @@ router.post("/:milestoneId/disburse", requireAdmin, async (req, res) => {
   } catch (error: any) {
     console.error("❌ Error disbursing milestone:", error);
     return res.status(500).json({ error: "Failed to disburse milestone" });
-  }
-});
-
-/**
- * GET /api/admin/milestones/stats
- * Get milestone statistics across all projects
- */
-router.get("/stats", requireAdmin, async (req, res) => {
-  try {
-    const result = await getMilestoneStats();
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    return res.json({
-      success: true,
-      stats: result.stats
-    });
-  } catch (error: any) {
-    console.error("❌ Error fetching milestone stats:", error);
-    return res.status(500).json({ error: "Failed to fetch milestone stats" });
   }
 });
 
