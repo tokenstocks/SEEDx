@@ -15,6 +15,7 @@ import primerRoutes from "./routes/primer";
 import regeneratorRoutes from "./routes/regenerator";
 import settingsRoutes from "./routes/settings";
 import lpAllocationsRoutes from "./routes/admin/lpAllocations";
+import distributionRoutes from "./routes/admin/distributions";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
@@ -49,6 +50,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register admin LP allocations routes (Phase 2)
   app.use("/api/admin/lp-allocations", lpAllocationsRoutes);
+  
+  // Register admin distribution routes (Phase 4)
+  app.use("/api/admin/distributions", distributionRoutes);
   
   // Register system routes (admin only)
   app.use("/api/system", systemRoutes);
