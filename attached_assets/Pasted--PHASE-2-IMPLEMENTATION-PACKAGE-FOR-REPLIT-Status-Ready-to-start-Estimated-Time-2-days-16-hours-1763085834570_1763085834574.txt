@@ -1,0 +1,590 @@
+📦 PHASE 2 IMPLEMENTATION PACKAGE FOR REPLIT
+Status: Ready to start
+Estimated Time: 2 days (16 hours)
+Dependencies: Phase 1 complete ✅
+
+CLARIFICATIONS FROM ARCHITECT
+XLM Funding: Use Platform Operations wallet (no new wallet needed)
+Approval: Single admin for MVP (multi-sig post-MVP)
+Allocation Limits: No enforcement - admin has full flexibility
+Wallet Creation: During first allocation (not at project creation) ✅
+IMPLEMENTATION TASKS
+Task 2.1: Database Schema (1 hour)
+File: shared/schema.ts
+
+Add these fields to the projects table:
+
+typescript
+Copy
+// Project Operational Wallet (holds LP allocations)
+stellarProjectWalletPublicKey: text("stellar_project_wallet_public_key"),
+stellarProjectWalletSecretEncrypted: text("stellar_project_wallet_secret_encrypted"),
+projectWalletCreatedAt: timestamp("project_wallet_created_at"),
+projectWalletFundedAt: timestamp("project_wallet_funded_at"),
+
+// Capital tracking
+lpCapitalAllocated: decimal("lp_capital_allocated", { precision: 20, scale: 7 })
+  .default("0").notNull(),
+lpCapitalDeployed: decimal("lp_capital_deployed", { precision: 20, scale: 7 })
+  .default("0").notNull(), // Will be used in Phase 3 for milestone disbursements
+Migration: These fields should be nullable for existing projects.
+
+Task 2.2: Wallet Creation Function (3 hours)
+File: server/lib/projectWallet.ts (new file)
+
+typescript
+Copy
+import { Keypair } from "@stellar/stellar-sdk";
+import { encryptSecretKey } from "./encryption";
+import { fundWallet, establishTrustline, getWalletBalances } from "./stellarOps";
+import { db } from "../db";
+import { projects } from "../../shared/schema";
+import { eq } from "drizzle-orm";
+
+/**
+ * Creates a new Stellar wallet for a project
+ * Called during first LP capital allocation
+ */
+export async function createProjectWallet(projectId: string): Promise<string> {
+  console.log(`Creating project wallet for ${projectId}...`);
+  
+  // Generate new keypair
+  const keypair = Keypair.random();
+  const publicKey = keypair.publicKey();
+  const secretKey = keypair.secret();
+  
+  // Encrypt secret key
+  const encryptedSecret = await encryptSecretKey(secretKey);
+  
+  // Update project record
+  await db.update(projects)
+    .set({
+      stellarProjectWalletPublicKey: publicKey,
+      stellarProjectWalletSecretEncrypted: encryptedSecret,
+      projectWalletCreatedAt: new Date()
+    })
+    .where(eq(projects.id, projectId));
+  
+  console.log(`Project wallet created: ${publicKey}`);
+  
+  // Fund wallet with XLM for operations (3.0 XLM from Platform Operations wallet)
+  console.log(`Funding wallet with 3.0 XLM...`);
+  await fundWallet(publicKey, "3.0");
+  
+  // Establish NGNTS trustline
+  console.log(`Establishing NGNTS trustline...`);
+  const ngntIssuer = await getNgntsIssuerPublicKey();
+  await establishTrustline(publicKey, secretKey, "NGNTS", ngntIssuer);
+  
+  // Mark as funded
+  await db.update(projects)
+    .set({ projectWalletFundedAt: new Date() })
+    .where(eq(projects.id, projectId));
+  
+  console.log(`Project wallet ready: ${publicKey}`);
+  return publicKey;
+}
+
+/**
+ * Gets the current NGNTS balance of a project wallet
+ */
+export async function getProjectWalletBalance(projectId: string): Promise<number> {
+  const [project] = await db.select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  
+  if (!project?.stellarProjectWalletPublicKey) {
+    throw new Error("Project wallet not created");
+  }
+  
+  const balances = await getWalletBalances(project.stellarProjectWalletPublicKey);
+  return parseFloat(balances.ngnts || "0");
+}
+
+/**
+ * Gets full wallet details (NGNTS + XLM)
+ */
+export async function getProjectWalletDetails(projectId: string) {
+  const [project] = await db.select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  
+  if (!project?.stellarProjectWalletPublicKey) {
+    return null;
+  }
+  
+  const balances = await getWalletBalances(project.stellarProjectWalletPublicKey);
+  
+  return {
+    publicKey: project.stellarProjectWalletPublicKey,
+    ngntsBalance: parseFloat(balances.ngnts || "0"),
+    xlmBalance: parseFloat(balances.xlm || "0"),
+    createdAt: project.projectWalletCreatedAt,
+    fundedAt: project.projectWalletFundedAt
+  };
+}
+Task 2.3: LP Allocation API Endpoint (5 hours)
+File: server/routes/admin/lpAllocations.ts (new file)
+
+typescript
+Copy
+import { Router } from "express";
+import { db } from "../../db";
+import { projects, lpProjectAllocations, lpPoolTransactions, platformWallets } from "../../../shared/schema";
+import { eq, sql } from "drizzle-orm";
+import { transferAsset } from "../../lib/stellarOps";
+import { createProjectWallet, getProjectWalletBalance, getProjectWalletDetails } from "../../lib/projectWallet";
+import { requireAdmin } from "../../middleware/auth";
+
+const router = Router();
+
+/**
+ * POST /api/admin/lp-allocations/allocate
+ * Allocates LP Pool capital to a project
+ */
+router.post("/allocate", requireAdmin, async (req, res) => {
+  try {
+    const { projectId, amountNgnts } = req.body;
+    const adminId = req.user.id;
+    
+    // Validation
+    if (!projectId || !amountNgnts || amountNgnts <= 0) {
+      return res.status(400).json({ error: "Invalid project or amount" });
+    }
+    
+    // Get LP Pool balance
+    const [lpPoolWallet] = await db.select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "liquidity_pool"))
+      .limit(1);
+    
+    const lpPoolBalances = await getWalletBalances(lpPoolWallet.publicKey);
+    const lpPoolBalance = parseFloat(lpPoolBalances.ngnts || "0");
+    
+    if (lpPoolBalance < amountNgnts) {
+      return res.status(400).json({ 
+        error: "Insufficient LP Pool capital",
+        available: lpPoolBalance,
+        requested: amountNgnts
+      });
+    }
+    
+    // Get project
+    const [project] = await db.select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+    
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    
+    // Create project wallet if this is first allocation
+    let projectWalletPublicKey = project.stellarProjectWalletPublicKey;
+    if (!projectWalletPublicKey) {
+      console.log("First allocation - creating project wallet...");
+      projectWalletPublicKey = await createProjectWallet(projectId);
+    }
+    
+    // Transfer NGNTS from LP Pool to Project Wallet (on-chain)
+    console.log(`Transferring ${amountNgnts} NGNTS to project wallet...`);
+    const ngntIssuer = await getNgntsIssuerPublicKey();
+    const txHash = await transferAsset(
+      lpPoolWallet.publicKey,
+      projectWalletPublicKey,
+      "NGNTS",
+      ngntIssuer,
+      amountNgnts.toFixed(7),
+      `LP-ALLOC-${projectId.substring(0, 8)}`
+    );
+    
+    console.log(`Transfer successful: ${txHash}`);
+    
+    // Record allocation in database
+    await db.insert(lpProjectAllocations).values({
+      projectId,
+      allocatedAmount: amountNgnts.toString(),
+      txHash,
+      allocatedBy: adminId,
+      allocatedAt: new Date()
+    });
+    
+    // Update project capital tracking
+    await db.update(projects)
+      .set({
+        lpCapitalAllocated: sql`${projects.lpCapitalAllocated} + ${amountNgnts}`
+      })
+      .where(eq(projects.id, projectId));
+    
+    // Record LP Pool outflow
+    await db.insert(lpPoolTransactions).values({
+      transactionType: "outflow",
+      amountNgnts: amountNgnts.toString(),
+      description: `Allocated to ${project.name}`,
+      txHash,
+      createdBy: adminId,
+      createdAt: new Date()
+    });
+    
+    // Get updated balance
+    const newBalance = await getProjectWalletBalance(projectId);
+    
+    return res.json({
+      success: true,
+      txHash,
+      projectWallet: projectWalletPublicKey,
+      newBalance,
+      lpPoolRemainingBalance: lpPoolBalance - amountNgnts
+    });
+    
+  } catch (error) {
+    console.error("LP allocation error:", error);
+    return res.status(500).json({ 
+      error: "Failed to allocate capital",
+      details: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/admin/lp-allocations/project/:projectId
+ * Gets allocation history and wallet details for a project
+ */
+router.get("/project/:projectId", requireAdmin, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Get project
+    const [project] = await db.select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+    
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    
+    // Get wallet details
+    const walletDetails = await getProjectWalletDetails(projectId);
+    
+    // Get allocation history
+    const allocations = await db.select()
+      .from(lpProjectAllocations)
+      .where(eq(lpProjectAllocations.projectId, projectId))
+      .orderBy(lpProjectAllocations.allocatedAt, "desc");
+    
+    return res.json({
+      project: {
+        id: project.id,
+        name: project.name,
+        lpCapitalAllocated: project.lpCapitalAllocated,
+        lpCapitalDeployed: project.lpCapitalDeployed
+      },
+      wallet: walletDetails,
+      allocations
+    });
+    
+  } catch (error) {
+    console.error("Error fetching project allocations:", error);
+    return res.status(500).json({ error: "Failed to fetch allocations" });
+  }
+});
+
+/**
+ * GET /api/admin/lp-allocations/overview
+ * Gets LP Pool overview and all project allocations
+ */
+router.get("/overview", requireAdmin, async (req, res) => {
+  try {
+    // Get LP Pool balance
+    const [lpPoolWallet] = await db.select()
+      .from(platformWallets)
+      .where(eq(platformWallets.walletType, "liquidity_pool"))
+      .limit(1);
+    
+    const lpPoolBalances = await getWalletBalances(lpPoolWallet.publicKey);
+    const lpPoolNgnts = parseFloat(lpPoolBalances.ngnts || "0");
+    
+    // Get total allocated across all projects
+    const [totalAllocated] = await db.select({
+      total: sql<number>`COALESCE(SUM(${projects.lpCapitalAllocated}), 0)`
+    })
+    .from(projects);
+    
+    // Get all projects with allocations
+    const projectsWithAllocations = await db.select({
+      id: projects.id,
+      name: projects.name,
+      lpCapitalAllocated: projects.lpCapitalAllocated,
+      lpCapitalDeployed: projects.lpCapitalDeployed,
+      walletPublicKey: projects.stellarProjectWalletPublicKey,
+      walletCreatedAt: projects.projectWalletCreatedAt
+    })
+    .from(projects)
+    .where(sql`${projects.lpCapitalAllocated} > 0`)
+    .orderBy(projects.projectWalletCreatedAt, "desc");
+    
+    // Get current balances for each project
+    const projectsWithBalances = await Promise.all(
+      projectsWithAllocations.map(async (project) => {
+        let currentBalance = 0;
+        if (project.walletPublicKey) {
+          try {
+            currentBalance = await getProjectWalletBalance(project.id);
+          } catch (error) {
+            console.error(`Error getting balance for ${project.id}:`, error);
+          }
+        }
+        return {
+          ...project,
+          currentBalance
+        };
+      })
+    );
+    
+    return res.json({
+      lpPool: {
+        totalNgnts: lpPoolNgnts,
+        totalAllocated: parseFloat(totalAllocated.total),
+        unallocated: lpPoolNgnts,
+        criticalAlert: lpPoolNgnts < 250000
+      },
+      projects: projectsWithBalances
+    });
+    
+  } catch (error) {
+    console.error("Error fetching LP overview:", error);
+    return res.status(500).json({ error: "Failed to fetch overview" });
+  }
+});
+
+export default router;
+Register route in: server/index.ts
+
+typescript
+Copy
+import lpAllocationsRouter from "./routes/admin/lpAllocations";
+app.use("/api/admin/lp-allocations", lpAllocationsRouter);
+Task 2.4: Admin UI - LP Allocations Page (4 hours)
+File: client/src/pages/admin/LpAllocations.tsx (new page)
+
+typescript
+Copy
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatCurrency } from "@/lib/utils";
+
+export default function LpAllocations() {
+  const [overview, setOverview] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [allocationAmount, setAllocationAmount] = useState("");
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchOverview();
+  }, []);
+
+  const fetchOverview = async () => {
+    const res = await fetch("/api/admin/lp-allocations/overview");
+    const data = await res.json();
+    setOverview(data);
+  };
+
+  const handleAllocate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/lp-allocations/allocate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: selectedProject.id,
+          amountNgnts: parseFloat(allocationAmount)
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        alert(`✅ Allocated ${formatCurrency(allocationAmount)}\nTx: ${data.txHash}`);
+        setShowAllocationModal(false);
+        setAllocationAmount("");
+        fetchOverview();
+      } else {
+        alert(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      alert(`❌ Failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!overview) return <div>Loading...</div>;
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold">LP Pool Allocations</h1>
+
+      {/* LP Pool Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>LP Pool Overview</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Allocatable Capital</p>
+              <p className="text-2xl font-bold">{formatCurrency(overview.lpPool.totalNgnts)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Allocated</p>
+              <p className="text-2xl font-bold">{formatCurrency(overview.lpPool.totalAllocated)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Unallocated</p>
+              <p className="text-2xl font-bold">{formatCurrency(overview.lpPool.unallocated)}</p>
+            </div>
+          </div>
+          
+          {overview.lpPool.criticalAlert && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                ⚠️ Critical: LP Pool below ₦250,000 threshold
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Projects Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Allocations</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2">Project</th>
+                <th className="text-right p-2">Allocated</th>
+                <th className="text-right p-2">Current Balance</th>
+                <th className="text-right p-2">Deployed</th>
+                <th className="text-center p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overview.projects.map((project) => (
+                <tr key={project.id} className="border-b">
+                  <td className="p-2">{project.name}</td>
+                  <td className="text-right p-2">{formatCurrency(project.lpCapitalAllocated)}</td>
+                  <td className="text-right p-2">{formatCurrency(project.currentBalance)}</td>
+                  <td className="text-right p-2">{formatCurrency(project.lpCapitalDeployed)}</td>
+                  <td className="text-center p-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedProject(project);
+                        setShowAllocationModal(true);
+                      }}
+                    >
+                      Allocate More
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      {/* Allocation Modal */}
+      <Dialog open={showAllocationModal} onOpenChange={setShowAllocationModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Allocate LP Capital to {selectedProject?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Amount (₦)</label>
+              <Input
+                type="number"
+                value={allocationAmount}
+                onChange={(e) => setAllocationAmount(e.target.value)}
+                placeholder="Enter amount"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>Available in LP Pool: {formatCurrency(overview.lpPool.totalNgnts)}</p>
+              <p>Current Project Balance: {formatCurrency(selectedProject?.currentBalance || 0)}</p>
+            </div>
+            <Button
+              onClick={handleAllocate}
+              disabled={loading || !allocationAmount || parseFloat(allocationAmount) <= 0}
+              className="w-full"
+            >
+              {loading ? "Allocating..." : "Allocate & Transfer"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+Add route in: client/src/App.tsx
+
+typescript
+Copy
+<Route path="/admin/lp-allocations" element={<LpAllocations />} />
+Task 2.5: Testing (1 hour)
+Run these test scenarios:
+
+Test 1: First Allocation
+
+1. LP Pool has ₦1,000,000
+2. Navigate to /admin/lp-allocations
+3. Click "Allocate More" on FarmA
+4. Enter ₦200,000
+5. Click "Allocate & Transfer"
+6. ✅ Success message with tx hash
+7. ✅ FarmA shows ₦200,000 allocated
+8. ✅ LP Pool shows ₦800,000 remaining
+9. ✅ Check Stellar explorer - wallet exists with NGNTS
+Test 2: Second Allocation
+
+1. FarmA already has ₦200,000
+2. Allocate another ₦150,000
+3. ✅ No new wallet created
+4. ✅ Balance shows ₦350,000
+5. ✅ LP Pool shows ₦650,000
+Test 3: Insufficient Capital
+
+1. LP Pool has ₦100,000
+2. Try to allocate ₦200,000
+3. ✅ Error: "Insufficient LP Pool capital"
+4. ✅ Shows available: ₦100,000, requested: ₦200,000
+Test 4: Wallet Details
+
+1. View project with allocated capital
+2. ✅ Shows wallet public key
+3. ✅ Shows NGNTS balance
+4. ✅ Shows XLM balance (~3.0)
+5. ✅ Copy button works
+📊 PHASE 2 COMPLETION CHECKLIST
+ Database schema updated with 6 new fields
+ projectWallet.ts library created with 3 functions
+ LP allocations API with 3 endpoints
+ Admin UI page functional
+ All 4 test cases pass
+ Transaction hashes recorded
+ Balances display correctly
+🚀 READY TO START
+Estimated completion: 2 days from now
+
+Next phase: Phase 3 - Milestone System (depends on project wallets)
