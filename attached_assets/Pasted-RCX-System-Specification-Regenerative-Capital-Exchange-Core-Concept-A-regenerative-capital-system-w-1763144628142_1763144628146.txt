@@ -1,0 +1,118 @@
+RCX System Specification: Regenerative Capital Exchange
+Core Concept
+A regenerative capital system where grant/CSR funds are deployed, replenished, and redeployed continuously through tokenized projects.
+
+1. ACTORS & ROLES
+1.1 Primer (Catalyst)
+Function: Contributes initial capital (grants, CSR funds, donations)
+Contribution Target: Liquidity Pool (LP)
+Does NOT receive: Tokens
+Dashboard Access: View-only monitoring of:
+Fund deployment to projects
+LP replenishment cycles
+Regenerator token purchases
+Project performance metrics
+Percentage of contribution to LP
+etc.
+1.2 Regenerator (Investor)
+Function: Purchases project tokens from Project Market
+Payment Flow: Funds go directly to LP (LP Replenishment Method #1)
+Receives: Project tokens (ownership stake)
+Rights: Token holder benefits per project parameters
+1.3 Admin
+Functions:
+Disburse LP funds to approved projects
+Record project revenue (bank deposit receipts)
+Trigger token minting based on revenue
+Manage project tokenization and market listing
+etc.
+1.4 Project
+Receives: Initial funding from LP (disbursed by Admin)
+Generates: Revenue from operations
+Holds: Project wallet (funded via mirrored bank deposits)
+Distributes: Profits per predefined parameters
+2. LIQUIDITY POOL (LP) MECHANICS
+2.1 LP Inflows (Replenishment Sources)
+Method #1: Regenerator token purchases (100% to LP)
+Method #2: Project revenue profit-sharing (% to LP per project parameters)
+2.2 LP Outflows
+Admin-approved disbursements to projects
+3. PROJECT LIFECYCLE
+Phase 1: Funding
+Primer contributes → LP
+Admin disburses → Project receives initial capital
+Phase 2: Tokenization
+Admin tokenizes project → Project Market listing
+Status: "Tokenized & Active"
+Tokens available for purchase by Regenerators
+Phase 3: Token Sale
+Regenerator purchases tokens → Funds flow to LP
+Regenerator receives project tokens
+Primer dashboard updates (shows token sale activity)
+Phase 4: Revenue Generation
+Project generates revenue → Bank account receives deposits
+Admin uploads bank deposit receipt → System records inflow
+System mints equivalent tokens → Project wallet funded (mirrors bank balance)
+Post-MVP: Webhook automation replaces manual receipt upload
+
+Phase 5: Profit Distribution
+Project wallet distributes profits per parameters:
+- X% to LP (Replenishment Method #2)
+- Y% to token holders (Regenerators)
+- Z% retained for operations
+Post-MVP: Governance votes trigger distributions
+
+4. FUND FLOW DIAGRAM
+PRIMER
+  ↓ (contributes grants/CSR)
+LIQUIDITY POOL (LP)
+  ↓ (admin disburses)
+PROJECT (receives initial funding)
+  ↓ (gets tokenized)
+PROJECT MARKET (tokens listed)
+  ↓ (regenerator buys tokens)
+LIQUIDITY POOL ← (funds return) [REPLENISHMENT #1]
+  
+PROJECT (generates revenue)
+  ↓ (bank receives money)
+ADMIN (uploads receipt)
+  ↓ (system mints tokens)
+PROJECT WALLET (funded to match bank)
+  ↓ (distributes profits)
+LIQUIDITY POOL ← (profit share) [REPLENISHMENT #2]
+5. KEY DISTINCTIONS
+Aspect	Specification
+Primer gets tokens?	NO - View-only dashboard access
+Token purchase destination?	100% to LP (not to project directly)
+Project wallet funding?	Mirrored from bank deposits (admin-recorded)
+LP replenishment sources?	(1) Token sales + (2) Project profit-sharing
+Profit distribution trigger?	MVP: Predefined parametersPost-MVP: Governance votes
+Revenue recording?	MVP: Manual receipt uploadPost-MVP: Webhook automation
+6. DASHBOARD VIEWS
+Primer Dashboard (Read-Only)
+LP balance & replenishment history
+Projects funded (amounts, dates)
+Token sales by Regenerators (volume, prices)
+Project revenue performance
+Total capital recycled (regeneration multiplier)
+Regenerator Dashboard
+Owned project tokens
+Token value/performance
+Profit distributions received
+Available projects in market
+Admin Dashboard
+LP management (disburse funds)
+Project tokenization controls
+Revenue recording (receipt uploads)
+Token minting triggers
+System-wide analytics
+7. CRITICAL CLARIFICATIONS
+What this is NOT:
+❌ Primer does not invest for returns
+❌ Token purchases do not fund projects directly
+❌ Projects cannot mint tokens arbitrarily
+What this IS:
+✅ Grant/CSR capital recycling system
+✅ Token sales replenish the LP for redeployment
+✅ Project revenue creates second replenishment stream
+✅ Transparent tracking for all stakeholders
