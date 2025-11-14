@@ -235,8 +235,8 @@ export const projects = pgTable("projects", {
   treasuryPercent: decimal("treasury_percent", { precision: 5, scale: 2 }),
   projectRetainedPercent: decimal("project_retained_percent", { precision: 5, scale: 2 }),
   // Phase 4.1: RCX Model - Dual wallet architecture
-  // operationsWalletPublicKey: Same as stellarProjectWalletPublicKey (kept for backward compatibility)
-  // operationsWalletSecretEncrypted: Same as stellarProjectWalletSecretEncrypted
+  operationsWalletPublicKey: text("operations_wallet_public_key"), // Receives LP disbursements
+  operationsWalletSecretEncrypted: text("operations_wallet_secret_encrypted"),
   revenueWalletPublicKey: text("revenue_wallet_public_key"), // Receives minted NGNTS from bank deposits
   revenueWalletSecretEncrypted: text("revenue_wallet_secret_encrypted"),
   revenueWalletCreatedAt: timestamp("revenue_wallet_created_at"),
@@ -1377,8 +1377,8 @@ export const insertProjectTokenLedgerSchema = createInsertSchema(projectTokenLed
   createdAt: true,
 });
 
-// RCX Model: Profit split configuration schema
-const profitSplitSchema = z.object({
+// RCX Model: Profit split configuration schema (without refinement to allow merging)
+const profitSplitSchemaFields = z.object({
   lpReplenishmentPercent: z.string()
     .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid percentage")
     .refine((val) => {
@@ -1403,15 +1403,6 @@ const profitSplitSchema = z.object({
       const num = parseFloat(val);
       return num >= 0 && num <= 100;
     }, "Must be between 0 and 100"),
-}).refine((data) => {
-  const sum = parseFloat(data.lpReplenishmentPercent) +
-              parseFloat(data.regeneratorDistributionPercent) +
-              parseFloat(data.treasuryPercent) +
-              parseFloat(data.projectRetainedPercent);
-  return Math.abs(sum - 100) < 0.01; // Float comparison tolerance
-}, { 
-  message: "Profit split percentages must sum to exactly 100%",
-  path: ["profitSplit"], // Top-level error, not tied to specific field
 });
 
 // Dual wallet architecture schema
@@ -1437,7 +1428,16 @@ export const createProjectSchema = z.object({
   pricePerToken: z.string().regex(/^\d+(\.\d{0,2})?$/, "Amount must be a valid decimal"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-}).merge(profitSplitSchema).merge(dualWalletSchema);
+}).merge(profitSplitSchemaFields).merge(dualWalletSchema).refine((data) => {
+  const sum = parseFloat(data.lpReplenishmentPercent) +
+              parseFloat(data.regeneratorDistributionPercent) +
+              parseFloat(data.treasuryPercent) +
+              parseFloat(data.projectRetainedPercent);
+  return Math.abs(sum - 100) < 0.01; // Float comparison tolerance
+}, { 
+  message: "Profit split percentages must sum to exactly 100%",
+  path: ["profitSplit"], // Top-level error, not tied to specific field
+});
 
 export const suspendUserSchema = z.object({
   isSuspended: z.boolean(),
