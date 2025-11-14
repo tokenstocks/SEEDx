@@ -284,6 +284,28 @@ export const projectMilestones = pgTable("project_milestones", {
   milestoneNumberCheck: check("milestone_number_check", sql`${table.milestoneNumber} > 0`),
 }));
 
+// Milestone Activity Log table - comprehensive audit trail for milestone operations
+export const milestoneActivityLog = pgTable("milestone_activity_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  milestoneId: uuid("milestone_id").notNull().references(() => projectMilestones.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  activityType: varchar("activity_type", { length: 50 }).notNull(),
+  performedBy: uuid("performed_by").notNull().references(() => users.id),
+  previousStatus: varchar("previous_status", { length: 50 }),
+  newStatus: varchar("new_status", { length: 50 }),
+  changesSummary: jsonb("changes_summary"),
+  metadata: jsonb("metadata"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  milestoneIdx: index("milestone_activity_milestone_idx").on(table.milestoneId),
+  projectIdx: index("milestone_activity_project_idx").on(table.projectId),
+  activityTypeIdx: index("milestone_activity_type_idx").on(table.activityType),
+  performedByIdx: index("milestone_activity_performed_by_idx").on(table.performedBy),
+  createdAtIdx: index("milestone_activity_created_at_idx").on(table.createdAt),
+}));
+
 // Project token balances table - tracks user holdings of project-specific tokens
 // INVARIANT: tokenAmount = liquidTokens + lockedTokens at all times
 // - tokenAmount: Total tokens held (source of truth)
