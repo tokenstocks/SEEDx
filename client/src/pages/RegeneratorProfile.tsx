@@ -137,24 +137,17 @@ export default function RegeneratorProfile() {
     queryKey: ["/api/regenerator/bank-deposits"],
   });
 
-  // Redirect primers to their dedicated profile
-  useEffect(() => {
-    if (!userLoading && user?.isPrimer) {
-      navigate("/primer-profile");
-    }
-  }, [user, userLoading, navigate]);
-
-  // Show loading state while user data loads or redirect primers
-  if (userLoading || !user || user.isPrimer) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
   // Account lifecycle status helper
+  // NOTE: useMemo is also a hook - must be called before conditional returns
   const accountLifecycleStatus = useMemo(() => {
+    if (!user) return {
+      label: "Loading",
+      badgeClass: "bg-slate-600 text-white",
+      icon: AlertCircle,
+      callToAction: "Loading account status...",
+      canDeposit: false,
+    };
+
     const kycStatus = kycData?.kycStatus || user.kycStatus || "pending";
     const walletActivated = walletData?.activated || walletData?.activationStatus === "active";
     
@@ -205,7 +198,7 @@ export default function RegeneratorProfile() {
       callToAction: "Complete KYC to continue",
       canDeposit: false,
     };
-  }, [kycData, walletData, user.kycStatus]);
+  }, [kycData, walletData, user]);
 
   // Last updated timestamp
   const lastUpdated = useMemo(() => {
@@ -224,6 +217,22 @@ export default function RegeneratorProfile() {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }, [depositHistory]);
+
+  // Redirect primers to their dedicated profile
+  useEffect(() => {
+    if (!userLoading && user?.isPrimer) {
+      navigate("/primer-profile");
+    }
+  }, [user, userLoading, navigate]);
+
+  // Show loading state while user data loads or redirect primers
+  if (userLoading || !user || user.isPrimer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   const copyToClipboard = async (text: string, type: "address" | "reference" = "address") => {
     try {
