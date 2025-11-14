@@ -1,15 +1,93 @@
 import { db } from "../db";
 import { projectMilestones, projects, type InsertProjectMilestone, type SelectProjectMilestone } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { auditLib } from "./auditLib";
+import type { Request } from "express";
+
+// Infer exact transaction type from db.transaction signature
+type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
 
 /**
  * Phase 3.1: Milestone Foundation Library
+ * Phase 3.3: Enhanced with comprehensive audit trail logging
  * Provides CRUD operations for project milestones with state management
  */
 
 /**
+ * Helper function to extract request metadata (IP, User-Agent)
+ */
+function extractRequestMetadata(req?: Request) {
+  if (!req) return {};
+  
+  return {
+    ipAddress: req.ip || req.socket.remoteAddress,
+    userAgent: req.get('user-agent'),
+  };
+}
+
+/**
+ * Helper for NON-CRITICAL async logging (fire-and-forget with monitoring)
+ */
+function logMilestoneActivityAsync(
+  milestoneId: string,
+  projectId: string,
+  activityType: string,
+  performedBy: string,
+  previousStatus?: string,
+  newStatus?: string,
+  changes?: Record<string, any>,
+  metadata?: Record<string, any>,
+  req?: Request
+) {
+  const requestMetadata = extractRequestMetadata(req);
+  
+  auditLib.logActivityAsync({
+    milestoneId,
+    projectId,
+    activityType,
+    performedBy,
+    previousStatus,
+    newStatus,
+    changesSummary: changes,
+    metadata,
+    ...requestMetadata,
+  });
+}
+
+/**
+ * Helper for CRITICAL transactional logging
+ */
+async function logMilestoneActivityInTransaction(
+  milestoneId: string,
+  projectId: string,
+  activityType: string,
+  performedBy: string,
+  tx: Tx,
+  previousStatus?: string,
+  newStatus?: string,
+  changes?: Record<string, any>,
+  metadata?: Record<string, any>,
+  req?: Request
+) {
+  const requestMetadata = extractRequestMetadata(req);
+  
+  await auditLib.logActivityInTransaction({
+    milestoneId,
+    projectId,
+    activityType,
+    performedBy,
+    previousStatus,
+    newStatus,
+    changesSummary: changes,
+    metadata,
+    ...requestMetadata,
+  }, tx);
+}
+
+/**
  * Create a new milestone for a project
  * Uses transactional milestone number assignment with FOR UPDATE to prevent race conditions
+ * NON-CRITICAL: Async audit logging
  */
 export async function createMilestone(
   projectId: string,
@@ -17,7 +95,9 @@ export async function createMilestone(
     title: string;
     description?: string;
     targetAmount: string;
-  }
+  },
+  createdBy: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone } | { success: false; error: string }> {
   try {
     const result = await db.transaction(async (tx) => {
@@ -66,6 +146,23 @@ export async function createMilestone(
 
       return milestone;
     });
+
+    // 📝 ASYNC LOGGING (Non-Critical)
+    logMilestoneActivityAsync(
+      result.id,
+      projectId,
+      'created',
+      createdBy,
+      undefined,
+      'draft',
+      {
+        title: result.title,
+        targetAmount: result.targetAmount,
+        milestoneNumber: result.milestoneNumber,
+      },
+      undefined,
+      req
+    );
 
     return { success: true, milestone: result };
   } catch (error: any) {
@@ -121,6 +218,7 @@ export async function getMilestoneById(
 
 /**
  * Update milestone details (only allowed for draft status)
+ * NON-CRITICAL: Async audit logging
  */
 export async function updateMilestone(
   milestoneId: string,
@@ -128,32 +226,37 @@ export async function updateMilestone(
     title?: string;
     description?: string;
     targetAmount?: string;
-  }
+  },
+  updatedBy: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone } | { success: false; error: string }> {
   try {
+    let existingMilestone: SelectProjectMilestone;
     const result = await db.transaction(async (tx) => {
       // Check if milestone exists and is in draft status
-      const [existingMilestone] = await tx
+      const [existing] = await tx
         .select()
         .from(projectMilestones)
         .where(eq(projectMilestones.id, milestoneId))
         .limit(1);
 
-      if (!existingMilestone) {
+      if (!existing) {
         throw new Error("Milestone not found");
       }
 
-      if (existingMilestone.status !== "draft") {
+      if (existing.status !== "draft") {
         throw new Error("Only draft milestones can be edited");
       }
+
+      existingMilestone = existing;
 
       // Update milestone
       const [updatedMilestone] = await tx
         .update(projectMilestones)
         .set({
-          title: updates.title ?? existingMilestone.title,
-          description: updates.description ?? existingMilestone.description,
-          targetAmount: updates.targetAmount ?? existingMilestone.targetAmount,
+          title: updates.title ?? existing.title,
+          description: updates.description ?? existing.description,
+          targetAmount: updates.targetAmount ?? existing.targetAmount,
           updatedAt: new Date(),
         })
         .where(eq(projectMilestones.id, milestoneId))
@@ -161,6 +264,32 @@ export async function updateMilestone(
 
       return updatedMilestone;
     });
+
+    // 📝 ASYNC LOGGING (Non-Critical) - Track what changed
+    const changes: Record<string, any> = {};
+    if (updates.title && updates.title !== existingMilestone.title) {
+      changes.title = { from: existingMilestone.title, to: updates.title };
+    }
+    if (updates.description !== undefined && updates.description !== existingMilestone.description) {
+      changes.description = { from: existingMilestone.description, to: updates.description };
+    }
+    if (updates.targetAmount && updates.targetAmount !== existingMilestone.targetAmount) {
+      changes.targetAmount = { from: existingMilestone.targetAmount, to: updates.targetAmount };
+    }
+
+    if (Object.keys(changes).length > 0) {
+      logMilestoneActivityAsync(
+        milestoneId,
+        existingMilestone.projectId,
+        'updated',
+        updatedBy,
+        'draft',
+        'draft',
+        changes,
+        undefined,
+        req
+      );
+    }
 
     return { success: true, milestone: result };
   } catch (error: any) {
@@ -172,26 +301,32 @@ export async function updateMilestone(
 /**
  * Delete a milestone (only allowed for draft status)
  * Updates project's totalMilestones count
+ * NON-CRITICAL: Async audit logging
  */
 export async function deleteMilestone(
-  milestoneId: string
+  milestoneId: string,
+  deletedBy: string,
+  req?: Request
 ): Promise<{ success: true; message: string } | { success: false; error: string }> {
   try {
+    let existingMilestone: SelectProjectMilestone;
     const result = await db.transaction(async (tx) => {
       // Check if milestone exists and is in draft status
-      const [existingMilestone] = await tx
+      const [existing] = await tx
         .select()
         .from(projectMilestones)
         .where(eq(projectMilestones.id, milestoneId))
         .limit(1);
 
-      if (!existingMilestone) {
+      if (!existing) {
         throw new Error("Milestone not found");
       }
 
-      if (existingMilestone.status !== "draft") {
+      if (existing.status !== "draft") {
         throw new Error("Only draft milestones can be deleted");
       }
+
+      existingMilestone = existing;
 
       // Delete milestone
       await tx.delete(projectMilestones).where(eq(projectMilestones.id, milestoneId));
@@ -203,10 +338,27 @@ export async function deleteMilestone(
           totalMilestones: sql`${projects.totalMilestones} - 1`,
           updatedAt: new Date(),
         })
-        .where(eq(projects.id, existingMilestone.projectId));
+        .where(eq(projects.id, existing.projectId));
 
       return "Milestone deleted successfully";
     });
+
+    // 📝 ASYNC LOGGING (Non-Critical)
+    logMilestoneActivityAsync(
+      milestoneId,
+      existingMilestone.projectId,
+      'deleted',
+      deletedBy,
+      'draft',
+      undefined,
+      {
+        title: existingMilestone.title,
+        milestoneNumber: existingMilestone.milestoneNumber,
+        targetAmount: existingMilestone.targetAmount,
+      },
+      undefined,
+      req
+    );
 
     return { success: true, message: result };
   } catch (error: any) {
@@ -218,27 +370,32 @@ export async function deleteMilestone(
 /**
  * Submit milestone for approval
  * Transition: draft → submitted
+ * NON-CRITICAL: Async audit logging
  */
 export async function submitMilestone(
   milestoneId: string,
-  submittedBy: string
+  submittedBy: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone } | { success: false; error: string }> {
   try {
+    let existingMilestone: SelectProjectMilestone;
     const result = await db.transaction(async (tx) => {
       // Check if milestone exists and is in draft status
-      const [existingMilestone] = await tx
+      const [existing] = await tx
         .select()
         .from(projectMilestones)
         .where(eq(projectMilestones.id, milestoneId))
         .limit(1);
 
-      if (!existingMilestone) {
+      if (!existing) {
         throw new Error("Milestone not found");
       }
 
-      if (existingMilestone.status !== "draft") {
+      if (existing.status !== "draft") {
         throw new Error("Only draft milestones can be submitted");
       }
+
+      existingMilestone = existing;
 
       // Update status to submitted
       const [updatedMilestone] = await tx
@@ -255,6 +412,19 @@ export async function submitMilestone(
       return updatedMilestone;
     });
 
+    // 📝 ASYNC LOGGING (Non-Critical)
+    logMilestoneActivityAsync(
+      milestoneId,
+      existingMilestone.projectId,
+      'submitted',
+      submittedBy,
+      'draft',
+      'submitted',
+      undefined,
+      undefined,
+      req
+    );
+
     return { success: true, milestone: result };
   } catch (error: any) {
     console.error("❌ Error submitting milestone:", error);
@@ -269,27 +439,32 @@ export async function submitMilestone(
 /**
  * Approve a milestone
  * Transition: submitted → approved
+ * NON-CRITICAL: Async audit logging
  */
 export async function approveMilestone(
   milestoneId: string,
-  approvedBy: string
+  approvedBy: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone } | { success: false; error: string }> {
   try {
+    let existingMilestone: SelectProjectMilestone;
     const result = await db.transaction(async (tx) => {
       // Check if milestone exists and is in submitted status
-      const [existingMilestone] = await tx
+      const [existing] = await tx
         .select()
         .from(projectMilestones)
         .where(eq(projectMilestones.id, milestoneId))
         .limit(1);
 
-      if (!existingMilestone) {
+      if (!existing) {
         throw new Error("Milestone not found");
       }
 
-      if (existingMilestone.status !== "submitted") {
+      if (existing.status !== "submitted") {
         throw new Error("Only submitted milestones can be approved");
       }
+
+      existingMilestone = existing;
 
       // Update status to approved
       const [updatedMilestone] = await tx
@@ -306,6 +481,19 @@ export async function approveMilestone(
       return updatedMilestone;
     });
 
+    // 📝 ASYNC LOGGING (Non-Critical)
+    logMilestoneActivityAsync(
+      milestoneId,
+      existingMilestone.projectId,
+      'approved',
+      approvedBy,
+      'submitted',
+      'approved',
+      undefined,
+      undefined,
+      req
+    );
+
     return { success: true, milestone: result };
   } catch (error: any) {
     console.error("❌ Error approving milestone:", error);
@@ -316,36 +504,42 @@ export async function approveMilestone(
 /**
  * Reject a milestone
  * Transition: submitted → rejected
+ * NON-CRITICAL: Async audit logging
  */
 export async function rejectMilestone(
   milestoneId: string,
-  approvedBy: string,
-  notes?: string
+  rejectedBy: string,
+  rejectionReason?: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone } | { success: false; error: string }> {
   try {
+    let existingMilestone: SelectProjectMilestone;
     const result = await db.transaction(async (tx) => {
       // Check if milestone exists and is in submitted status
-      const [existingMilestone] = await tx
+      const [existing] = await tx
         .select()
         .from(projectMilestones)
         .where(eq(projectMilestones.id, milestoneId))
         .limit(1);
 
-      if (!existingMilestone) {
+      if (!existing) {
         throw new Error("Milestone not found");
       }
 
-      if (existingMilestone.status !== "submitted") {
+      if (existing.status !== "submitted") {
         throw new Error("Only submitted milestones can be rejected");
       }
+
+      existingMilestone = existing;
 
       // Update status to rejected
       const [updatedMilestone] = await tx
         .update(projectMilestones)
         .set({
           status: "rejected",
-          approvedBy, // Track who rejected it
-          notes: notes ?? existingMilestone.notes,
+          rejectedBy,
+          rejectedAt: new Date(),
+          rejectionReason: rejectionReason ?? existing.rejectionReason,
           updatedAt: new Date(),
         })
         .where(eq(projectMilestones.id, milestoneId))
@@ -353,6 +547,19 @@ export async function rejectMilestone(
 
       return updatedMilestone;
     });
+
+    // 📝 ASYNC LOGGING (Non-Critical)
+    logMilestoneActivityAsync(
+      milestoneId,
+      existingMilestone.projectId,
+      'rejected',
+      rejectedBy,
+      'submitted',
+      'rejected',
+      undefined,
+      { rejectionReason },
+      req
+    );
 
     return { success: true, milestone: result };
   } catch (error: any) {

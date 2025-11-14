@@ -2,6 +2,9 @@ import { db } from '../db';
 import { milestoneActivityLog, users, projects, projectMilestones } from '../../shared/schema';
 import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
 
+// Infer exact transaction type from db.transaction signature
+type Tx = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
+
 export interface LogActivityData {
   milestoneId: string;
   projectId: string;
@@ -47,9 +50,9 @@ export const auditLib = {
    * Used for CRITICAL operations (approve, disburse, bank_transfer)
    * 
    * @param data - Activity data to log
-   * @param tx - Drizzle transaction client (typeof db)
+   * @param tx - Drizzle transaction client
    */
-  async logActivityInTransaction(data: LogActivityData, tx: typeof db) {
+  async logActivityInTransaction(data: LogActivityData, tx: Tx) {
     try {
       const [activity] = await tx.insert(milestoneActivityLog).values({
         milestoneId: data.milestoneId,
@@ -99,7 +102,7 @@ export const auditLib = {
           id: milestoneActivityLog.id,
           activityType: milestoneActivityLog.activityType,
           performedBy: milestoneActivityLog.performedBy,
-          performedByName: users.name,
+          performedByName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
           performedByEmail: users.email,
           previousStatus: milestoneActivityLog.previousStatus,
           newStatus: milestoneActivityLog.newStatus,
@@ -135,7 +138,7 @@ export const auditLib = {
           milestoneNumber: projectMilestones.milestoneNumber,
           activityType: milestoneActivityLog.activityType,
           performedBy: milestoneActivityLog.performedBy,
-          performedByName: users.name,
+          performedByName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
           performedByEmail: users.email,
           previousStatus: milestoneActivityLog.previousStatus,
           newStatus: milestoneActivityLog.newStatus,
@@ -193,7 +196,7 @@ export const auditLib = {
           milestoneNumber: projectMilestones.milestoneNumber,
           activityType: milestoneActivityLog.activityType,
           performedBy: milestoneActivityLog.performedBy,
-          performedByName: users.name,
+          performedByName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
           performedByEmail: users.email,
           previousStatus: milestoneActivityLog.previousStatus,
           newStatus: milestoneActivityLog.newStatus,
@@ -229,7 +232,7 @@ export const auditLib = {
           milestoneTitle: projectMilestones.title,
           activityType: milestoneActivityLog.activityType,
           performedBy: milestoneActivityLog.performedBy,
-          performedByName: users.name,
+          performedByName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
           previousStatus: milestoneActivityLog.previousStatus,
           newStatus: milestoneActivityLog.newStatus,
           createdAt: milestoneActivityLog.createdAt,
