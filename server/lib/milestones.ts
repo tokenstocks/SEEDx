@@ -570,6 +570,7 @@ export async function rejectMilestone(
 
 /**
  * Record bank transfer details for approved milestone
+ * CRITICAL: Transactional audit logging
  */
 export async function recordBankTransfer(
   milestoneId: string,
@@ -578,7 +579,9 @@ export async function recordBankTransfer(
     bankTransferAmount: string;
     bankTransferDate: Date;
     notes?: string;
-  }
+  },
+  recordedBy: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone } | { success: false; error: string }> {
   try {
     const result = await db.transaction(async (tx) => {
@@ -610,6 +613,24 @@ export async function recordBankTransfer(
         .where(eq(projectMilestones.id, milestoneId))
         .returning();
 
+      // ✅ TRANSACTIONAL LOGGING (Critical)
+      await logMilestoneActivityInTransaction(
+        milestoneId,
+        existingMilestone.projectId,
+        'bank_transfer_recorded',
+        recordedBy,
+        tx,
+        'approved',
+        'approved',
+        {
+          bankTransferReference: transferData.bankTransferReference,
+          bankTransferAmount: transferData.bankTransferAmount,
+          bankTransferDate: transferData.bankTransferDate,
+        },
+        undefined,
+        req
+      );
+
       return updatedMilestone;
     });
 
@@ -623,12 +644,14 @@ export async function recordBankTransfer(
 /**
  * Disburse milestone - Burns NGNTS and updates project NAV
  * Transition: approved → disbursed
+ * CRITICAL: Transactional audit logging
  * IMPORTANT: Burn happens AFTER DB commit to maintain blockchain/DB consistency
  */
 export async function disburseMilestone(
   milestoneId: string,
   disbursedBy: string,
-  ngntsBurned: string
+  ngntsBurned: string,
+  req?: Request
 ): Promise<{ success: true; milestone: SelectProjectMilestone; burnTxHash: string; newNAV: string } | { success: false; error: string }> {
   try {
     // Import dependencies dynamically to avoid circular dependencies
@@ -780,6 +803,24 @@ export async function disburseMilestone(
 
       // Recalculate LP token price after NAV change (inside transaction for atomicity)
       await recalculateLPTokenPrice(tx, prepResult.projectId);
+
+      // ✅ TRANSACTIONAL LOGGING (Critical)
+      await logMilestoneActivityInTransaction(
+        milestoneId,
+        prepResult.projectId,
+        'disbursed',
+        disbursedBy,
+        tx,
+        'approved',
+        'disbursed',
+        {
+          ngntsBurned,
+          burnTxHash,
+          newNAV: prepResult.newNAV,
+        },
+        undefined,
+        req
+      );
 
       return updatedMilestone;
     });
