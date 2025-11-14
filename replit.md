@@ -1,7 +1,7 @@
 # SEEDx MVP - Sustainable Ecosystem for Economic Development exchange
 
 ## Overview
-SEEDx is a blockchain-based regenerative capital platform on the Stellar network. It connects liquidity providers ("Primers") with token traders ("Regenerators") to fund agricultural projects, facilitating tokenized agricultural participation, automated cashflow distribution, and capital regeneration. The platform aims to mitigate securities classification risk through SEC-compliant language, focusing on utility tokens and participation, fostering a sustainable ecosystem for economic development.
+SEEDx is a blockchain-based regenerative capital platform on the Stellar network implementing the RCX (Regenerative Capital Exchange) model. Primers are grant-style donors who seed the liquidity pool and receive impact metrics (not financial returns or ownership stakes). Regenerators purchase project tokens with 100% of payments replenishing the LP Pool to sustain capital regeneration. The platform mitigates securities classification risk through SEC-compliant language, focusing on utility tokens and participation, fostering a sustainable ecosystem for economic development.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -17,16 +17,25 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 ### Technical Implementations
 - **Authentication & KYC:** JWT-based authentication with user registration (Primer/Regenerator) and admin-reviewed KYC.
 - **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool).
-- **User Roles:** Primers contribute capital, Regenerators purchase farm project tokens. Both have dedicated dashboards.
+- **User Roles (RCX Model):** 
+  - **Primers:** Grant-style donors who seed the liquidity pool. Receive impact metrics (capital deployed, LP regeneration multiplier, regenerators enabled) NOT financial returns or ownership stakes. No LP tokens, no pool shares, no distributions.
+  - **Regenerators:** Purchase project tokens with 100% of payments going to LP Pool for replenishment (RCX-compliant).
+  - Both have dedicated dashboards with role-appropriate metrics.
 - **Investment & Portfolio Management:** Supports on-chain settlement for multi-currency investments (NGN/NGNTS, USDC, XLM) with atomic database updates and automatic refunds for failed token deliveries.
-- **Regenerative Capital Architecture:** Multi-pool system with NAV-based token pricing and automated cashflow distribution with a 40/30/20/10 split to Regenerators, LP Pool investors, Treasury, and Project Reinvestment respectively.
+- **Regenerative Capital Architecture (RCX-Compliant):** 
+  - **Configurable Profit Distribution:** Each project has 4 configurable percentages (lpReplenishment + regeneratorDistribution + treasury + projectRetained = 100%) validated at creation.
+  - **Default Split:** 40% LP Replenishment, 30% Regenerator Distribution, 20% Treasury, 10% Project Retained.
+  - **Preset Templates:** Balanced, LP-Focused (50/25/15/10), Regenerator-Focused (30/45/15/10).
+  - **Dual Wallet Architecture:** Each project has operationsWalletPublicKey (receives LP disbursements) and revenueWalletPublicKey (receives NGNTS from bank deposits).
+  - Multi-pool system with NAV-based token pricing and automated cashflow distribution.
 - **Token Marketplace:** Internal peer-to-peer marketplace with order book and NAV-based price discovery.
 - **NGNTS Burning:** NGNTS tokens are burned upon NGN withdrawal to maintain peg.
 - **Admin Dashboards:** APIs and UI for platform operations, user management, and transaction monitoring, including dedicated interfaces for Primers, Regenerators, Investments, and LP Pool health. Critical alerts trigger when NGNTS capital falls below a specified threshold.
 - **Redemption System:** Allows users to sell project tokens for NGNTS, prioritizing funding from project cashflow, treasury, and liquidity pool.
 - **Bank Deposit System (FundingWizard):** 3-step NGN→NGNTS deposit wizard with real-time fee preview, invoice generation, and proof upload.
 - **Milestone Management System:** Production-ready milestone tracking for agricultural projects with draft→submitted→approved→disbursed workflow, transactional milestone number assignment, and a full audit trail.
-- **Distribution System:** Implements a robust distribution schema and logic for calculating and allocating pro-rata distributions to LP holders based on project-scoped contributions.
+- **Distribution System:** Implements a robust distribution schema and logic for calculating and allocating pro-rata distributions to Regenerators (token holders) based on project-scoped holdings. Primers do NOT receive distributions (grant model).
+- **RCX Model Enforcement:** Complete removal of LP ownership concepts from Primer flows - no poolSharePercent, no lpPoolShare, no sharePercent in any API responses, type definitions, or UI displays. Backend explicitly excludes these fields from SELECT statements to prevent accidental leakage.
 
 ## External Dependencies
 
