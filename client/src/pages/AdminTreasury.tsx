@@ -89,7 +89,7 @@ export default function AdminTreasury() {
     onSuccess: (data: any) => {
       toast({
         title: "Regeneration Complete",
-        description: `Processed ${data.processedCashflows} cashflows. Treasury: ${data.allocations.treasury} NGNTS, LP: ${data.allocations.lpShare} NGNTS`,
+        description: `Processed ${data.processedCashflows} cashflows. Regenerators: ${data.allocations.regenerators}, LP Pool: ${data.allocations.lpPool}, Treasury: ${data.allocations.treasury}, Project: ${data.allocations.projectReinvest} NGNTS`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/treasury/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/treasury/snapshots"] });

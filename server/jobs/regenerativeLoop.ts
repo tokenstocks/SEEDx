@@ -3,10 +3,13 @@ import {
   projectCashflows, 
   treasuryPoolTransactions, 
   lpCashflowAllocations,
+  lpPoolTransactions,
   users,
   projectNavHistory,
   auditAdminActions,
-  platformWallets
+  platformWallets,
+  primerContributions,
+  pendingRegeneratorAllocations
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -15,10 +18,10 @@ interface RegenerationResult {
   processedCashflows: number;
   totalAmount: string;
   allocations: {
+    regenerators: string;
+    lpPool: string;
     treasury: string;
-    lpShare: string;
-    reinvest: string;
-    fees: string;
+    projectReinvest: string;
   };
   errors: string[];
 }
@@ -29,10 +32,10 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
     processedCashflows: 0,
     totalAmount: "0.00",
     allocations: {
+      regenerators: "0.00",
+      lpPool: "0.00",
       treasury: "0.00",
-      lpShare: "0.00",
-      reinvest: "0.00",
-      fees: "0.00",
+      projectReinvest: "0.00",
     },
     errors: [],
   };
@@ -44,7 +47,7 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
       .from(projectCashflows)
       .where(
         and(
-          eq(projectCashflows.verificationStatus, "verified"),
+          eq(projectCashflows.status, "verified"),
           eq(projectCashflows.processed, false)
         )
       );
@@ -54,93 +57,132 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
       return result;
     }
 
-    // Get all LP investors for distribution
+    // Get all LP investors (Primers) for distribution
     const lpInvestors = await db
       .select()
       .from(users)
-      .where(eq(users.isLpInvestor, true));
+      .where(eq(users.isPrimer, true));
 
-    if (lpInvestors.length === 0) {
-      result.errors.push("No LP investors found for distribution");
+    // Cache LP investor contributions ONCE (performance optimization - avoids O(N×M) queries)
+    // Calculate each investor's contribution and total LP Pool capital before processing cashflows
+    const lpContributionsMap = new Map<string, number>();
+    let totalLpPoolCapital = 0;
+
+    for (const lpInvestor of lpInvestors) {
+      const [contributions] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${primerContributions.amountNgnts}), 0)`,
+        })
+        .from(primerContributions)
+        .where(
+          and(
+            eq(primerContributions.primerId, lpInvestor.id),
+            eq(primerContributions.status, "approved")
+          )
+        );
+      
+      const amount = parseFloat(contributions?.total || "0");
+      if (amount > 0) {
+        lpContributionsMap.set(lpInvestor.id, amount);
+        totalLpPoolCapital += amount;
+      }
+    }
+
+    // Validate LP Pool capital exists before processing cashflows
+    if (totalLpPoolCapital === 0) {
+      result.errors.push("Cannot process cashflows: No approved LP Pool capital available for 30% allocation. Cashflows will remain unprocessed until LP investors contribute capital.");
+      result.success = false;
+      return result;
     }
 
     let totalProcessed = 0;
+    let totalRegenerators = 0;
+    let totalLpPool = 0;
     let totalTreasury = 0;
-    let totalLpShare = 0;
-    let totalReinvest = 0;
-    let totalFees = 0;
+    let totalProjectReinvest = 0;
 
     // Process each cashflow
     for (const cashflow of unprocessedCashflows) {
       try {
-        // Skip expense cashflows - regenerative loop only processes revenue
-        if (cashflow.cashflowType === "expense") {
-          // Mark as processed but don't allocate
-          await db
-            .update(projectCashflows)
-            .set({ processed: true })
-            .where(eq(projectCashflows.id, cashflow.id));
-          continue; // Skip to next cashflow without updating totals
-        }
-
-        // Calculate amounts for revenue cashflows
+        // Calculate amounts for revenue cashflows (40/30/20/10 split)
+        // Note: All cashflows in current schema are treated as revenue
         const amount = parseFloat(cashflow.amountNgnts);
-        const treasuryAmount = amount * 0.60;
-        const lpShareAmount = amount * 0.20;
-        const reinvestAmount = amount * 0.10;
-        const feeAmount = amount * 0.10;
+        const regeneratorAmount = amount * 0.40;  // 40% to token holders (distributed proportionally)
+        const lpPoolAmount = amount * 0.30;       // 30% to LP Pool (REGENERATION!)
+        const treasuryAmount = amount * 0.20;     // 20% to treasury
+        const projectReinvestAmount = amount * 0.10; // 10% to project reinvestment
 
         // Wrap all operations for this cashflow in a transaction for atomicity
         await db.transaction(async (tx) => {
 
-          // 1. Allocate 60% to treasury pool
+          // 1. Track 40% regenerator allocation in dedicated holding table (Phase 4 will distribute)
+          // Keeps regenerator reserves separate from treasury ledger
+          await tx.insert(pendingRegeneratorAllocations).values({
+            cashflowId: cashflow.id,
+            projectId: cashflow.projectId,
+            amountNgnts: regeneratorAmount.toFixed(2),
+            status: "pending", // Phase 4 will update to "distributed"
+          });
+
+          // 2. Allocate 30% to LP Pool (REGENERATIVE CAPITAL FLOW!)
+          
+          // 2a. Record pool-level inflow in LP Pool transactions ledger
+          await tx.insert(lpPoolTransactions).values({
+            type: "inflow",
+            amountNgnts: lpPoolAmount.toFixed(2),
+            sourceProjectId: cashflow.projectId,
+            sourceCashflowId: cashflow.id,
+            metadata: {
+              notes: "30% of verified project cashflow to LP Pool",
+              cashflowSource: cashflow.source || "Project revenue",
+              regenerationCycle: true,
+              distributedToInvestors: lpContributionsMap.size,
+            },
+          });
+
+          // 2b. Record individual allocations to LP investors
+          if (totalLpPoolCapital > 0 && lpContributionsMap.size > 0) {
+            for (const lpInvestor of lpInvestors) {
+              const investorContribution = lpContributionsMap.get(lpInvestor.id) || 0;
+              
+              // Skip investors with zero contribution (already filtered in map)
+              if (investorContribution <= 0) continue;
+              
+              const investorPoolShare = investorContribution / totalLpPoolCapital;
+              const investorCashflowShare = lpPoolAmount * investorPoolShare;
+              const investorSharePercentage = investorPoolShare * 30; // Their % of the 30% pool
+              
+              await tx.insert(lpCashflowAllocations).values({
+                cashflowId: cashflow.id,
+                lpUserId: lpInvestor.id,
+                shareAmount: investorCashflowShare.toFixed(2),
+                sharePercentage: investorSharePercentage.toFixed(2),
+              });
+            }
+          }
+
+          // 3. Allocate 20% to treasury pool
           await tx.insert(treasuryPoolTransactions).values({
             type: "inflow",
             amountNgnts: treasuryAmount.toFixed(2),
             sourceProjectId: cashflow.projectId,
             sourceCashflowId: cashflow.id,
             metadata: {
-              notes: "60% of verified project cashflow",
+              notes: "20% of verified project cashflow to treasury",
               cashflowSource: cashflow.source || "Project revenue",
               regenerationCycle: true,
             },
           });
 
-          // 2. Allocate 20% to LP investors (split equally among all LP investors)
-          if (lpInvestors.length > 0) {
-            const lpSharePerInvestor = lpShareAmount / lpInvestors.length;
-            
-            for (const lpInvestor of lpInvestors) {
-              await tx.insert(lpCashflowAllocations).values({
-                cashflowId: cashflow.id,
-                lpUserId: lpInvestor.id,
-                shareAmount: lpSharePerInvestor.toFixed(2),
-                sharePercentage: "20.00",
-              });
-            }
-          }
-
-          // 3. Allocate 10% to project reinvestment (tracked as treasury metadata)
+          // 4. Allocate 10% to project reinvestment
           await tx.insert(treasuryPoolTransactions).values({
             type: "allocation",
-            amountNgnts: reinvestAmount.toFixed(2),
+            amountNgnts: projectReinvestAmount.toFixed(2),
             sourceProjectId: cashflow.projectId,
             sourceCashflowId: cashflow.id,
             metadata: {
               notes: "10% reinvestment allocation for project growth",
-              allocationType: "reinvestment",
-              regenerationCycle: true,
-            },
-          });
-
-          // 4. Allocate 10% to platform fees
-          await tx.insert(treasuryPoolTransactions).values({
-            type: "fee",
-            amountNgnts: feeAmount.toFixed(2),
-            sourceProjectId: cashflow.projectId,
-            sourceCashflowId: cashflow.id,
-            metadata: {
-              notes: "10% platform operational fee",
+              allocationType: "project_reinvestment",
               regenerationCycle: true,
             },
           });
@@ -154,10 +196,10 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
 
         // Update totals
         totalProcessed += amount;
+        totalRegenerators += regeneratorAmount;
+        totalLpPool += lpPoolAmount;
         totalTreasury += treasuryAmount;
-        totalLpShare += lpShareAmount;
-        totalReinvest += reinvestAmount;
-        totalFees += feeAmount;
+        totalProjectReinvest += projectReinvestAmount;
 
         result.processedCashflows++;
       } catch (error) {
@@ -167,10 +209,10 @@ export async function runRegenerativeLoop(adminId: string): Promise<Regeneration
 
     // Update result
     result.totalAmount = totalProcessed.toFixed(2);
+    result.allocations.regenerators = totalRegenerators.toFixed(2);
+    result.allocations.lpPool = totalLpPool.toFixed(2);
     result.allocations.treasury = totalTreasury.toFixed(2);
-    result.allocations.lpShare = totalLpShare.toFixed(2);
-    result.allocations.reinvest = totalReinvest.toFixed(2);
-    result.allocations.fees = totalFees.toFixed(2);
+    result.allocations.projectReinvest = totalProjectReinvest.toFixed(2);
     result.success = result.errors.length === 0;
 
     // Create audit log

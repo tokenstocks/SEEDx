@@ -15,6 +15,12 @@ const safeParseNumber = (value: string | number | undefined, fallback: number = 
 };
 
 interface LPPoolBalance {
+  // Explicit capital categorization (Phase 1 Quick Win #3)
+  allocatableNgnts: string;          // NGNTS only - available for project allocations
+  operationalReservesXlm: string;    // XLM - network gas fees (NOT allocatable)
+  stablecoinHoldingsUsdc: string;    // USDC - pending product classification
+  
+  // Legacy fields (backwards compatibility)
   balances: {
     ngnts: string;
     usdc: string;
@@ -123,8 +129,9 @@ export default function AdminLPPool() {
     }).format(num);
   };
 
-  // Check if pool balance is critically low (< 1M NGN)
-  const isCriticallyLow = balance && safeParseNumber(balance.totalValueNGN) < 1000000;
+  // Check if allocatable capital is critically low (< 1M NGNTS)
+  // NOTE: Changed from totalValueNGN to allocatableNgnts per Phase 1 Quick Win #3
+  const isCriticallyLow = balance && safeParseNumber(balance.allocatableNgnts) < 1000000;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -206,9 +213,9 @@ export default function AdminLPPool() {
             <CardContent className="flex items-center gap-3 pt-6">
               <AlertCircle className="h-5 w-5 text-red-400" />
               <div>
-                <p className="font-semibold text-red-400">Critical Pool Balance Alert</p>
+                <p className="font-semibold text-red-400">Critical Allocatable Capital Alert</p>
                 <p className="text-sm text-slate-300">
-                  LP Pool balance is below ₦1,000,000. Immediate attention required.
+                  Allocatable NGNTS capital is below ₦1,000,000. Immediate attention required for project funding.
                 </p>
               </div>
             </CardContent>
@@ -217,21 +224,21 @@ export default function AdminLPPool() {
 
         {/* Hero Stats */}
         <div className="grid md:grid-cols-4 gap-4">
-          {/* Total Pool Value */}
-          <Card className="bg-white/5 border-white/10 backdrop-blur-sm border-t-4 border-t-emerald-500" data-testid="card-total-value">
+          {/* Allocatable Capital (NGNTS only) */}
+          <Card className="bg-white/5 border-white/10 backdrop-blur-sm border-t-4 border-t-emerald-500" data-testid="card-allocatable-capital">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-400">Total Pool Value</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-400">Allocatable Capital</CardTitle>
             </CardHeader>
             <CardContent>
               {balanceLoading ? (
                 <Skeleton className="h-10 w-40" />
               ) : balance ? (
                 <div className="space-y-1">
-                  <p className="text-3xl font-bold text-white" data-testid="text-total-value">
-                    {formatNGN(balance.totalValueNGN)}
+                  <p className="text-3xl font-bold text-emerald-400" data-testid="text-allocatable-capital">
+                    {formatNGN(balance.allocatableNgnts)}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Live from Stellar Network
+                    NGNTS available for projects
                   </p>
                 </div>
               ) : (
@@ -318,11 +325,11 @@ export default function AdminLPPool() {
 
         {/* Asset Composition & Details */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Asset Composition */}
+          {/* Capital Categorization */}
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm" data-testid="card-composition">
             <CardHeader>
-              <CardTitle className="text-white">Asset Composition</CardTitle>
-              <CardDescription className="text-slate-400">Current distribution of assets in LP Pool</CardDescription>
+              <CardTitle className="text-white">Capital Categorization</CardTitle>
+              <CardDescription className="text-slate-400">Breakdown by allocation type</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {balanceLoading ? (
@@ -333,10 +340,15 @@ export default function AdminLPPool() {
                 </>
               ) : balance ? (
                 <>
-                  {/* NGNTS */}
+                  {/* Allocatable Capital (NGNTS) */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-white">NGNTS</span>
+                      <div>
+                        <span className="font-medium text-emerald-400">NGNTS (Allocatable Capital)</span>
+                        <Badge variant="outline" className="ml-2 text-xs border-emerald-500/30 text-emerald-400">
+                          Available for Projects
+                        </Badge>
+                      </div>
                       <span className="text-slate-400">{balance.composition.ngntsPercent}%</span>
                     </div>
                     <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -346,14 +358,19 @@ export default function AdminLPPool() {
                       />
                     </div>
                     <p className="text-xs text-slate-400">
-                      {formatNumber(balance.balances.ngnts)} NGNTS = {formatNGN(parseFloat(balance.balances.ngnts))}
+                      {formatNumber(balance.balances.ngnts)} NGNTS = {formatNGN(balance.allocatableNgnts)}
                     </p>
                   </div>
 
-                  {/* USDC */}
+                  {/* Stablecoin Holdings (USDC) */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-white">USDC</span>
+                      <div>
+                        <span className="font-medium text-blue-400">USDC (Stablecoin Holdings)</span>
+                        <Badge variant="outline" className="ml-2 text-xs border-blue-500/30 text-blue-400">
+                          Pending Classification
+                        </Badge>
+                      </div>
                       <span className="text-slate-400">{balance.composition.usdcPercent}%</span>
                     </div>
                     <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -363,14 +380,19 @@ export default function AdminLPPool() {
                       />
                     </div>
                     <p className="text-xs text-slate-400" data-testid="text-usdc-balance">
-                      {formatNumber(balance.balances.usdc)} USDC
+                      {formatNumber(balance.balances.usdc)} USDC ≈ {formatNGN(balance.stablecoinHoldingsUsdc)}
                     </p>
                   </div>
 
-                  {/* XLM */}
+                  {/* Operational Reserves (XLM) */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-white">XLM (Network Gas)</span>
+                      <div>
+                        <span className="font-medium text-purple-400">XLM (Operational Reserves)</span>
+                        <Badge variant="outline" className="ml-2 text-xs border-purple-500/30 text-purple-400">
+                          Gas Fees Only
+                        </Badge>
+                      </div>
                       <span className="text-slate-400">{balance.composition.xlmPercent}%</span>
                     </div>
                     <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -380,7 +402,7 @@ export default function AdminLPPool() {
                       />
                     </div>
                     <p className="text-xs text-slate-400" data-testid="text-xlm-balance">
-                      {formatNumber(balance.balances.xlm)} XLM
+                      {formatNumber(balance.balances.xlm)} XLM ≈ {formatNGN(balance.operationalReservesXlm)} (NOT allocatable)
                     </p>
                   </div>
                 </>

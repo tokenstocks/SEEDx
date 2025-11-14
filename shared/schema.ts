@@ -22,6 +22,7 @@ export const secondaryMarketStatusEnum = pgEnum("secondary_market_status", ["pen
 export const navSourceEnum = pgEnum("nav_source", ["manual", "formula", "audited"]);
 export const cashflowStatusEnum = pgEnum("cashflow_status", ["recorded", "verified", "tokenized"]);
 export const treasuryTxTypeEnum = pgEnum("treasury_tx_type", ["inflow", "allocation", "buyback", "replenish", "fee"]);
+export const lpPoolTxTypeEnum = pgEnum("lp_pool_tx_type", ["inflow", "outflow", "adjustment"]);
 export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "processing", "completed", "rejected"]);
 export const tokenLockTypeEnum = pgEnum("token_lock_type", ["none", "grant", "permanent", "time_locked"]);
 export const orderTypeEnum = pgEnum("order_type", ["buy", "sell"]);
@@ -464,15 +465,64 @@ export const tokenOrders = pgTable("token_orders", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// LP cashflow allocations table - Track 20% LP revenue share
+// LP Pool transactions table - Pool-level ledger for tracking inflows/outflows (Phase 1 Quick Win #1)
+export const lpPoolTransactions = pgTable("lp_pool_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: lpPoolTxTypeEnum("type").notNull(),
+  amountNgnts: decimal("amount_ngnts", { precision: 30, scale: 2 }).notNull(),
+  sourceProjectId: uuid("source_project_id").references(() => projects.id),
+  sourceCashflowId: uuid("source_cashflow_id").references(() => projectCashflows.id),
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  createdAtIdx: index("lp_pool_tx_created_at_idx").on(table.createdAt),
+  sourceCashflowIdx: index("lp_pool_tx_cashflow_idx").on(table.sourceCashflowId),
+}));
+
+// LP cashflow allocations table - Track 30% LP revenue share per investor (Phase 1 updated from 20% to 30%)
 export const lpCashflowAllocations = pgTable("lp_cashflow_allocations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   cashflowId: uuid("cashflow_id").notNull().references(() => projectCashflows.id, { onDelete: "cascade" }),
   lpUserId: uuid("lp_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   shareAmount: decimal("share_amount", { precision: 30, scale: 2 }).notNull(),
-  sharePercentage: decimal("share_percentage", { precision: 5, scale: 2 }).notNull().default("20.00"),
+  sharePercentage: decimal("share_percentage", { precision: 5, scale: 2 }).notNull().default("30.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Pending regenerator allocations table - Track 40% reserves awaiting distribution (Phase 1 holding bucket)
+// Phase 4 will read from this table and distribute proportionally to token holders
+export const pendingRegeneratorAllocations = pgTable("pending_regenerator_allocations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  cashflowId: uuid("cashflow_id").notNull().references(() => projectCashflows.id, { onDelete: "cascade" }).unique(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  amountNgnts: decimal("amount_ngnts", { precision: 30, scale: 2 }).notNull(), // 40% of cashflow reserved
+  status: varchar("status", { length: 32 }).notNull().default("pending"), // "pending" → "distributed" by Phase 4
+  distributedAt: timestamp("distributed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  projectStatusIdx: index("pending_regen_project_status_idx").on(table.projectId, table.status),
+}));
+
+// Regenerator cashflow distributions table - Track 40% regenerator revenue share (Phase 4 actual distributions)
+// Distributes cashflow proportionally to all token holders based on their token ownership
+export const regeneratorCashflowDistributions = pgTable("regenerator_cashflow_distributions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  cashflowId: uuid("cashflow_id").notNull().references(() => projectCashflows.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  tokensHeld: decimal("tokens_held", { precision: 30, scale: 8 }).notNull(), // Snapshot of tokens held at distribution time
+  shareAmount: decimal("share_amount", { precision: 30, scale: 2 }).notNull(), // NGNTS distributed to this regenerator
+  sharePercentage: decimal("share_percentage", { precision: 5, scale: 4 }).notNull(), // % of total tokens held (4 decimals for precision)
+  txHash: text("tx_hash"), // On-chain transaction hash for NGNTS transfer
+  distributedAt: timestamp("distributed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint: prevent double distributions for same cashflow + user
+  cashflowUserUnique: index("regenerator_cashflow_user_idx").on(table.cashflowId, table.userId),
+  // Performance indexes for common queries
+  userProjectIdx: index("regenerator_user_project_idx").on(table.userId, table.projectId),
+  projectIdx: index("regenerator_project_idx").on(table.projectId),
+}));
 
 // Primer Contributions table - Track institutional LP Pool contributions
 export const primerContributions = pgTable("primer_contributions", {
@@ -746,6 +796,17 @@ export const tokenOrdersRelations = relations(tokenOrders, ({ one }) => ({
   }),
 }));
 
+export const lpPoolTransactionsRelations = relations(lpPoolTransactions, ({ one }) => ({
+  sourceProject: one(projects, {
+    fields: [lpPoolTransactions.sourceProjectId],
+    references: [projects.id],
+  }),
+  sourceCashflow: one(projectCashflows, {
+    fields: [lpPoolTransactions.sourceCashflowId],
+    references: [projectCashflows.id],
+  }),
+}));
+
 export const lpCashflowAllocationsRelations = relations(lpCashflowAllocations, ({ one }) => ({
   cashflow: one(projectCashflows, {
     fields: [lpCashflowAllocations.cashflowId],
@@ -754,6 +815,32 @@ export const lpCashflowAllocationsRelations = relations(lpCashflowAllocations, (
   lpUser: one(users, {
     fields: [lpCashflowAllocations.lpUserId],
     references: [users.id],
+  }),
+}));
+
+export const pendingRegeneratorAllocationsRelations = relations(pendingRegeneratorAllocations, ({ one }) => ({
+  cashflow: one(projectCashflows, {
+    fields: [pendingRegeneratorAllocations.cashflowId],
+    references: [projectCashflows.id],
+  }),
+  project: one(projects, {
+    fields: [pendingRegeneratorAllocations.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const regeneratorCashflowDistributionsRelations = relations(regeneratorCashflowDistributions, ({ one }) => ({
+  cashflow: one(projectCashflows, {
+    fields: [regeneratorCashflowDistributions.cashflowId],
+    references: [projectCashflows.id],
+  }),
+  user: one(users, {
+    fields: [regeneratorCashflowDistributions.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [regeneratorCashflowDistributions.projectId],
+    references: [projects.id],
   }),
 }));
 
@@ -1106,7 +1193,22 @@ export const createTokenOrderSchema = z.object({
   pricePerToken: z.string().regex(/^\d+(\.\d{1,6})?$/, "Price must be a valid decimal with up to 6 decimals"),
 });
 
+export const insertLpPoolTransactionSchema = createInsertSchema(lpPoolTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertLpCashflowAllocationSchema = createInsertSchema(lpCashflowAllocations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPendingRegeneratorAllocationSchema = createInsertSchema(pendingRegeneratorAllocations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRegeneratorCashflowDistributionSchema = createInsertSchema(regeneratorCashflowDistributions).omit({
   id: true,
   createdAt: true,
 });

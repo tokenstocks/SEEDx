@@ -4733,19 +4733,25 @@ router.get("/lp-pool/balance", authenticate, requireAdmin, async (req, res) => {
     // Get exchange rates from shared utility (no HTTP self-call)
     const rates = await getAllRates();
 
-    // Convert all to NGN (ensure valid numbers)
+    // Convert individual assets to NGN for reference (ensure valid numbers)
     const ngntsNGN = parseFloat(ngntsBalance) || 0;
     const usdcNGN = (parseFloat(usdcBalance) || 0) * (parseFloat(rates.usdcNgn) || 0);
     const xlmNGN = (parseFloat(xlmBalance) || 0) * (parseFloat(rates.xlmNgn) || 0);
     const totalNGN = ngntsNGN + usdcNGN + xlmNGN;
 
     res.json({
+      // Explicit capital categorization (Phase 1 Quick Win #3)
+      allocatableNgnts: ngntsNGN.toFixed(2),          // NGNTS only - available for project allocations
+      operationalReservesXlm: xlmNGN.toFixed(2),      // XLM - network gas fees (NOT allocatable)
+      stablecoinHoldingsUsdc: usdcNGN.toFixed(2),     // USDC - pending product classification
+      
+      // Legacy fields (backwards compatibility)
       balances: {
         ngnts: parseFloat(ngntsBalance).toFixed(2),
         usdc: parseFloat(usdcBalance).toFixed(2),
         xlm: parseFloat(xlmBalance).toFixed(4),
       },
-      totalValueNGN: totalNGN.toFixed(2),
+      totalValueNGN: totalNGN.toFixed(2), // Total portfolio value (all assets converted to NGN)
       composition: {
         ngntsPercent: totalNGN > 0 ? ((ngntsNGN / totalNGN) * 100).toFixed(2) : "0.00",
         usdcPercent: totalNGN > 0 ? ((usdcNGN / totalNGN) * 100).toFixed(2) : "0.00",
