@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, jsonb, uuid, boolean, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, pgEnum, json, jsonb, uuid, boolean, unique, index, integer, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -32,6 +32,7 @@ export const walletActivationStatusEnum = pgEnum("wallet_activation_status", ["c
 export const walletFundingRequestStatusEnum = pgEnum("wallet_funding_request_status", ["pending", "approved", "rejected", "funded"]);
 export const bankDepositStatusEnum = pgEnum("bank_deposit_status", ["pending", "approved", "rejected", "completed"]);
 export const depositPaymentMethodEnum = pgEnum("deposit_payment_method", ["bank_transfer", "usdc"]);
+export const milestoneStatusEnum = pgEnum("milestone_status", ["draft", "submitted", "approved", "disbursed", "rejected"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -207,6 +208,10 @@ export const projects = pgTable("projects", {
   // Phase 2: Capital tracking
   lpCapitalAllocated: decimal("lp_capital_allocated", { precision: 20, scale: 7 }).default("0").notNull(),
   lpCapitalDeployed: decimal("lp_capital_deployed", { precision: 20, scale: 7 }).default("0").notNull(),
+  // Phase 3: Milestone tracking
+  totalMilestones: integer("total_milestones").default(0).notNull(),
+  completedMilestones: integer("completed_milestones").default(0).notNull(),
+  lastMilestoneDate: timestamp("last_milestone_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -234,6 +239,42 @@ export const projectUpdates = pgTable("project_updates", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// Project milestones table - Phase 3: milestone-based disbursement system
+export const projectMilestones = pgTable("project_milestones", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  milestoneNumber: integer("milestone_number").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  // Fiat amounts (NGN disbursement)
+  targetAmount: decimal("target_amount", { precision: 20, scale: 2 }).notNull(),
+  bankTransferAmount: decimal("bank_transfer_amount", { precision: 20, scale: 2 }),
+  // Token amount (NGNTS burned)
+  ngntsBurned: decimal("ngnts_burned", { precision: 20, scale: 7 }),
+  // Status and workflow
+  status: milestoneStatusEnum("status").notNull().default("draft"),
+  // Audit trail
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+  disbursedAt: timestamp("disbursed_at"),
+  disbursedBy: uuid("disbursed_by").references(() => users.id, { onDelete: "set null" }),
+  // Bank transfer details
+  bankTransferReference: varchar("bank_transfer_reference", { length: 255 }),
+  bankTransferDate: timestamp("bank_transfer_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint on (projectId, milestoneNumber)
+  uniqueProjectMilestone: unique().on(table.projectId, table.milestoneNumber),
+  // Index on (projectId, status) for filtering
+  projectStatusIdx: index("idx_milestones_project_status").on(table.projectId, table.status),
+  // CHECK constraint: milestone_number > 0
+  milestoneNumberCheck: check("milestone_number_check", sql`${table.milestoneNumber} > 0`),
+}));
 
 // Project token balances table - tracks user holdings of project-specific tokens
 // INVARIANT: tokenAmount = liquidTokens + lockedTokens at all times
@@ -1051,6 +1092,16 @@ export const insertProjectUpdateSchema = createInsertSchema(projectUpdates).omit
   createdAt: true,
   updatedAt: true,
 });
+
+// Project Milestones schemas
+export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProjectMilestone = z.infer<typeof insertProjectMilestoneSchema>;
+export type SelectProjectMilestone = typeof projectMilestones.$inferSelect;
 
 export const updateKycStatusSchema = z.object({
   action: z.enum(["approve", "reject"]),

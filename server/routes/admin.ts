@@ -48,6 +48,7 @@ import { auditActionWithState } from "../middleware/auditMiddleware";
 import { burnProjectToken, transferNgntsFromPlatformWallet, ensureTrustline } from "../lib/stellarOps";
 import { primerContributions, lpProjectAllocations, primerProjectAllocations } from "@shared/schema";
 import { getAllRates } from "../lib/exchangeRates";
+import milestoneRoutes from "./admin/milestones";
 
 const router = Router();
 
@@ -5637,5 +5638,8 @@ router.get("/regenerators/:id", authenticate, requireAdmin, async (req, res) => 
     res.status(500).json({ error: "Failed to fetch regenerator details" });
   }
 });
+
+// Phase 3.1: Milestone routes
+router.use("/milestones", milestoneRoutes);
 
 export default router;
