@@ -33,6 +33,17 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 - **Bank Deposit System (FundingWizard):** 3-step NGN→NGNTS deposit wizard with real-time fee preview, invoice generation, and proof upload.
 - **Wallet Activation Admin Interface:** Simplified admin approval for activating regenerator wallets, managing XLM reserves and trustlines.
 
+## Recent Changes
+
+### November 14, 2025 - React Hooks Compliance Fix
+- **Issue:** RegeneratorProfile.tsx had React "Rendered more hooks than during the previous render" error
+- **Root Cause:** All hooks (useQuery, useMemo) must be called unconditionally before any conditional return statements per React Rules of Hooks
+- **Fix Applied:** Moved all hooks to execute before the `if (userLoading || !user || user.isPrimer) return` guard
+  - Relocated useQuery hooks: kycData, walletData, exchangeRates, depositHistory (lines 81-141)
+  - Relocated useMemo hooks: accountLifecycleStatus, lastUpdated, allDeposits (lines 145-222)
+  - Added null safety in accountLifecycleStatus useMemo to handle undefined user during early renders
+- **Result:** Settings page and Regenerator Profile now fully functional with no hooks violations
+
 ## External Dependencies
 
 ### Third-Party Services
