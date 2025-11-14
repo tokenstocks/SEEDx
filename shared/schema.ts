@@ -256,6 +256,7 @@ export const projectMilestones = pgTable("project_milestones", {
   bankTransferAmount: decimal("bank_transfer_amount", { precision: 20, scale: 2 }),
   // Token amount (NGNTS burned)
   ngntsBurned: decimal("ngnts_burned", { precision: 20, scale: 7 }),
+  stellarBurnTxHash: varchar("stellar_burn_tx_hash", { length: 64 }),
   // Status and workflow
   status: milestoneStatusEnum("status").notNull().default("draft"),
   // Audit trail
@@ -265,6 +266,9 @@ export const projectMilestones = pgTable("project_milestones", {
   approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
   disbursedAt: timestamp("disbursed_at"),
   disbursedBy: uuid("disbursed_by").references(() => users.id, { onDelete: "set null" }),
+  rejectedAt: timestamp("rejected_at"),
+  rejectedBy: uuid("rejected_by").references(() => users.id, { onDelete: "set null" }),
+  rejectionReason: text("rejection_reason"),
   // Bank transfer details
   bankTransferReference: varchar("bank_transfer_reference", { length: 255 }),
   bankTransferDate: timestamp("bank_transfer_date"),

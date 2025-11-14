@@ -451,6 +451,13 @@ export async function disburseMilestone(
         throw new Error("Only approved milestones can be disbursed");
       }
 
+      // SECURITY: Idempotency check - prevent double-burn if Phase 3 previously failed
+      if (milestone.milestone.stellarBurnTxHash) {
+        throw new Error(
+          `Milestone already has burn transaction ${milestone.milestone.stellarBurnTxHash}. Cannot disburse again.`
+        );
+      }
+
       if (!milestone.milestone.bankTransferReference) {
         throw new Error("Bank transfer must be recorded before disbursement");
       }
@@ -462,6 +469,14 @@ export async function disburseMilestone(
       // Validate NAV bounds - can't burn more than current NAV
       const currentNAV = parseFloat(milestone.project.nav || "0");
       const burnedAmount = parseFloat(ngntsBurned);
+      const lpTokensOutstanding = parseFloat(milestone.project.lpTokensOutstanding || "0");
+
+      // SECURITY: Prevent NAV drain when no LP tokens outstanding
+      if (lpTokensOutstanding <= 0) {
+        throw new Error(
+          "Cannot disburse milestone: no LP tokens outstanding. This would create invalid NAV state."
+        );
+      }
 
       if (burnedAmount > currentNAV) {
         throw new Error(
@@ -531,7 +546,7 @@ export async function disburseMilestone(
         );
       }
 
-      // Update milestone status
+      // Update milestone status with burn transaction hash
       const [updatedMilestone] = await tx
         .update(projectMilestones)
         .set({
@@ -539,6 +554,7 @@ export async function disburseMilestone(
           disbursedAt: new Date(),
           disbursedBy,
           ngntsBurned,
+          stellarBurnTxHash: burnTxHash,
           updatedAt: new Date(),
         })
         .where(eq(projectMilestones.id, milestoneId))
