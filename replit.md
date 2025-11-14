@@ -42,13 +42,32 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 
 ## Recent Changes
 
+### November 14, 2025 - Phase 3.2: Milestone Approval Workflow & Security Hardening (COMPLETE)
+- **Approval Workflow:** Implemented complete approved→disbursed transition with bank transfer recording
+  - `approveMilestone`: Transitions submitted→approved with admin audit trail
+  - `rejectMilestone`: Transitions submitted→rejected with reason tracking (schema extended with rejectedAt, rejectedBy, rejectionReason)
+  - `recordBankTransfer`: Records NGN→farmer bank transfer details before on-chain disbursement
+  - `disburseMilestone`: 3-phase atomic operation (validate→burn→confirm) with NGNTS burning, NAV reduction, LP token price recalculation
+  - `getMilestoneStats`: Aggregate statistics endpoint for admin dashboard
+- **Critical Security Fixes:**
+  - **Idempotency Protection:** Added `stellarBurnTxHash` column to prevent double-burn if Phase 3 commit fails
+  - **NAV Drain Prevention:** Validates `lpTokensOutstanding > 0` before disbursement to prevent invalid NAV state
+  - **Route Collision Fix:** Moved `/stats` endpoint before `/:milestoneId` dynamic route to prevent path matching errors
+- **NGNTS Burning:** Extended `server/lib/ngntsOps.ts` with `burnNGNTS` function (throws exceptions for transactional rollback, accepts treasuryPublicKey parameter)
+- **LP Token Pricing:** Extended `server/lib/lpAllocationLib.ts` with `recalculateLPTokenPrice` (runs inside caller's transaction for atomicity, updates NAV/lpTokensOutstanding ratio)
+- **Schema Extensions:** Added `stellarBurnTxHash`, `rejectedAt`, `rejectedBy`, `rejectionReason` to projectMilestones
+- **Known Limitations:**
+  - **Clawback Enforcement:** Current implementation does not verify Stellar AUTH_CLAWBACK_ENABLED_FLAG before burning NGNTS. Per regenerative capital architecture, clawback should be enforced to ensure recoverability. Recommended for Phase 4 implementation.
+  - **NAV Buffer Protection:** Current validation checks `lpTokensOutstanding > 0` but doesn't enforce minimum NAV reserve ratio. Consider adding buffer validation (e.g., NAV >= burn amount * 1.1) for additional safety.
+- **Testing:** E2E test validated all workflow transitions (draft→submitted→approved/rejected→disbursed), bank transfer recording, deletion guards, and stats endpoint
+- **Architect Review:** Core functionality approved. Security enhancements implemented (idempotency, NAV drain prevention). Clawback enforcement identified as architectural gap requiring future work.
+
 ### November 14, 2025 - Phase 3.1: Milestone Foundation & Creation (COMPLETE)
 - **Schema:** Added `projectMilestones` table with milestone status enum (draft/submitted/approved/disbursed/rejected)
 - **Library:** Created `server/lib/milestones.ts` with transactional CRUD operations and race-safe milestone numbering
 - **API Routes:** Implemented admin milestone endpoints with proper authentication and state transition guards
 - **Architect Review:** PASSED with no blocking issues - schema, library, and routing functionally correct
 - **Database:** Synced schema with `UNIQUE` constraint on (projectId, milestoneNumber), indexes on (projectId, milestoneNumber) and (projectId, status)
-- **Next Steps:** Phase 3.2 will add approved→disbursed transitions, bank transfer processing, and project counter updates
 
 ### November 14, 2025 - React Hooks Compliance Fix
 - **Issue:** RegeneratorProfile.tsx had React "Rendered more hooks than during the previous render" error
