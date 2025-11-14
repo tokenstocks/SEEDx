@@ -73,23 +73,8 @@ export default function RegeneratorProfile() {
 
   const user = authData?.user;
 
-  // Redirect primers to their dedicated profile
-  useEffect(() => {
-    if (!userLoading && user?.isPrimer) {
-      navigate("/primer-profile");
-    }
-  }, [user, userLoading, navigate]);
-
-  // Show loading state while user data loads or redirect primers
-  if (userLoading || !user || user.isPrimer) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
   // Queries with auto-refresh for real-time updates
+  // NOTE: All hooks must be called before any conditional returns (React rules)
   const { data: kycData } = useQuery<{
     kycStatus: string;
     kycDocuments?: any;
@@ -151,6 +136,22 @@ export default function RegeneratorProfile() {
   }>({
     queryKey: ["/api/regenerator/bank-deposits"],
   });
+
+  // Redirect primers to their dedicated profile
+  useEffect(() => {
+    if (!userLoading && user?.isPrimer) {
+      navigate("/primer-profile");
+    }
+  }, [user, userLoading, navigate]);
+
+  // Show loading state while user data loads or redirect primers
+  if (userLoading || !user || user.isPrimer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   // Account lifecycle status helper
   const accountLifecycleStatus = useMemo(() => {
