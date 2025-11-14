@@ -1,0 +1,332 @@
+PHASE 3 IMPLEMENTATION APPROACH
+We've decided to break Phase 3 into smaller, manageable sub-phases to ensure quality, thorough testing, and avoid overwhelming the development process. This approach maintains our commitment to excellence and industry standards.
+
+Phase 3 Breakdown:
+Phase 3.1: Milestone Foundation & Creation
+Phase 3.2: Milestone Approval & NGNTS Burning
+Phase 3.3: Bank Transfer Recording & NAV Recalculation
+How We'll Progress:
+Each sub-phase will be implemented, tested, and verified before moving to the next. This ensures backward compatibility, maintains code quality, and allows for incremental validation of functionality.
+
+PHASE 3.1: MILESTONE FOUNDATION & CREATION
+Objective:
+Build the foundational infrastructure for milestone management, including database schema, core library functions, and API endpoints for creating and managing project milestones.
+
+Implementation Instructions:
+1. Database Schema Changes
+Execute the following SQL to create the project_milestones table:
+
+sql
+Copy
+CREATE TABLE project_milestones (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    milestone_number INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    target_amount DECIMAL(20, 7) NOT NULL,
+    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'approved', 'disbursed', 'rejected')),
+    submitted_at TIMESTAMP,
+    approved_at TIMESTAMP,
+    approved_by INTEGER REFERENCES users(id),
+    disbursed_at TIMESTAMP,
+    ngnts_burned DECIMAL(20, 7),
+    bank_transfer_reference VARCHAR(255),
+    bank_transfer_amount DECIMAL(20, 7),
+    bank_transfer_date TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, milestone_number)
+);
+
+CREATE INDEX idx_milestones_project ON project_milestones(project_id);
+CREATE INDEX idx_milestones_status ON project_milestones(status);
+Update the projects table to add milestone tracking:
+
+sql
+Copy
+ALTER TABLE projects 
+ADD COLUMN IF NOT EXISTS total_milestones INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS completed_milestones INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS last_milestone_date TIMESTAMP;
+2. Create Milestone Library
+Create a new file: lib/milestoneLib.js
+
+javascript
+Copy
+const pool = require('./db');
+
+const milestoneLib = {
+  /**
+   * Create a new milestone for a project
+   */
+  async createMilestone(projectId, milestoneData) {
+    const { milestone_number, title, description, target_amount } = milestoneData;
+    
+    try {
+      const result = await pool.query(
+        `INSERT INTO project_milestones 
+        (project_id, milestone_number, title, description, target_amount, status)
+        VALUES ($1, $2, $3, $4, $5, 'draft')
+        RETURNING *`,
+        [projectId, milestone_number, title, description, target_amount]
+      );
+      
+      // Update project's total_milestones count
+      await pool.query(
+        `UPDATE projects SET total_milestones = total_milestones + 1 WHERE id = $1`,
+        [projectId]
+      );
+      
+      return { success: true, milestone: result.rows[0] };
+    } catch (error) {
+      console.error('Error creating milestone:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get all milestones for a project
+   */
+  async getProjectMilestones(projectId) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM project_milestones 
+        WHERE project_id = $1 
+        ORDER BY milestone_number ASC`,
+        [projectId]
+      );
+      
+      return { success: true, milestones: result.rows };
+    } catch (error) {
+      console.error('Error fetching milestones:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get a specific milestone by ID
+   */
+  async getMilestoneById(milestoneId) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM project_milestones WHERE id = $1`,
+        [milestoneId]
+      );
+      
+      if (result.rows.length === 0) {
+        return { success: false, error: 'Milestone not found' };
+      }
+      
+      return { success: true, milestone: result.rows[0] };
+    } catch (error) {
+      console.error('Error fetching milestone:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Update milestone details (only for draft status)
+   */
+  async updateMilestone(milestoneId, updates) {
+    const { title, description, target_amount } = updates;
+    
+    try {
+      // Check if milestone is in draft status
+      const checkResult = await pool.query(
+        `SELECT status FROM project_milestones WHERE id = $1`,
+        [milestoneId]
+      );
+      
+      if (checkResult.rows.length === 0) {
+        return { success: false, error: 'Milestone not found' };
+      }
+      
+      if (checkResult.rows[0].status !== 'draft') {
+        return { success: false, error: 'Only draft milestones can be edited' };
+      }
+      
+      const result = await pool.query(
+        `UPDATE project_milestones 
+        SET title = COALESCE($1, title),
+            description = COALESCE($2, description),
+            target_amount = COALESCE($3, target_amount),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+        RETURNING *`,
+        [title, description, target_amount, milestoneId]
+      );
+      
+      return { success: true, milestone: result.rows[0] };
+    } catch (error) {
+      console.error('Error updating milestone:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Delete a milestone (only if in draft status)
+   */
+  async deleteMilestone(milestoneId) {
+    try {
+      // Check if milestone is in draft status
+      const checkResult = await pool.query(
+        `SELECT status, project_id FROM project_milestones WHERE id = $1`,
+        [milestoneId]
+      );
+      
+      if (checkResult.rows.length === 0) {
+        return { success: false, error: 'Milestone not found' };
+      }
+      
+      if (checkResult.rows[0].status !== 'draft') {
+        return { success: false, error: 'Only draft milestones can be deleted' };
+      }
+      
+      const projectId = checkResult.rows[0].project_id;
+      
+      await pool.query(`DELETE FROM project_milestones WHERE id = $1`, [milestoneId]);
+      
+      // Update project's total_milestones count
+      await pool.query(
+        `UPDATE projects SET total_milestones = total_milestones - 1 WHERE id = $1`,
+        [projectId]
+      );
+      
+      return { success: true, message: 'Milestone deleted successfully' };
+    } catch (error) {
+      console.error('Error deleting milestone:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Submit milestone for approval
+   */
+  async submitMilestone(milestoneId) {
+    try {
+      const result = await pool.query(
+        `UPDATE project_milestones 
+        SET status = 'submitted', 
+            submitted_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND status = 'draft'
+        RETURNING *`,
+        [milestoneId]
+      );
+      
+      if (result.rows.length === 0) {
+        return { success: false, error: 'Milestone not found or not in draft status' };
+      }
+      
+      return { success: true, milestone: result.rows[0] };
+    } catch (error) {
+      console.error('Error submitting milestone:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+module.exports = milestoneLib;
+3. Create API Endpoints
+Add these routes to your main API file (e.g., routes/milestones.js or add to existing routes):
+
+javascript
+Copy
+const express = require('express');
+const router = express.Router();
+const milestoneLib = require('../lib/milestoneLib');
+const { authenticateToken, isAdmin } = require('../middleware/auth');
+
+// Create a new milestone (Admin only)
+router.post('/projects/:projectId/milestones', authenticateToken, isAdmin, async (req, res) => {
+  const { projectId } = req.params;
+  const result = await milestoneLib.createMilestone(projectId, req.body);
+  
+  if (result.success) {
+    res.status(201).json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Get all milestones for a project
+router.get('/projects/:projectId/milestones', authenticateToken, async (req, res) => {
+  const { projectId } = req.params;
+  const result = await milestoneLib.getProjectMilestones(projectId);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Get a specific milestone
+router.get('/milestones/:milestoneId', authenticateToken, async (req, res) => {
+  const { milestoneId } = req.params;
+  const result = await milestoneLib.getMilestoneById(milestoneId);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(404).json(result);
+  }
+});
+
+// Update a milestone (Admin only, draft status only)
+router.put('/milestones/:milestoneId', authenticateToken, isAdmin, async (req, res) => {
+  const { milestoneId } = req.params;
+  const result = await milestoneLib.updateMilestone(milestoneId, req.body);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Delete a milestone (Admin only, draft status only)
+router.delete('/milestones/:milestoneId', authenticateToken, isAdmin, async (req, res) => {
+  const { milestoneId } = req.params;
+  const result = await milestoneLib.deleteMilestone(milestoneId);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+// Submit milestone for approval (Admin only)
+router.post('/milestones/:milestoneId/submit', authenticateToken, isAdmin, async (req, res) => {
+  const { milestoneId } = req.params;
+  const result = await milestoneLib.submitMilestone(milestoneId);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
+module.exports = router;
+4. Testing Checklist
+After implementation, verify the following:
+
+ Database tables created successfully
+ Can create a milestone for a project
+ Can retrieve all milestones for a project
+ Can retrieve a specific milestone by ID
+ Can update a draft milestone
+ Cannot update a submitted/approved milestone
+ Can delete a draft milestone
+ Cannot delete a submitted/approved milestone
+ Can submit a milestone for approval
+ Project's total_milestones count updates correctly
+ All API endpoints return appropriate status codes
+ Error handling works correctly
+Once Phase 3.1 is implemented and tested, notify me so we can proceed to Phase 3.2: Milestone Approval & NGNTS Burning.
+
+Excellence is in the details. Let's build this right.
