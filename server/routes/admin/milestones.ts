@@ -53,7 +53,13 @@ router.post("/projects/:projectId", requireAdmin, async (req, res) => {
     }
 
     // Create milestone
-    const result = await createMilestone(projectId, { title, description, targetAmount: targetAmount.toString() });
+    const adminId = req.userId!;
+    const result = await createMilestone(
+      projectId,
+      { title, description, targetAmount: targetAmount.toString() },
+      adminId,
+      req
+    );
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -166,11 +172,17 @@ router.put("/:milestoneId", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Target amount must be greater than zero" });
     }
 
-    const result = await updateMilestone(milestoneId, {
-      title,
-      description,
-      targetAmount: targetAmount?.toString()
-    });
+    const adminId = req.userId!;
+    const result = await updateMilestone(
+      milestoneId,
+      {
+        title,
+        description,
+        targetAmount: targetAmount?.toString()
+      },
+      adminId,
+      req
+    );
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -193,8 +205,9 @@ router.put("/:milestoneId", requireAdmin, async (req, res) => {
 router.delete("/:milestoneId", requireAdmin, async (req, res) => {
   try {
     const { milestoneId } = req.params;
+    const adminId = req.userId!;
 
-    const result = await deleteMilestone(milestoneId);
+    const result = await deleteMilestone(milestoneId, adminId, req);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -219,7 +232,7 @@ router.post("/:milestoneId/submit", requireAdmin, async (req, res) => {
     const { milestoneId } = req.params;
     const adminId = req.userId!;
 
-    const result = await submitMilestone(milestoneId, adminId);
+    const result = await submitMilestone(milestoneId, adminId, req);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -245,7 +258,7 @@ router.post("/:milestoneId/approve", requireAdmin, async (req, res) => {
     const { milestoneId } = req.params;
     const adminId = req.userId!;
 
-    const result = await approveMilestone(milestoneId, adminId);
+    const result = await approveMilestone(milestoneId, adminId, req);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -276,7 +289,7 @@ router.post("/:milestoneId/reject", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Rejection reason is required" });
     }
 
-    const result = await rejectMilestone(milestoneId, adminId, reason);
+    const result = await rejectMilestone(milestoneId, adminId, reason, req);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -310,11 +323,17 @@ router.post("/:milestoneId/bank-transfer", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Transfer amount must be greater than zero" });
     }
 
-    const result = await recordBankTransfer(milestoneId, {
-      bankTransferReference: reference,
-      bankTransferAmount: amount.toString(),
-      bankTransferDate: new Date(),
-    });
+    const adminId = req.userId!;
+    const result = await recordBankTransfer(
+      milestoneId,
+      {
+        bankTransferReference: reference,
+        bankTransferAmount: amount.toString(),
+        bankTransferDate: new Date(),
+      },
+      adminId,
+      req
+    );
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -350,7 +369,7 @@ router.post("/:milestoneId/disburse", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "NGNTS burned amount must be greater than zero" });
     }
 
-    const result = await disburseMilestone(milestoneId, adminId, ngntsBurned);
+    const result = await disburseMilestone(milestoneId, adminId, ngntsBurned, req);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
