@@ -37,6 +37,20 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 - **Distribution System:** Implements a robust distribution schema and logic for calculating and allocating pro-rata distributions to Regenerators (token holders) based on project-scoped holdings. Primers do NOT receive distributions (grant model).
 - **RCX Model Enforcement:** Complete removal of LP ownership concepts from Primer flows - no poolSharePercent, no lpPoolShare, no sharePercent in any API responses, type definitions, or UI displays. Backend explicitly excludes these fields from SELECT statements to prevent accidental leakage.
 
+## Recent Changes (November 14, 2025)
+
+### Bug Fixes - RCX Model Implementation
+1. **Operations Wallet Column Missing (FIXED):** Added `operations_wallet_public_key` and `operations_wallet_secret_encrypted` columns to projects table. Previously existed only as comments in schema, causing silent data loss during project creation.
+2. **Zod Schema Merge Error (FIXED):** Restructured `createProjectSchema` to merge base ZodObjects first, then apply refinements. Previous implementation applied `.refine()` before merge, causing "merging._def.shape is not a function" error.
+3. **Admin Credentials:** Documented test credentials (admin@seedx.africa/admin123) for E2E testing.
+
+### E2E Verification Complete
+All RCX model requirements verified via comprehensive E2E testing:
+- ✅ Dual wallet architecture (operations + revenue wallets) persists correctly
+- ✅ Profit split configuration (40/30/20/10 default) validates and saves
+- ✅ Primer dashboard shows impact metrics only (NO LP ownership concepts)
+- ✅ Complete RCX compliance confirmed
+
 ## External Dependencies
 
 ### Third-Party Services
