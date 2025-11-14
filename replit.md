@@ -1,7 +1,7 @@
 # SEEDx MVP - Sustainable Ecosystem for Economic Development exchange
 
 ## Overview
-SEEDx is a blockchain-based regenerative capital platform on the Stellar network. It connects liquidity providers ("Primers") with token traders ("Regenerators") to fund agricultural projects, facilitating tokenized agricultural participation, automated cashflow distribution, and capital regeneration. The platform aims to mitigate securities classification risk through SEC-compliant language, focusing on utility tokens and participation. Key features include secure authentication, KYC, multi-currency wallet management, and a mobile-first interface, fostering a sustainable ecosystem for economic development.
+SEEDx is a blockchain-based regenerative capital platform on the Stellar network. It connects liquidity providers ("Primers") with token traders ("Regenerators") to fund agricultural projects, facilitating tokenized agricultural participation, automated cashflow distribution, and capital regeneration. The platform aims to mitigate securities classification risk through SEC-compliant language, focusing on utility tokens and participation, fostering a sustainable ecosystem for economic development.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -19,85 +19,14 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 - **Stellar Integration:** Manages on-chain operations (testnet/mainnet), wallet activation, NGNTS token issuance, and a 4-wallet architecture (Operations, Treasury, Distribution, Liquidity Pool).
 - **User Roles:** Primers contribute capital, Regenerators purchase farm project tokens. Both have dedicated dashboards.
 - **Investment & Portfolio Management:** Supports on-chain settlement for multi-currency investments (NGN/NGNTS, USDC, XLM) with atomic database updates and automatic refunds for failed token deliveries.
-- **Regenerative Capital Architecture:** Multi-pool system with NAV-based token pricing and automated cashflow distribution with 40/30/20/10 split:
-  - 40% to Regenerators (token holders) - stored in `pendingRegeneratorAllocations` for Phase 4 distribution
-  - 30% to LP Pool investors - tracked at pool level in `lpPoolTransactions` with per-investor allocations in `lpCashflowAllocations`
-  - 20% to Treasury - recorded in `treasuryPoolTransactions` as inflow
-  - 10% to Project Reinvestment - recorded in `treasuryPoolTransactions` as allocation
+- **Regenerative Capital Architecture:** Multi-pool system with NAV-based token pricing and automated cashflow distribution with a 40/30/20/10 split to Regenerators, LP Pool investors, Treasury, and Project Reinvestment respectively.
 - **Token Marketplace:** Internal peer-to-peer marketplace with order book and NAV-based price discovery.
 - **NGNTS Burning:** NGNTS tokens are burned upon NGN withdrawal to maintain peg.
-- **Admin Dashboards:** APIs and UI for platform operations, user management, and transaction monitoring, including dedicated interfaces for Primers, Regenerators, Investments, and LP Pool health.
-  - LP Pool display separates NGNTS (allocatable capital) from XLM (operational reserves) and USDC (stablecoin holdings)
-  - Critical alerts trigger when NGNTS capital falls below ₦250,000 threshold
+- **Admin Dashboards:** APIs and UI for platform operations, user management, and transaction monitoring, including dedicated interfaces for Primers, Regenerators, Investments, and LP Pool health. Critical alerts trigger when NGNTS capital falls below a specified threshold.
 - **Redemption System:** Allows users to sell project tokens for NGNTS, prioritizing funding from project cashflow, treasury, and liquidity pool.
 - **Bank Deposit System (FundingWizard):** 3-step NGN→NGNTS deposit wizard with real-time fee preview, invoice generation, and proof upload.
-- **Wallet Activation Admin Interface:** Simplified admin approval for activating regenerator wallets, managing XLM reserves and trustlines.
-- **Milestone Management System:** Production-ready milestone tracking for agricultural projects with draft→submitted→approved→disbursed workflow.
-  - Transactional milestone number assignment using `FOR UPDATE` + `COALESCE(MAX+1, 1)` to prevent race conditions
-  - Full audit trail with `submittedBy`, `approvedBy`, `disbursedBy` tracking
-  - Decimal precision: `DECIMAL(20,2)` for fiat amounts, `DECIMAL(20,7)` for token amounts
-  - Project-level counters: `totalMilestones`, `completedMilestones`, `lastMilestoneDate`
-  - State validation: only draft milestones can be edited or deleted
-  - Admin CRUD API: `server/routes/admin/milestones.ts` with authenticate + requireAdmin middleware
-
-## Recent Changes
-
-### November 14, 2025 - Phase 3.3: Milestone Audit Trail (COMPLETE)
-- **Audit Schema:** Added `milestoneActivityLog` table with UUID primary key, indexed foreign keys (milestoneId, projectId), and JSONB metadata fields for extensibility
-- **Hybrid Logging Strategy:**
-  - **Async (fire-and-forget):** Non-critical operations (create, update, submit, approve, reject) - optimizes performance while maintaining audit trail
-  - **Transactional:** Critical operations (delete, bank_transfer_recorded, disbursed) - ensures atomic commit with main operation
-- **Audit Library** (`server/lib/auditLib.ts`):
-  - `logMilestoneActivityInTransaction`: Drizzle-native transactional logging with proper `Tx` typing
-  - `logMilestoneActivityAsync`: Fire-and-forget logging with error suppression
-  - Captures: userId, performedByName (CONCAT firstName + lastName), statusBefore/After, metadata (changes/amounts/txHashes), auditMetadata (IP, user-agent)
-- **Milestone Integration:** All 8 operations in `server/lib/milestones.ts` now log activity:
-  - create, update, submit, approve, reject: Async logging
-  - delete: Transactional logging (logs BEFORE deletion to preserve FK)
-  - recordBankTransfer, disburseMilestone: Transactional logging for financial operations
-- **Critical Fixes:**
-  - **FK Violation Prevention:** Delete logging moved inside transaction BEFORE deletion
-  - **Audit Completeness:** Disbursement logging moved to FIRST operation in Phase 3 transaction - if audit fails, entire disbursement rolls back
-  - **PostgreSQL Compatibility:** Changed leftJoin to innerJoin in disburseMilestone for FOR UPDATE compatibility
-- **API Routes:** Updated all handlers in `server/routes/admin/milestones.ts` to pass userId and req object for audit trail
-- **Testing:** E2E test validates all workflow transitions (create→update→submit→approve/reject→bank_transfer), deletion guards, and stats endpoint
-- **Architect Review:** PASSED with recommendations for operational improvements (compensating logic for partial burns, async logging monitoring)
-
-### November 14, 2025 - Phase 3.2: Milestone Approval Workflow & Security Hardening (COMPLETE)
-- **Approval Workflow:** Implemented complete approved→disbursed transition with bank transfer recording
-  - `approveMilestone`: Transitions submitted→approved with admin audit trail
-  - `rejectMilestone`: Transitions submitted→rejected with reason tracking (schema extended with rejectedAt, rejectedBy, rejectionReason)
-  - `recordBankTransfer`: Records NGN→farmer bank transfer details before on-chain disbursement
-  - `disburseMilestone`: 3-phase atomic operation (validate→burn→confirm) with NGNTS burning, NAV reduction, LP token price recalculation
-  - `getMilestoneStats`: Aggregate statistics endpoint for admin dashboard
-- **Critical Security Fixes:**
-  - **Idempotency Protection:** Added `stellarBurnTxHash` column to prevent double-burn if Phase 3 commit fails
-  - **NAV Drain Prevention:** Validates `lpTokensOutstanding > 0` before disbursement to prevent invalid NAV state
-  - **Route Collision Fix:** Moved `/stats` endpoint before `/:milestoneId` dynamic route to prevent path matching errors
-- **NGNTS Burning:** Extended `server/lib/ngntsOps.ts` with `burnNGNTS` function (throws exceptions for transactional rollback, accepts treasuryPublicKey parameter)
-- **LP Token Pricing:** Extended `server/lib/lpAllocationLib.ts` with `recalculateLPTokenPrice` (runs inside caller's transaction for atomicity, updates NAV/lpTokensOutstanding ratio)
-- **Schema Extensions:** Added `stellarBurnTxHash`, `rejectedAt`, `rejectedBy`, `rejectionReason` to projectMilestones
-- **Known Limitations:**
-  - **Clawback Enforcement:** Current implementation does not verify Stellar AUTH_CLAWBACK_ENABLED_FLAG before burning NGNTS. Per regenerative capital architecture, clawback should be enforced to ensure recoverability. Recommended for Phase 4 implementation.
-  - **NAV Buffer Protection:** Current validation checks `lpTokensOutstanding > 0` but doesn't enforce minimum NAV reserve ratio. Consider adding buffer validation (e.g., NAV >= burn amount * 1.1) for additional safety.
-- **Testing:** E2E test validated all workflow transitions (draft→submitted→approved/rejected→disbursed), bank transfer recording, deletion guards, and stats endpoint
-- **Architect Review:** Core functionality approved. Security enhancements implemented (idempotency, NAV drain prevention). Clawback enforcement identified as architectural gap requiring future work.
-
-### November 14, 2025 - Phase 3.1: Milestone Foundation & Creation (COMPLETE)
-- **Schema:** Added `projectMilestones` table with milestone status enum (draft/submitted/approved/disbursed/rejected)
-- **Library:** Created `server/lib/milestones.ts` with transactional CRUD operations and race-safe milestone numbering
-- **API Routes:** Implemented admin milestone endpoints with proper authentication and state transition guards
-- **Architect Review:** PASSED with no blocking issues - schema, library, and routing functionally correct
-- **Database:** Synced schema with `UNIQUE` constraint on (projectId, milestoneNumber), indexes on (projectId, milestoneNumber) and (projectId, status)
-
-### November 14, 2025 - React Hooks Compliance Fix
-- **Issue:** RegeneratorProfile.tsx had React "Rendered more hooks than during the previous render" error
-- **Root Cause:** All hooks (useQuery, useMemo) must be called unconditionally before any conditional return statements per React Rules of Hooks
-- **Fix Applied:** Moved all hooks to execute before the `if (userLoading || !user || user.isPrimer) return` guard
-  - Relocated useQuery hooks: kycData, walletData, exchangeRates, depositHistory (lines 81-141)
-  - Relocated useMemo hooks: accountLifecycleStatus, lastUpdated, allDeposits (lines 145-222)
-  - Added null safety in accountLifecycleStatus useMemo to handle undefined user during early renders
-- **Result:** Settings page and Regenerator Profile now fully functional with no hooks violations
+- **Milestone Management System:** Production-ready milestone tracking for agricultural projects with draft→submitted→approved→disbursed workflow, transactional milestone number assignment, and a full audit trail.
+- **Distribution System:** Implements a robust distribution schema and logic for calculating and allocating pro-rata distributions to LP holders based on project-scoped contributions.
 
 ## External Dependencies
 
