@@ -39,6 +39,16 @@ export default function PrimerProfile() {
 
   const user = authData?.user;
 
+  // Fetch KYC data - MUST be called before conditional return (React Rules of Hooks)
+  const { data: kycData } = useQuery<{
+    kycStatus: string;
+    kycDocuments?: any;
+  }>({
+    queryKey: ["/api/users/kyc-status"],
+    refetchOnMount: "always",
+    staleTime: 0,
+  });
+
   // Redirect non-primers to regenerator profile
   useEffect(() => {
     if (!userLoading && user && !user.isPrimer) {
@@ -54,15 +64,6 @@ export default function PrimerProfile() {
       </div>
     );
   }
-
-  const { data: kycData } = useQuery<{
-    kycStatus: string;
-    kycDocuments?: any;
-  }>({
-    queryKey: ["/api/users/kyc-status"],
-    refetchOnMount: "always",
-    staleTime: 0,
-  });
 
   const getKycStatusBadge = (status: string) => {
     switch (status) {
