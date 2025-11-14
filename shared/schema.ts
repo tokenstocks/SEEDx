@@ -229,9 +229,61 @@ export const projects = pgTable("projects", {
   totalMilestones: integer("total_milestones").default(0).notNull(),
   completedMilestones: integer("completed_milestones").default(0).notNull(),
   lastMilestoneDate: timestamp("last_milestone_date"),
+  // Phase 4.1: RCX Model - Configurable profit distribution (nullable during migration)
+  lpReplenishmentPercent: decimal("lp_replenishment_percent", { precision: 5, scale: 2 }),
+  regeneratorDistributionPercent: decimal("regenerator_distribution_percent", { precision: 5, scale: 2 }),
+  treasuryPercent: decimal("treasury_percent", { precision: 5, scale: 2 }),
+  projectRetainedPercent: decimal("project_retained_percent", { precision: 5, scale: 2 }),
+  // Phase 4.1: RCX Model - Dual wallet architecture
+  // operationsWalletPublicKey: Same as stellarProjectWalletPublicKey (kept for backward compatibility)
+  // operationsWalletSecretEncrypted: Same as stellarProjectWalletSecretEncrypted
+  revenueWalletPublicKey: text("revenue_wallet_public_key"), // Receives minted NGNTS from bank deposits
+  revenueWalletSecretEncrypted: text("revenue_wallet_secret_encrypted"),
+  revenueWalletCreatedAt: timestamp("revenue_wallet_created_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  // RCX Model: Profit splits must sum to 100% when all fields are populated
+  checkProfitSplitSum: check(
+    "projects_profit_split_sum_100",
+    sql`(
+      lp_replenishment_percent IS NULL OR
+      regenerator_distribution_percent IS NULL OR
+      treasury_percent IS NULL OR
+      project_retained_percent IS NULL
+    ) OR (
+      lp_replenishment_percent + regenerator_distribution_percent + treasury_percent + project_retained_percent = 100.00
+    )`
+  ),
+}));
+
+// Project Revenue table - Phase 4.1: RCX Model - Track bank deposits and NGNTS minting
+export const projectRevenue = pgTable("project_revenue", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  bankDepositAmount: decimal("bank_deposit_amount", { precision: 20, scale: 2 }).notNull(),
+  receiptUrl: text("receipt_url"),
+  mintedNgnts: decimal("minted_ngnts", { precision: 20, scale: 7 }).notNull(),
+  stellarMintTxHash: text("stellar_mint_tx_hash"),
+  revenueWalletPublicKey: text("revenue_wallet_public_key"),
+  recordedBy: uuid("recorded_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+  distributedAt: timestamp("distributed_at"),
+  distributionEventId: uuid("distribution_event_id").references(() => distributionEvents.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Prevent double-recording of same Stellar mint transaction
+  uniqueMintTx: unique("project_revenue_project_id_mint_tx_hash_unique").on(table.projectId, table.stellarMintTxHash),
+  // Index for efficient project revenue queries
+  projectIdIdx: index("project_revenue_project_id_idx").on(table.projectId),
+  // Index for distribution event tracking
+  distributionEventIdIdx: index("project_revenue_distribution_event_id_idx").on(table.distributionEventId),
+  // Data integrity constraints
+  checkPositiveBankDeposit: check("project_revenue_bank_deposit_positive", sql`bank_deposit_amount > 0`),
+  checkPositiveMintedNgnts: check("project_revenue_minted_ngnts_positive", sql`minted_ngnts > 0`),
+}));
 
 // Investments table
 export const investments = pgTable("investments", {
@@ -1287,6 +1339,25 @@ export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones
 
 export type InsertProjectMilestone = z.infer<typeof insertProjectMilestoneSchema>;
 export type SelectProjectMilestone = typeof projectMilestones.$inferSelect;
+
+// Project Revenue schemas - Phase 4.1: RCX Model
+export const insertProjectRevenueSchema = createInsertSchema(projectRevenue).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  bankDepositAmount: z.string().refine(
+    (val) => parseFloat(val) > 0,
+    { message: "Bank deposit amount must be greater than 0" }
+  ),
+  mintedNgnts: z.string().refine(
+    (val) => parseFloat(val) > 0,
+    { message: "Minted NGNTS amount must be greater than 0" }
+  ),
+});
+
+export type InsertProjectRevenue = z.infer<typeof insertProjectRevenueSchema>;
+export type SelectProjectRevenue = typeof projectRevenue.$inferSelect;
 
 export const updateKycStatusSchema = z.object({
   action: z.enum(["approve", "reject"]),
