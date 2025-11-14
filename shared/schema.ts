@@ -841,7 +841,9 @@ export const primerContributions = pgTable("primer_contributions", {
   status: primerContributionStatusEnum("status").notNull().default("pending"),
   paymentProof: text("payment_proof"),
   txHash: text("tx_hash"),
-  lpPoolShareSnapshot: decimal("lp_pool_share_snapshot", { precision: 5, scale: 2 }),
+  // DEPRECATED: RCX Model - Primers don't receive LP tokens (grant providers, not investors)
+  // Kept nullable for historical data, will be removed in future migration
+  lpPoolShareSnapshot: decimal("lp_pool_share_snapshot", { precision: 5, scale: 2 }).default(sql`NULL`),
   approvedBy: uuid("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   rejectedReason: text("rejected_reason"),
@@ -1569,6 +1571,7 @@ export const insertPrimerContributionSchema = createInsertSchema(primerContribut
   approvedAt: true,
   approvedBy: true,
   status: true,
+  lpPoolShareSnapshot: true, // RCX Model: Deprecated - Primers don't receive LP tokens
 });
 
 export const createPrimerContributionSchema = z.object({

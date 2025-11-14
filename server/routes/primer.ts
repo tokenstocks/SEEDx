@@ -102,8 +102,16 @@ router.get("/stats", authMiddleware, primerMiddleware, async (req: Request, res:
     const totalContributed = parseFloat(primerStats?.totalContributed || "0");
     const totalLpPoolCapital = parseFloat(totalLpCapital?.total || "0");
     
-    // Calculate share based on cumulative contributions (independent of wallet balance)
-    const poolSharePercent = totalLpPoolCapital > 0 ? (totalContributed / totalLpPoolCapital) * 100 : 0;
+    // RCX Model: Impact metrics for grant providers (not investment returns)
+    // Calculate capital deployment through project allocations
+    const [deployedCapital] = await db
+      .select({
+        deployed: sql<string>`COALESCE(SUM(${primerProjectAllocations.shareAmountNgnts}), 0)`,
+      })
+      .from(primerProjectAllocations)
+      .where(eq(primerProjectAllocations.primerId, primerId));
+
+    const capitalDeployed = parseFloat(deployedCapital?.deployed || "0");
 
     // Get number of projects funded through allocations
     const activeProjects = await db
@@ -111,14 +119,23 @@ router.get("/stats", authMiddleware, primerMiddleware, async (req: Request, res:
       .from(primerProjectAllocations)
       .where(eq(primerProjectAllocations.primerId, primerId));
 
+    // LP Regeneration multiplier: How many times has capital been recycled?
+    // Current LP capital / Original Primer contribution
+    const regenerationMultiplier = totalContributed > 0 
+      ? (totalLpPoolCapital / totalContributed).toFixed(2)
+      : "0.00";
+
     // Mock regenerators enabled (will be calculated from token sales later)
     const regeneratorsEnabled = activeProjects.length * 10; // Placeholder
 
     res.json({
+      // Grant impact metrics (RCX Model)
       totalContributed,
+      capitalDeployed,
       activeProjects: activeProjects.length,
-      poolSharePercent,
+      regenerationMultiplier, // How many times capital has regenerated
       regeneratorsEnabled,
+      // Removed: poolSharePercent (Primers are grant providers, not LP investors)
     });
   } catch (error) {
     console.error("Get Primer stats error:", error);
@@ -250,7 +267,7 @@ router.get("/timeline", authMiddleware, primerMiddleware, async (req: Request, r
             contributionId: contrib.id,
             amount: contrib.amountNgnts,
             txHash: contrib.txHash,
-            lpPoolShare: contrib.lpPoolShareSnapshot,
+            // RCX Model: LP pool share removed - Primers are grant providers, not investors
           },
         });
       }
