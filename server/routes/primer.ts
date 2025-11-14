@@ -156,8 +156,28 @@ router.get("/contributions", authMiddleware, primerMiddleware, async (req: Reque
 
     const primerId = req.user.userId;
 
+    // RCX Model: Exclude LP ownership fields from contribution history
     const contributionList = await db
-      .select()
+      .select({
+        id: primerContributions.id,
+        primerId: primerContributions.primerId,
+        grossAmountNgn: primerContributions.grossAmountNgn,
+        platformFeeNgn: primerContributions.platformFeeNgn,
+        amountNgnts: primerContributions.amountNgnts,
+        paymentMethod: primerContributions.paymentMethod,
+        referenceCode: primerContributions.referenceCode,
+        status: primerContributions.status,
+        paymentProof: primerContributions.paymentProof,
+        txHash: primerContributions.txHash,
+        // Removed: lpPoolShareSnapshot (ownership concept - Primers are grant providers)
+        approvedBy: primerContributions.approvedBy,
+        approvedAt: primerContributions.approvedAt,
+        rejectedReason: primerContributions.rejectedReason,
+        createdAt: primerContributions.createdAt,
+        updatedAt: primerContributions.updatedAt,
+        transactionId: primerContributions.transactionId,
+        platformFee: primerContributions.platformFeeNgn, // Alias for compatibility
+      })
       .from(primerContributions)
       .where(eq(primerContributions.primerId, primerId))
       .orderBy(desc(primerContributions.createdAt));
@@ -226,10 +246,11 @@ router.get("/timeline", authMiddleware, primerMiddleware, async (req: Request, r
           }
         }
 
+        // RCX Model: Return capital deployment data without ownership percentages
         return {
           id: allocation.id,
           shareAmountNgnts: allocation.shareAmountNgnts,
-          sharePercent: allocation.sharePercent,
+          // Removed: sharePercent (ownership concept - Primers are grant providers)
           createdAt: allocation.createdAt,
           projectName: projectInfo.name,
           projectLocation: projectInfo.location,
@@ -298,7 +319,7 @@ router.get("/timeline", authMiddleware, primerMiddleware, async (req: Request, r
           projectName: allocation.projectName,
           projectLocation: allocation.projectLocation,
           shareAmount: allocation.shareAmountNgnts,
-          sharePercent: allocation.sharePercent,
+          // Removed: sharePercent (ownership concept - Primers are grant providers)
           totalAllocated: allocation.totalAllocated,
         },
       });
@@ -331,7 +352,7 @@ router.get("/allocations", authMiddleware, primerMiddleware, async (req: Request
 
     const primerId = req.user.userId;
 
-    // Get all allocations where this Primer has a share
+    // RCX Model: Get capital deployment allocations (not ownership shares)
     const allocationsList = await db
       .select({
         id: primerProjectAllocations.id,
@@ -340,7 +361,7 @@ router.get("/allocations", authMiddleware, primerMiddleware, async (req: Request
         allocationDate: lpProjectAllocations.allocationDate,
         totalAmount: lpProjectAllocations.totalAmountNgnts,
         yourShareAmount: primerProjectAllocations.shareAmountNgnts,
-        sharePercent: primerProjectAllocations.sharePercent,
+        // Removed: sharePercent (ownership concept - Primers are grant providers)
       })
       .from(primerProjectAllocations)
       .innerJoin(

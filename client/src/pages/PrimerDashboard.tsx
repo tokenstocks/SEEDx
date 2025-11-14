@@ -237,7 +237,7 @@ export default function PrimerDashboard() {
           </motion.div>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats Cards - RCX Impact Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -251,7 +251,7 @@ export default function PrimerDashboard() {
                 ₦{stats?.totalContributed?.toLocaleString() || "0"}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Lifetime LP Pool contributions
+                Lifetime grant contributions to LP Pool
               </p>
             </CardContent>
           </Card>
@@ -259,16 +259,16 @@ export default function PrimerDashboard() {
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-300">
-                Active Projects
+                Capital Deployed
               </CardTitle>
               <Building2 className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white" data-testid="text-active-projects">
-                {stats?.activeProjects || 0}
+              <div className="text-2xl font-bold text-white" data-testid="text-capital-deployed">
+                ₦{stats?.capitalDeployed?.toLocaleString() || "0"}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Funded through your LP share
+                Allocated to agricultural projects
               </p>
             </CardContent>
           </Card>
@@ -276,16 +276,16 @@ export default function PrimerDashboard() {
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-300">
-                LP Pool Share
+                LP Regeneration
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white" data-testid="text-pool-share">
-                {stats?.poolSharePercent?.toFixed(2) || "0.00"}%
+              <div className="text-2xl font-bold text-white" data-testid="text-regeneration-multiplier">
+                {stats?.regenerationMultiplier || "0.00"}x
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Your ownership of the LP Pool
+                Capital recycling through the pool
               </p>
             </CardContent>
           </Card>
@@ -302,7 +302,7 @@ export default function PrimerDashboard() {
                 {stats?.regeneratorsEnabled || 0}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Token participants funded
+                Token participants enabled by capital
               </p>
             </CardContent>
           </Card>
@@ -373,14 +373,6 @@ export default function PrimerDashboard() {
                             </a>
                           )}
                         </div>
-                        {contribution.lpPoolShareSnapshot && (
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-white">
-                              {contribution.lpPoolShareSnapshot}% Share
-                            </p>
-                            <p className="text-xs text-slate-500">LP Pool ownership</p>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -400,9 +392,16 @@ export default function PrimerDashboard() {
           <TabsContent value="allocations" className="space-y-4">
             <Card className="bg-white/5 border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">Project Allocations</CardTitle>
+                <CardTitle className="text-white">
+                  Project Allocations
+                  {stats?.activeProjects ? (
+                    <Badge variant="secondary" className="ml-2">
+                      {stats.activeProjects} Active
+                    </Badge>
+                  ) : null}
+                </CardTitle>
                 <CardDescription className="text-slate-400">
-                  Projects funded through your LP Pool share
+                  Capital deployed to agricultural projects through your contributions
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -545,11 +544,6 @@ export default function PrimerDashboard() {
                                       <code className="text-xs text-emerald-400 font-mono break-all" data-testid="text-event-txhash">
                                         {event.data.txHash}
                                       </code>
-                                      {event.data.lpPoolShare && (
-                                        <p className="text-xs text-slate-400 mt-2">
-                                          LP Share: {parseFloat(event.data.lpPoolShare).toFixed(2)}%
-                                        </p>
-                                      )}
                                     </div>
                                   )}
 
