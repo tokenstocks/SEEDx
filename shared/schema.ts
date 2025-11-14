@@ -1377,6 +1377,55 @@ export const insertProjectTokenLedgerSchema = createInsertSchema(projectTokenLed
   createdAt: true,
 });
 
+// RCX Model: Profit split configuration schema
+const profitSplitSchema = z.object({
+  lpReplenishmentPercent: z.string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid percentage")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return num >= 0 && num <= 100;
+    }, "Must be between 0 and 100"),
+  regeneratorDistributionPercent: z.string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid percentage")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return num >= 0 && num <= 100;
+    }, "Must be between 0 and 100"),
+  treasuryPercent: z.string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid percentage")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return num >= 0 && num <= 100;
+    }, "Must be between 0 and 100"),
+  projectRetainedPercent: z.string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid percentage")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return num >= 0 && num <= 100;
+    }, "Must be between 0 and 100"),
+}).refine((data) => {
+  const sum = parseFloat(data.lpReplenishmentPercent) +
+              parseFloat(data.regeneratorDistributionPercent) +
+              parseFloat(data.treasuryPercent) +
+              parseFloat(data.projectRetainedPercent);
+  return Math.abs(sum - 100) < 0.01; // Float comparison tolerance
+}, { 
+  message: "Profit split percentages must sum to exactly 100%",
+  path: ["profitSplit"], // Top-level error, not tied to specific field
+});
+
+// Dual wallet architecture schema
+const dualWalletSchema = z.object({
+  operationsWalletPublicKey: z.string()
+    .min(56, "Stellar public key must be 56 characters")
+    .max(56, "Stellar public key must be 56 characters")
+    .regex(/^G[A-Z2-7]{55}$/, "Must be a valid Stellar public key"),
+  revenueWalletPublicKey: z.string()
+    .min(56, "Stellar public key must be 56 characters")
+    .max(56, "Stellar public key must be 56 characters")
+    .regex(/^G[A-Z2-7]{55}$/, "Must be a valid Stellar public key"),
+});
+
 export const createProjectSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
@@ -1388,7 +1437,7 @@ export const createProjectSchema = z.object({
   pricePerToken: z.string().regex(/^\d+(\.\d{0,2})?$/, "Amount must be a valid decimal"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-});
+}).merge(profitSplitSchema).merge(dualWalletSchema);
 
 export const suspendUserSchema = z.object({
   isSuspended: z.boolean(),

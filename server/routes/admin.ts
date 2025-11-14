@@ -1307,6 +1307,14 @@ router.post("/projects", authenticate, requireAdmin, upload.fields([
         stellarIssuerSecretKeyEncrypted: encryptedIssuerSecret,
         stellarDistributionPublicKey: distributionKeypair.publicKey(),
         stellarDistributionSecretKeyEncrypted: encryptedDistributionSecret,
+        // RCX Model: Configurable profit distribution
+        lpReplenishmentPercent: body.lpReplenishmentPercent,
+        regeneratorDistributionPercent: body.regeneratorDistributionPercent,
+        treasuryPercent: body.treasuryPercent,
+        projectRetainedPercent: body.projectRetainedPercent,
+        // Dual wallet architecture
+        operationsWalletPublicKey: body.operationsWalletPublicKey,
+        revenueWalletPublicKey: body.revenueWalletPublicKey,
         status: "active",
         startDate: body.startDate ? new Date(body.startDate) : null,
         endDate: body.endDate ? new Date(body.endDate) : null,
