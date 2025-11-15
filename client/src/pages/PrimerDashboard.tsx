@@ -577,15 +577,9 @@ export default function PrimerDashboard() {
                                     )}
                                     <Separator className="bg-white/10" />
                                     <div className="flex items-center justify-between">
-                                      <span className="text-sm text-slate-400">Your Share</span>
+                                      <span className="text-sm text-slate-400">Capital Deployed</span>
                                       <span className="font-medium text-purple-400" data-testid="text-event-share">
                                         ₦{parseFloat(event.data.shareAmount).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-sm text-slate-400">Share %</span>
-                                      <span className="text-sm text-slate-300">
-                                        {parseFloat(event.data.sharePercent).toFixed(2)}%
                                       </span>
                                     </div>
                                   </div>

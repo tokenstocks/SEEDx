@@ -39,6 +39,7 @@ import AdminInvestments from "@/pages/AdminInvestments";
 import AdminLPPool from "@/pages/AdminLPPool";
 import AdminRCXRevenue from "@/pages/AdminRCXRevenue";
 import AdminRCXDistributions from "@/pages/AdminRCXDistributions";
+import MyDistributions from "@/pages/MyDistributions";
 import Marketplace from "@/pages/Marketplace";
 import MultisigDemo from "@/pages/MultisigDemo";
 import DeploymentDemo from "@/pages/DeploymentDemo";
@@ -100,6 +101,7 @@ function Router() {
       <Route path="/primer-profile" component={PrimerProfile} />
       <Route path="/regenerator-profile" component={RegeneratorProfile} />
       {/* DEPRECATED: /wallet-funding-request route removed - wallets auto-activate on first bank deposit */}
+      <Route path="/my-distributions" component={MyDistributions} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/transactions" component={Transactions} />
       {/* Demo pages - public access without AdminLayout */}

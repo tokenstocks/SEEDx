@@ -14,6 +14,8 @@ import {
   createBankDepositRequestSchema,
   platformBankAccounts,
   platformSettings,
+  regeneratorCashflowDistributions,
+  projectCashflows,
   type BankDepositFeePreview,
 } from "@shared/schema";
 import { authMiddleware } from "../middleware/auth";
@@ -1006,6 +1008,58 @@ router.get("/bank-deposits", authMiddleware, regeneratorMiddleware, async (req: 
   } catch (error: any) {
     console.error("Failed to fetch bank deposits:", error);
     res.status(500).json({ error: "Failed to fetch deposit history" });
+  }
+});
+
+/**
+ * GET /api/regenerator/my-distributions
+ * Get user's received RCX cashflow distributions (Regenerators only)
+ */
+router.get("/my-distributions", authMiddleware, regeneratorMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    // Fetch user's distributions with project details
+    const rawDistributions = await db
+      .select({
+        id: regeneratorCashflowDistributions.id,
+        cashflowId: regeneratorCashflowDistributions.cashflowId,
+        projectId: regeneratorCashflowDistributions.projectId,
+        userId: regeneratorCashflowDistributions.userId,
+        shareAmount: regeneratorCashflowDistributions.shareAmount,
+        tokensHeld: regeneratorCashflowDistributions.tokensHeld,
+        distributedAt: regeneratorCashflowDistributions.distributedAt,
+        createdAt: regeneratorCashflowDistributions.createdAt,
+        projectName: projects.name,
+        projectSymbol: projects.tokenSymbol,
+        cashflowAmountNgnts: projectCashflows.amountNgnts,
+        cashflowRecordedAt: projectCashflows.recordedAt,
+      })
+      .from(regeneratorCashflowDistributions)
+      .innerJoin(projects, eq(regeneratorCashflowDistributions.projectId, projects.id))
+      .innerJoin(projectCashflows, eq(regeneratorCashflowDistributions.cashflowId, projectCashflows.id))
+      .where(eq(regeneratorCashflowDistributions.userId, userId))
+      .orderBy(desc(regeneratorCashflowDistributions.createdAt));
+
+    // Transform to frontend-expected format with proper timestamp
+    const distributions = rawDistributions.map(dist => ({
+      id: dist.id,
+      cashflowId: dist.cashflowId,
+      projectId: dist.projectId,
+      regeneratorId: dist.userId,
+      amountNGNTS: dist.shareAmount,
+      projectTokensHeld: dist.tokensHeld,
+      distributedAt: dist.distributedAt || dist.createdAt, // Use distributedAt if available, fallback to createdAt
+      projectName: dist.projectName,
+      projectSymbol: dist.projectSymbol,
+      cashflowAmountNGNTS: dist.cashflowAmountNgnts,
+      cashflowRecordedAt: dist.cashflowRecordedAt,
+    }));
+
+    res.json(distributions);
+  } catch (error: any) {
+    console.error("Failed to fetch user distributions:", error);
+    res.status(500).json({ error: "Failed to fetch distribution history" });
   }
 });
 

@@ -83,7 +83,10 @@ export default function UnifiedHeader() {
     ];
 
     if (isRegenerator) {
-      links.push({ href: "/marketplace", label: "Marketplace" });
+      links.push(
+        { href: "/marketplace", label: "Marketplace" },
+        { href: "/my-distributions", label: "My Distributions" }
+      );
     } else if (isAdmin) {
       // Admin gets Dashboard link instead of Settings
       links[0] = { href: "/admin", label: "Dashboard" };

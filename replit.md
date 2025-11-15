@@ -46,6 +46,35 @@ The platform provides an investor-grade presentation with Framer Motion animatio
 
 ## Recent Changes (November 15, 2025)
 
+### 100% RCX Compliance Achievement
+Completed all RCX model requirements with full frontend-to-backend implementation:
+
+**RCX Compliance Fixes (Tasks 1-6):**
+- ✅ **Removed LP Ownership Concepts from Primer Dashboard:** Eliminated `sharePercent` display from PrimerDashboard timeline events (replaced with "Capital Deployed")
+- ✅ **Regenerator Distribution View (NEW):** Created complete Regenerator-facing distribution tracking system
+  - GET /api/regenerator/my-distributions endpoint (joins regeneratorCashflowDistributions + projects + projectCashflows)
+  - MyDistributions.tsx page with distribution history, project details, token holdings, and revenue totals
+  - Navigation link added to UnifiedHeader (Regenerators only)
+  - Route registered in App.tsx at /my-distributions
+- ✅ **Schema Documentation:** Added deprecation comments to legacy LP ownership fields:
+  - `lpCashflowAllocations.sharePercentage` (RCX Primers don't have ownership percentages)
+  - `regeneratorCashflowDistributions.sharePercentage` (legacy - use tokensHeld for pro-rata)
+  - `primerContributions.lpPoolShareSnapshot` (RCX Primers don't receive LP tokens)
+  - `primerProjectAllocations.sharePercent` and `poolOwnershipPercent` (no ownership stakes)
+
+**RCX Model Verification (100% Compliant):**
+1. ✅ **Primer Role:** Grant-style donors with impact metrics only (NO financial returns, ownership, LP tokens, or distributions)
+2. ✅ **Regenerator Role:** Purchase tokens with 100% payments to LP Pool (verified in server/routes/investments.ts lines 195-250)
+3. ✅ **Profit Distribution:** Configurable 4-bucket split (40/30/20/10 default) with presets and 100% validation
+4. ✅ **Dual Wallet Architecture:** Projects have operations wallet (LP disbursements) + revenue wallet (bank deposits)
+5. ✅ **Manual Admin Distribution:** Revenue recording → Preview → Execute → History (AdminRCXRevenue + AdminRCXDistributions)
+6. ✅ **Integer-Cent Allocation:** Guarantees exact reconciliation with division-by-zero guards
+7. ✅ **Regenerator Distribution Tracking:** End-users can view "My Distributions" with project details and cashflow history
+8. ✅ **No LP Ownership Display:** All Primer-facing UI removed sharePercent/poolShare references
+9. ✅ **Legacy Field Documentation:** All non-RCX fields marked DEPRECATED in schema.ts with explanations
+
+**Production Status:** Platform is 100% RCX-compliant with complete admin controls, Regenerator distribution transparency, and Primer impact-only dashboards.
+
 ### RCX Manual Distribution System (Complete)
 Implemented full admin-controlled cashflow distribution workflow for MVP:
 

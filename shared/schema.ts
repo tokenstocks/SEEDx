@@ -792,6 +792,7 @@ export const lpCashflowAllocations = pgTable("lp_cashflow_allocations", {
   cashflowId: uuid("cashflow_id").notNull().references(() => projectCashflows.id, { onDelete: "cascade" }),
   lpUserId: uuid("lp_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   shareAmount: decimal("share_amount", { precision: 30, scale: 2 }).notNull(),
+  // DEPRECATED (RCX Model): sharePercentage field is legacy - LP model pre-RCX. RCX Primers don't have ownership percentages.
   sharePercentage: decimal("share_percentage", { precision: 5, scale: 2 }).notNull().default("30.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -819,6 +820,7 @@ export const regeneratorCashflowDistributions = pgTable("regenerator_cashflow_di
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   tokensHeld: decimal("tokens_held", { precision: 30, scale: 8 }).notNull(), // Snapshot of tokens held at distribution time
   shareAmount: decimal("share_amount", { precision: 30, scale: 2 }).notNull(), // NGNTS distributed to this regenerator
+  // DEPRECATED (RCX Model): sharePercentage field is legacy - kept for backward compatibility. Use tokensHeld for pro-rata calculations.
   sharePercentage: decimal("share_percentage", { precision: 5, scale: 4 }).notNull(), // % of total tokens held (4 decimals for precision)
   txHash: text("tx_hash"), // On-chain transaction hash for NGNTS transfer
   distributedAt: timestamp("distributed_at", { withTimezone: true }),
@@ -875,6 +877,7 @@ export const primerProjectAllocations = pgTable("primer_project_allocations", {
   primerId: uuid("primer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   allocationId: uuid("allocation_id").notNull().references(() => lpProjectAllocations.id, { onDelete: "cascade" }),
   shareAmountNgnts: decimal("share_amount_ngnts", { precision: 18, scale: 2 }).notNull(),
+  // DEPRECATED (RCX Model): sharePercent and poolOwnershipPercent are legacy - Primers don't have ownership stakes
   sharePercent: decimal("share_percent", { precision: 5, scale: 2 }).notNull(),
   poolOwnershipPercent: decimal("pool_ownership_percent", { precision: 5, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
