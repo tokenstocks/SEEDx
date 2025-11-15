@@ -664,6 +664,9 @@ export const projectCashflows = pgTable("project_cashflows", {
   status: cashflowStatusEnum("status").notNull().default("recorded"),
   processed: boolean("processed").notNull().default(false),
   chainTxHash: text("chain_tx_hash"),
+  // RCX Model: Distribution tracking (details in linked tables)
+  distributedBy: uuid("distributed_by").references(() => users.id),
+  distributedAt: timestamp("distributed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1567,6 +1570,11 @@ export const createRedemptionRequestSchema = z.object({
 export const processRedemptionRequestSchema = z.object({
   action: z.enum(["approve", "reject"]),
   adminNotes: z.string().optional(),
+});
+
+// RCX Model: Distribution execution schema
+export const executeDistributionSchema = z.object({
+  cashflowId: z.string().uuid(),
 });
 
 export const insertAuditAdminActionSchema = createInsertSchema(auditAdminActions).omit({

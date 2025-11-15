@@ -49,6 +49,7 @@ import { burnProjectToken, transferNgntsFromPlatformWallet, ensureTrustline } fr
 import { primerContributions, lpProjectAllocations, primerProjectAllocations } from "@shared/schema";
 import { getAllRates } from "../lib/exchangeRates";
 import milestoneRoutes from "./admin/milestones";
+import rcxRoutes from "./admin/rcx";
 
 const router = Router();
 
@@ -5649,5 +5650,8 @@ router.get("/regenerators/:id", authenticate, requireAdmin, async (req, res) => 
 
 // Phase 3.1: Milestone routes
 router.use("/milestones", milestoneRoutes);
+
+// Phase 4.1: RCX Model - Manual distribution routes
+router.use("/rcx", rcxRoutes);
 
 export default router;
