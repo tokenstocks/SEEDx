@@ -37,6 +37,8 @@ import AdminLPAllocations from "@/pages/AdminLPAllocations";
 import AdminFunding from "@/pages/AdminFunding";
 import AdminInvestments from "@/pages/AdminInvestments";
 import AdminLPPool from "@/pages/AdminLPPool";
+import AdminRCXRevenue from "@/pages/AdminRCXRevenue";
+import AdminRCXDistributions from "@/pages/AdminRCXDistributions";
 import Marketplace from "@/pages/Marketplace";
 import MultisigDemo from "@/pages/MultisigDemo";
 import DeploymentDemo from "@/pages/DeploymentDemo";
@@ -73,6 +75,8 @@ function AdminRoutes() {
         <Route path="/admin/investments" component={AdminInvestments} />
         <Route path="/admin/lp-pool" component={AdminLPPool} />
         <Route path="/admin/lp-allocations" component={AdminLPAllocations} />
+        <Route path="/admin/rcx-revenue" component={AdminRCXRevenue} />
+        <Route path="/admin/rcx-distributions" component={AdminRCXDistributions} />
         <Route path="/admin/multisig" component={MultisigDemo} />
       </Switch>
     </AdminLayout>

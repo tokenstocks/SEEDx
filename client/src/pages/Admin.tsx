@@ -1159,6 +1159,32 @@ export default function Admin() {
                 </CardHeader>
               </Card>
             </Link>
+            <Link href="/admin/rcx-revenue">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-rcx-revenue">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <FileText className="w-5 h-5" />
+                    RCX Revenue
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Record project revenue & execute distributions
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/admin/rcx-distributions">
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover-elevate cursor-pointer" data-testid="card-rcx-distributions">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <DollarSign className="w-5 h-5" />
+                    RCX Distributions
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    View RCX distribution history & metrics
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
           </div>
         </div>
 
