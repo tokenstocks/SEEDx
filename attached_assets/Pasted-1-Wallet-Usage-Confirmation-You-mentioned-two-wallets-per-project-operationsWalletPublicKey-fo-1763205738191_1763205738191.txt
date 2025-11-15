@@ -1,0 +1,48 @@
+1. Wallet Usage Confirmation
+"You mentioned two wallets per project:
+- operationsWalletPublicKey (for LP disbursements)
+- revenueWalletPublicKey (for bank deposits)
+
+Can you confirm:
+1. When LP disburses funds to a project, which wallet receives it?
+2. When admin records revenue (bank deposit), which wallet gets the mirrored tokens?
+3. When profit distribution happens, which wallet sends the funds out?
+4. Are these wallets used as INFLOW vs OUTFLOW, or both for different purposes?"
+2. Fund Flow Verification
+"Walk me through the complete transaction flow:
+
+Scenario A: LP allocates 50,000 NGNTS to Project X
+→ Which wallet receives this?
+→ What database records are created?
+
+Scenario B: Project X generates 100,000 NGN revenue (bank deposit)
+→ Admin uploads receipt
+→ Which wallet gets minted tokens?
+→ What happens next?
+
+Scenario C: Distribution execution (40% LP, 30% Regenerators, 20% Treasury, 10% Project)
+→ Which wallet holds the funds to distribute?
+→ Where does each allocation go?"
+3. RCX Compliance Check
+"Based on the RCX specification:
+- Token purchases by Regenerators should go 100% to LP Pool ✅ (you confirmed this)
+- Project revenue should flow back to LP as replenishment
+
+Question: When distribution happens and LP gets its 40% share, 
+does this go back to the LP Pool wallet to complete the regeneration cycle?"
+4. Critical Gap - Regenerator View
+"You mentioned:
+❌ No page where individual Regenerators can see 'Your Distributions Received'
+
+This is critical for RCX. Can you:
+1. Estimate effort to build this (hours/days)?
+2. Confirm the data already exists in regeneratorCashflowDistributions table?
+3. Propose a simple implementation approach?"
+5. Schema Cleanup Priority
+"You flagged legacy fields as RCX violations:
+- sharePercent in Primer flows
+- sharePercentage in regeneratorCashflowDistributions
+- lpPoolShareSnapshot in distributions
+
+Question: Are these fields actively used in any calculations, 
+or are they just displayed/stored but not affecting the actual RCX flow?"

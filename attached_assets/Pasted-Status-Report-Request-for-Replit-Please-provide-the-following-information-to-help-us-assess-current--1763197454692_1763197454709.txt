@@ -1,0 +1,179 @@
+Status Report Request for Replit
+Please provide the following information to help us assess current implementation vs. RCX requirements:
+
+1. Distribution System Current State
+A. Distribution Events Table:
+
+□ Does distribution_events table exist?
+□ Does it have projectId field?
+□ Does it have revenueEventId field?
+□ Does it have 4-way split fields (lpAmount, regeneratorAmount, treasuryAmount, projectRetainedAmount)?
+□ What's the current schema? (show CREATE TABLE or Drizzle schema)
+B. Distribution Allocations:
+
+□ Does distribution_allocations table exist?
+□ Does it target Regenerators only or also Primers?
+□ Does it have projectTokensHeld field?
+□ Does it have ownershipPercent field?
+□ What's the current allocation calculation logic?
+C. Distribution Library:
+
+□ Does lib/distributionLib.js exist?
+□ What functions are implemented?
+  □ createDistributionFromRevenue()?
+  □ executeDistribution()?
+  □ calculateRegeneratorAllocations()?
+  □ calculatePrimerAllocations()? (should NOT exist)
+□ Does it implement 4-way profit split?
+□ Does it send to LP, Treasury, Regenerators, and retain project amount?
+2. Revenue Recording System
+A. Project Revenue Table:
+
+□ Does project_revenue table exist?
+□ What fields does it have?
+□ Is there a receipt upload mechanism?
+□ Is there NGNTS minting logic?
+B. Revenue Recording Flow:
+
+□ Can admin upload bank deposit receipts?
+□ Does system mint NGNTS to revenue wallet?
+□ Does it trigger distribution creation?
+□ What's the current workflow? (describe step-by-step)
+C. API Routes:
+
+□ POST /admin/revenue/record - exists?
+□ POST /admin/revenue/:id/mint - exists?
+□ POST /admin/revenue/:id/distribute - exists?
+□ List all revenue-related routes
+3. Token Purchase Flow (CRITICAL)
+A. Regenerator Token Purchase:
+
+□ Where does the money go when Regenerator buys project tokens?
+  □ LP wallet (100% replenishment) ✅ CORRECT
+  □ Project wallet directly ❌ WRONG
+  □ Other Regenerator (secondary market) ❌ WRONG
+  
+□ What's the current implementation?
+□ Which file handles token purchases?
+□ Show the relevant code snippet
+B. LP Replenishment Tracking:
+
+□ Is LP replenishment from token purchases tracked?
+□ Is there a dashboard showing LP inflows?
+□ Are there two methods tracked separately?
+  Method #1: Regenerator purchases
+  Method #2: Project profit sharing
+4. Treasury System
+A. Treasury Wallet:
+
+□ Does TREASURY_WALLET_PUBLIC_KEY exist in env?
+□ Is treasury receiving platform fees?
+□ Is treasury receiving treasuryPercent from distributions?
+B. Treasury Tracking:
+
+□ Does treasury_inflows table exist?
+□ What's being tracked?
+□ Is there a treasury dashboard?
+5. Primer System (Should Be Impact-Only)
+A. Primer Contributions:
+
+□ Does primer_contributions table have LP token fields? (should NOT)
+□ Does it have impact metrics fields?
+□ What's the current schema?
+B. Primer Dashboard:
+
+□ Does it show LP tokens/ownership? (should NOT)
+□ Does it show impact metrics? (should YES)
+□ What metrics are displayed?
+□ Screenshot or description of current dashboard?
+6. Project Configuration
+A. Profit Split:
+
+□ Are profit splits configurable per project?
+□ Are they stored in projects table?
+□ Can admin edit profit splits after creation?
+□ Is there a profit_split_changes audit table?
+B. Two-Wallet System:
+
+□ Do all projects have operations_wallet_public_key?
+□ Do all projects have revenue_wallet_public_key?
+□ Are both wallets created at project creation?
+□ Are existing projects migrated to two-wallet system?
+7. What's Been Built (Phase 4.1)
+Please describe what was implemented in Phase 4.1:
+
+□ What was the original goal of Phase 4.1?
+□ What tables were created?
+□ What logic was implemented?
+□ Does it target Primers or Regenerators?
+□ Does it need to be removed/refactored?
+□ Can it be repurposed for RCX model?
+8. File Structure
+Please list relevant files:
+
+□ lib/distributionLib.js - exists? what's in it?
+□ lib/revenueLib.js - exists? what's in it?
+□ lib/treasuryLib.js - exists? what's in it?
+□ routes/admin/distributions.js - exists? what routes?
+□ routes/admin/revenue.js - exists? what routes?
+□ db/schema.js - show distribution/revenue related schemas
+9. Testing Status
+What's been tested:
+
+□ Distribution creation - tested?
+□ Distribution execution - tested?
+□ Revenue recording - tested?
+□ Token purchase flow - tested?
+□ LP replenishment - tested?
+□ Treasury inflows - tested?
+□ 4-way profit split - tested?
+10. Gap Analysis Request
+Please provide:
+
+□ What's fully implemented and RCX-compliant?
+□ What's partially implemented (needs adjustment)?
+□ What's not implemented yet?
+□ What needs to be removed (non-RCX compliant)?
+□ What's your assessment of Priority 2-4 status?
+📝 Suggested Format for Replit's Response
+markdown
+Copy
+## Current Implementation Status Report
+
+### ✅ Fully Implemented (RCX-Compliant)
+- [List features that are complete and correct]
+
+### ⚠️ Partially Implemented (Needs Adjustment)
+- [List features that exist but need RCX alignment]
+- [Describe what needs to change]
+
+### ❌ Not Implemented Yet
+- [List missing features from Priority 2-4]
+
+### 🗑️ Needs Removal (Non-RCX)
+- [List features that contradict RCX model]
+
+### 📊 Database Schema Status
+- [Show current schemas for distribution/revenue tables]
+
+### 🔍 Code Snippets
+- [Show key functions: token purchase, distribution, revenue]
+
+### 🧪 Testing Results
+- [What's been tested, what hasn't]
+
+### 📈 Priority 2-4 Assessment
+- Priority 2 (Distribution): [X% complete]
+- Priority 3 (Revenue Recording): [X% complete]
+- Priority 4 (LP Replenishment Tracking): [X% complete]
+
+### 🎯 Recommended Next Steps
+- [What should we build next?]
+🎯 Why This Matters
+This will help us:
+
+✅ Avoid rebuilding what's already done
+✅ Identify exact gaps vs. RCX requirements
+✅ Prioritize remaining work efficiently
+✅ Understand what needs refactoring vs. new build
+✅ Create accurate timeline for completion
