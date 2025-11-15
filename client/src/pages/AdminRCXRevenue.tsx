@@ -70,7 +70,7 @@ export default function AdminRCXRevenue() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [previewDialog, setPreviewDialog] = useState<{ cashflowId: string; open: boolean } | null>(null);
 
-  const { data: projects } = useQuery<{ projects: Project[] }>({
+  const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
 
@@ -218,7 +218,7 @@ export default function AdminRCXRevenue() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {projects?.projects.map((project) => (
+                            {projects?.map((project) => (
                               <SelectItem key={project.id} value={project.id} data-testid={`option-project-${project.id}`}>
                                 {project.name}
                               </SelectItem>

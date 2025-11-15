@@ -35,7 +35,7 @@ interface DistributionSummary {
 export default function AdminRCXDistributions() {
   const [selectedProject, setSelectedProject] = useState<string>("all");
 
-  const { data: projects } = useQuery<{ projects: Project[] }>({
+  const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
 
@@ -133,7 +133,7 @@ export default function AdminRCXDistributions() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Projects</SelectItem>
-                  {projects?.projects.map((project) => (
+                  {projects?.map((project) => (
                     <SelectItem key={project.id} value={project.id} data-testid={`option-filter-${project.id}`}>
                       {project.name}
                     </SelectItem>
